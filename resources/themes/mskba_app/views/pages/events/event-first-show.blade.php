@@ -25,7 +25,7 @@
     $feedback = $finished && $eventWallCanView ? app(\App\Modules\Social\Application\Services\SocialWallService::class)->reportFeedback($event, auth()->user()) : ['likes'=>0,'can_react'=>false,'reaction'=>null];
     $canJoin = $editable && $eventWallCanView && (($event->status === EventStatusEnum::PUBLISHED && ($event->visibility->value === 'public' || $owner || $currentParticipant)) || ($owner && $event->status === EventStatusEnum::DRAFT && !$event->starts_at));
     $reportMedia = $finished ? $event->media->concat($event->media()->where('collection','event_report_media')->orderBy('sort_order')->get()) : collect();
-    $rentalActive = $booking && $booking->status->value === 'confirmed' && $booking->ends_at?->isFuture();
+    $rentalStatusLabel = $booking?->status?->label();
     $rentalCreator = $booking?->creatorActor?->user?->canonical();
     $rentalCreatorName = $rentalCreator && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)->allows($rentalCreator, auth()->user()?->canonical(), \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE)
         ? ($rentalCreator->nickname ?: $rentalCreator->username ?: 'Организатор') : 'Организатор';
@@ -117,7 +117,7 @@
             <section class="panel app-venue-block" id="event-rental">
                 <header class="app-venue-block__header"><h2>Аренда</h2></header>
             @if($booking)
-                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span></button>
+                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge" data-event-rental-status="{{ $booking->status->value }}">{{ $rentalStatusLabel }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span></button>
             @else
                 <p class="muted">Площадка пока не забронирована.</p>
                 @if($canStartRental)
@@ -205,7 +205,7 @@
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">
     <header class="mskba-modal__header"><h2 id="event-booking-title">Бронирование №{{ $booking->id }}</h2><button type="button" class="icon-button" data-event-dialog-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button></header>
-    <div class="mskba-modal__body mskba-scroll app-event-panel"><span class="badge">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span><p>{{ $venue->name }} · {{ $courtLabel }}</p><p>{{ $address }}</p><p>Организатор аренды: {{ $rentalCreatorName }}</p>
+    <div class="mskba-modal__body mskba-scroll app-event-panel"><span class="badge">{{ $rentalStatusLabel }}</span><p>{{ $venue->name }} · {{ $courtLabel }}</p><p>{{ $address }}</p><p>Организатор аренды: {{ $rentalCreatorName }}</p>
         <p>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('d.m.Y H:i') }}</p>
         @if($booking->scope)<p>{{ $booking->scope->label() }}</p>@endif
     </div>

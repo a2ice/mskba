@@ -140,6 +140,34 @@ final class EventNativePageTest extends TestCase
         $this->assertDatabaseCount('venue_bookings', 0);
     }
 
+    public function test_event_rental_shows_linked_request_status_before_confirmation(): void
+    {
+        $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
+        $event = $this->createEvent($owner, $venue, [
+            'slots' => [['starts_at' => $start->format('Y-m-d\\TH:i'), 'duration_minutes' => 90]],
+        ]);
+        $booking = $event->booking()->create([
+            'venue_id' => $venue->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => VenueBookingStatusEnum::REQUESTED,
+            'scope' => VenueBookingScopeEnum::WHOLE,
+            'starts_at' => $event->starts_at,
+            'ends_at' => $event->ends_at,
+        ]);
+        $url = route('events.show', $event->routeIdentifier());
+        foreach ([VenueBookingStatusEnum::REQUESTED, VenueBookingStatusEnum::HELD, VenueBookingStatusEnum::CONFIRMED] as $status) {
+            $booking->update(['status' => $status]);
+            $this->get($url)->assertOk()
+                ->assertSee('data-event-rental-status="'.$status->value.'"', false)
+                ->assertSee($status->label())
+                ->assertDontSee('data-event-rental-open', false);
+        }
+        $this->assertSame($event->id, $booking->fresh()->event_id);
+        $this->assertDatabaseCount('venue_bookings', 1);
+    }
+
     public function test_published_event_uses_nonprimary_selected_hall_and_booking_popup(): void
     {
         $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
