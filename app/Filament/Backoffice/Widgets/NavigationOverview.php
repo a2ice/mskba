@@ -41,6 +41,7 @@ final class NavigationOverview extends Widget
         RestApiExplorer::class,
         GraphQLExplorer::class,
         PageBuilderAgentAccess::class,
+        \App\Filament\Backoffice\Pages\SocialIntegrationSettingsPage::class,
     ];
 
     protected function getViewData(): array
