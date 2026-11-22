@@ -21,20 +21,22 @@ final class CookieConsent
 
     public static function version(): string
     {
-        return (string) config('legal.cookie_consent_version', '2026-11-14');
+        // The previous notice covered external analytics; require a fresh internal choice.
+        return (string) config('legal.cookie_consent_version', '2026-11-14').':internal-v1';
     }
 
     public static function state(?Request $request = null): ?string
     {
         $request ??= request();
 
-        // The banner and analytics snippet both ask on the same request.
-        if ($request->attributes->has(self::REQUEST_STATE_KEY)) {
-            return $request->attributes->get(self::REQUEST_STATE_KEY);
+        // Login/logout can switch the scope within a single request.
+        $key = self::REQUEST_STATE_KEY.'.'.($request->user()?->getAuthIdentifier() ?? 'guest');
+        if ($request->attributes->has($key)) {
+            return $request->attributes->get($key);
         }
 
         $state = self::resolveState($request);
-        $request->attributes->set(self::REQUEST_STATE_KEY, $state);
+        $request->attributes->set($key, $state);
 
         return $state;
     }
@@ -114,7 +116,7 @@ final class CookieConsent
         return $visitorId;
     }
 
-    public static function analyticsAllowed(?Request $request = null): bool
+    public static function internalAnalyticsAllowed(?Request $request = null): bool
     {
         return self::state($request) === 'accepted';
     }
