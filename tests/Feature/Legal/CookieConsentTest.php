@@ -24,6 +24,15 @@ class CookieConsentTest extends TestCase
             ->assertSee('Принять все')
             ->assertDontSee('Разрешить аналитику')
             ->assertSee(route('privacy.policy'));
+
+        $this->assertMatchesRegularExpression(
+            '/<section\\b[^>]*data-cookie-consent-banner[^>]*>.*?<\\/section>/s',
+            $response->getContent(),
+        );
+        preg_match('/<section\\b[^>]*data-cookie-consent-banner[^>]*>.*?<\\/section>/s', $response->getContent(), $banner);
+        $this->assertStringContainsString('для внутренней аналитики', $banner[0]);
+        $this->assertStringContainsString('>Подробнее</a>', $banner[0]);
+        $this->assertStringNotContainsString('Яндекс Метрика', $banner[0]);
     }
 
     public function test_signed_in_decision_is_persisted_on_account_not_browser_cookie(): void
