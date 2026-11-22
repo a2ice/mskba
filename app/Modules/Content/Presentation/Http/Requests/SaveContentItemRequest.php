@@ -138,7 +138,7 @@ final class SaveContentItemRequest extends FormRequest
                 }
 
                 if ($type !== ContentTypeEnum::FAQ && $this->boolean('publish_in_vk')) {
-                    if (! \App\Modules\Vk\Application\Services\VkWallPublisher::configured()) {
+                    if (! \App\Modules\Vk\Application\Services\VkWallPublisher::wallConfigured()) {
                         $validator->errors()->add('publish_in_vk', 'Публикация во ВКонтакте не настроена.');
                     } elseif ($this->input('status', $content?->status?->value ?? 'published') !== 'published' || ! $this->boolean('publish_in_feed')) {
                         $validator->errors()->add('publish_in_vk', 'Для ВКонтакте необходимо опубликовать материал в ленте сайта.');

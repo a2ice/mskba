@@ -29,8 +29,13 @@ final class PublishVkContentJob implements ShouldQueue
             if ($row === null || ! $row->is_enabled || $row->status !== 'pending' || $row->post_id !== null) {
                 return null;
             }
-            if (! VkWallPublisher::configured() || $row->group_id !== (int) config('vk.wall.group_id')) {
+            if (! VkWallPublisher::wallConfigured() || $row->group_id !== (int) config('vk.wall.group_id')) {
                 $row->update(['status' => 'failed', 'last_error' => 'Интеграция ВКонтакте недоступна или изменена.']);
+
+                return null;
+            }
+            if (! VkWallPublisher::photoTokenAvailable()) {
+                $row->update(['status' => 'awaiting_auth', 'last_error' => 'Ожидается повторная авторизация загрузки фото ВКонтакте.']);
 
                 return null;
             }
@@ -54,7 +59,9 @@ final class PublishVkContentJob implements ShouldQueue
         try {
             $attachment = $publisher->prepareAttachment($content, $publication->group_id);
         } catch (Throwable) {
-            $publication->update(['status' => 'failed', 'last_error' => 'Не удалось подготовить обложку ВКонтакте.']);
+            $publication->update(! VkWallPublisher::photoTokenAvailable()
+                ? ['status' => 'awaiting_auth', 'last_error' => 'Ожидается повторная авторизация загрузки фото ВКонтакте.']
+                : ['status' => 'failed', 'last_error' => 'Не удалось подготовить обложку ВКонтакте.']);
 
             return;
         }

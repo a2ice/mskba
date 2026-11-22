@@ -269,6 +269,8 @@
             @error('publish_in_vk') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             @if(! $vkConfigured)
                 <small class="form-text">Публикация во ВКонтакте не настроена.</small>
+            @elseif(! $vkPhotoAuthorized)
+                <small class="form-text">Для ВКонтакте требуется повторная авторизация. Выбранная публикация с обложкой будет ожидать её; сайт и Telegram не блокируются.</small>
             @endif
             @if($vkPublication?->post_id)
                 <a href="https://vk.com/wall-{{ $vkPublication->group_id }}_{{ $vkPublication->post_id }}" target="_blank" rel="noopener noreferrer">Открыть публикацию ВКонтакте</a>
