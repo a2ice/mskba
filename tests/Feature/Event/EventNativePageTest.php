@@ -57,6 +57,59 @@ final class EventNativePageTest extends TestCase
         ]);
     }
 
+    public function test_participation_pricing_is_independent_of_rental_and_remembers_only_organizer_template(): void
+    {
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $event = $this->createEvent($user, $venue, [
+            'is_paid' => true,
+            'total_cost' => '11000',
+            'max_participants' => 10,
+            'cost_comment' => 'Цена включает только организацию игры.',
+            'save_cost_comment_default' => true,
+        ]);
+        $this->assertTrue($event->is_paid);
+        $this->assertSame(1100000, $event->total_cost_minor);
+        $this->assertSame(110000, $event->participant_cost_minor);
+        $this->assertTrue($event->participant_cost_auto);
+        $this->assertSame($event->cost_comment, $user->fresh()->default_event_cost_comment);
+        $this->assertNull($other->fresh()->default_event_cost_comment);
+        $this->assertArrayNotHasKey('default_event_cost_comment', $user->fresh()->toArray());
+        $this->get(route('events.show', $event->routeIdentifier()))->assertOk()
+            ->assertSee('Стоимость участия: 1 100 руб.')
+            ->assertSee('Цена включает только организацию игры.');
+        $this->get(route('events.edit', $event->routeIdentifier()))->assertOk()
+            ->assertSee('Платное мероприятие')->assertSee('Стоимость участия, руб.');
+
+        $base = ['title' => $event->title, 'type' => 'training', 'visibility' => 'public'];
+        $url = route('events.update', $event->routeIdentifier());
+        $this->put($url, [...$base, 'is_paid' => '1', 'total_cost' => '11000',
+            'participant_cost_auto' => '0', 'participant_cost' => '1200.50', 'max_participants' => 20,
+            'cost_comment' => 'Только для этой игры.'])->assertRedirect();
+        $this->assertSame(120050, $event->fresh()->participant_cost_minor);
+        $this->assertFalse($event->fresh()->participant_cost_auto);
+        $this->assertSame('Цена включает только организацию игры.', $user->fresh()->default_event_cost_comment);
+
+        $this->put($url, [...$base, 'is_paid' => '1', 'total_cost' => '11000',
+            'participant_cost_auto' => '1', 'max_participants' => 20])->assertRedirect();
+        $this->assertSame(55000, $event->fresh()->participant_cost_minor);
+
+        $second = $this->createEvent($user, $venue, ['is_paid' => true, 'total_cost' => '1000']);
+        $this->assertSame(10000, $second->participant_cost_minor);
+        $this->assertSame('Цена включает только организацию игры.', $second->cost_comment);
+
+        $third = $this->createEvent($other, $venue, ['is_paid' => true, 'total_cost' => '1000']);
+        $this->assertNotSame($second->cost_comment, $third->cost_comment);
+
+        $this->actingAs($user)->put($url, [...$base, 'is_paid' => '0'])->assertRedirect();
+        $this->assertFalse($event->fresh()->is_paid);
+        $this->assertNull($event->fresh()->participant_cost_minor);
+        $this->get(route('events.show', $event->routeIdentifier()))->assertOk()
+            ->assertDontSee('data-event-participation-price', false);
+        $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
     public function test_undated_page_keeps_organizer_and_discussion_and_does_not_book(): void
     {
         $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
