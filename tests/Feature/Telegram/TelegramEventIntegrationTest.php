@@ -122,12 +122,13 @@ final class TelegramEventIntegrationTest extends TestCase
         $this->assertStringContainsString('<b>Играем на '.e($event->venue->name).'</b>', $text);
         $this->assertStringContainsString('Тип активности: Игровая тренировка', $text);
         $this->assertStringContainsString('Описание: —', $text);
-        $this->assertStringContainsString('Участники: 2/10', $text);
+        $this->assertStringContainsString('Пойду: 2/10', $text);
+        $this->assertStringContainsString('Подумаю: 0', $text);
         $this->assertStringContainsString('Ответственные: game-responsible', $text);
         $this->assertStringContainsString('Игра до семи', $text);
         $this->assertStringContainsString('Оранжевые <b>—:—</b> Чёрные', $text);
         $this->assertCount(1, $buttons);
-        $this->assertSame('Посмотреть', $buttons[0][0]['text']);
+        $this->assertSame('Подробнее', $buttons[0][0]['text']);
         $this->assertArrayNotHasKey('callback_data', $buttons[0][0]);
         $this->assertSame("https://t.me/MSKBABot?startapp=event_{$event->id}", $buttons[0][0]['url']);
     }
