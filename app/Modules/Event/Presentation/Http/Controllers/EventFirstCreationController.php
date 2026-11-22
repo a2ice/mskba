@@ -104,7 +104,7 @@ final class EventFirstCreationController extends Controller
 
         $urls = array_map(fn (Event $event): string => route('events.show', $event->routeIdentifier()), $results);
         $message = count($urls) > 1
-            ? 'Созданы '.count($urls).' отдельных мероприятий. Все выбранные времена предварительные, бронирования нет.'
+            ? 'Созданы '.count($urls).' отдельных мероприятий. Бронирования нет.'
             : ($slots === [] ? 'Черновик сохранён. Дату и время можно уточнить позднее.'
                 : 'Мероприятие создано, пожелания по времени отправлены менеджеру. Бронирования пока нет.');
         if ($request->expectsJson()) {
@@ -127,10 +127,11 @@ final class EventFirstCreationController extends Controller
         $input = $request->validate([
             'starts_at' => ['required', 'date_format:Y-m-d\TH:i'],
             'duration_minutes' => ['required', 'integer', 'between:30,480', 'multiple_of:30'],
+            'time_confirmed' => ['sometimes', 'boolean'],
         ]);
         $slots = $this->validatedSlots(['slots' => [$input]], (int) $item->venue_id);
         $first = $slots[0];
-        DB::transaction(function () use ($item, $actor, $first, $interests): void {
+        DB::transaction(function () use ($item, $actor, $first, $interests, $input): void {
             $draft = Event::query()->lockForUpdate()->findOrFail($item->id);
             abort_unless($draft->status === EventStatusEnum::DRAFT && $draft->starts_at === null, 409);
             $tz = $draft->venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
@@ -140,10 +141,14 @@ final class EventFirstCreationController extends Controller
                 'starts_at' => $local->setTimezone($dbTz),
                 'ends_at' => $local->addMinutes($first['duration_minutes'])->setTimezone($dbTz),
                 'proposed_time_options' => [$first],
+                'time_confirmed' => filter_var($input['time_confirmed'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'status' => EventStatusEnum::PUBLISHED,
                 'booking_deferred' => true,
             ])->save();
-            $interests->createFor($draft, $actor);
+            $draft->booking()->whereNotNull('event_time_sync_version')->update(['event_time_sync_version' => null]);
+            if (! $draft->booking()->exists() && $draft->booking_id === null) {
+                $interests->createFor($draft, $actor);
+            }
             DB::afterCommit(fn () => event(new EventChanged($draft->id)));
         });
         return $request->expectsJson()
@@ -167,6 +172,8 @@ final class EventFirstCreationController extends Controller
             'report_comments_enabled' => ['sometimes', 'boolean'],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'max_participants' => ['nullable', 'integer', 'between:2,500'],
+            ...\App\Modules\Event\Application\Services\EventParticipationPricing::rules(),
+            ...\App\Modules\Event\Application\Services\EventTimeComment::rules(),
             // The event can be created independently from its optional Game child.
             'create_game' => ['sometimes', 'boolean'],
             'add_organizer_role' => ['sometimes', 'boolean'],

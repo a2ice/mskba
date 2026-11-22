@@ -34,10 +34,13 @@ final class UpdateEventRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'discussion_enabled' => ['sometimes', 'boolean'],
             'report_comments_enabled' => ['sometimes', 'boolean'],
+            'event_time_only' => ['sometimes', 'boolean'],
             'revision_reason' => ['nullable', 'string', 'max:255'],
             'starts_at' => ['required_with:venue_id,duration_minutes,venue_court_id', 'date'],
             'duration_minutes' => ['required_with:venue_id,starts_at,venue_court_id', 'integer', 'min:1', 'max:1440'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
+            ...\App\Modules\Event\Application\Services\EventParticipationPricing::rules(),
+            ...\App\Modules\Event\Application\Services\EventTimeComment::rules(),
         ];
     }
 

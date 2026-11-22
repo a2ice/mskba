@@ -162,6 +162,7 @@ final class EventVenueBookingController extends Controller
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:1'],
             'quote_id' => ['nullable', 'uuid'],
+            'sync_event_time' => ['sometimes', 'boolean'],
             'interest_id' => ['nullable', 'integer', 'min:1'],
             'proposal_id' => ['nullable', 'integer', 'min:1'],
             'rental_action' => ['nullable', Rule::in(['select'])],
@@ -184,6 +185,8 @@ final class EventVenueBookingController extends Controller
                 }
                 $explicitSelection = ($validated['rental_action'] ?? null) === 'select';
                 $this->assertCanRequest($event, $actor, $access, (int) $validated['expected_version'], $explicitSelection);
+                $syncTime = filter_var($validated['sync_event_time'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $selection = null;
                 if ($explicitSelection) {
                     if (isset($validated['interest_id']) || isset($validated['proposal_id'])) {
                         throw new InvalidArgumentException('Нельзя менять время предложения площадки.');
@@ -205,35 +208,11 @@ final class EventVenueBookingController extends Controller
                     } elseif (! $this->isFreeWithoutPolicy($venue)) {
                         throw new InvalidArgumentException('Сначала получите актуальный расчёт аренды.');
                     }
-                    // The final submission is the only point where the event can change.
-                    // All changes and the booking share the same transaction.
+                    // Validate the selected rental without changing the event.
                     $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
                     $availability->assertAvailable($venue, $start->setTimezone($databaseTimezone), $end->setTimezone($databaseTimezone), scope: $selection['scope'], court: $selection['court']);
                     if (app(EffectiveVenueHours::class)->intervals($venue, $selection['court'], $start) === null) {
                         throw new InvalidArgumentException('Для выбранного времени нет подтверждённого расписания.');
-                    }
-                    if ($this->selectionChangesEvent($event, $selection)) {
-                        if ($event->starts_at === null) {
-                            $timezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
-                            $event->forceFill([
-                                'venue_court_id' => $selection['court']->id,
-                                'planned_booking_scope' => $selection['scope'],
-                                'starts_at' => $start->setTimezone($timezone),
-                                'ends_at' => $end->setTimezone($timezone),
-                                'proposed_time_options' => [['starts_at' => $validated['starts_at'], 'duration_minutes' => $selection['duration']]],
-                                'status' => EventStatusEnum::PUBLISHED,
-                            ])->save();
-                            $interests->createFor($event, $actor);
-                        } else {
-                            $event = app(UpdateEventHandler::class)->handle($event->routeIdentifier(), $actor, [
-                                'title' => $event->title, 'type' => $event->type->value,
-                                'visibility' => $event->visibility->value, 'description' => $event->description,
-                                'max_participants' => $event->max_participants,
-                                'venue_id' => $event->venue_id, 'venue_court_id' => $selection['court']->id,
-                                'booking_scope' => $selection['scope']->value,
-                                'starts_at' => $start->toIso8601String(), 'duration_minutes' => $selection['duration'],
-                            ]);
-                        }
                     }
                 }
 
@@ -259,20 +238,31 @@ final class EventVenueBookingController extends Controller
                 }
 
                 $quoteId = $validated['quote_id'] ?? null;
+                $rentalStart = $selection['starts'] ?? $event->starts_at;
+                $rentalEnd = $selection !== null ? $rentalStart->addMinutes($selection['duration']) : $event->ends_at;
+                $rentalCourt = $selection['court'] ?? $event->court;
+                $rentalScope = $selection['scope'] ?? $event->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
                 if ($quoteId === null && $venue->hasFreeAccess()) {
-                    $court = $event->court;
-                    $scope = $event->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
-                    $availability->assertAvailable($venue, $event->starts_at, $event->ends_at, scope: $scope, court: $court);
+                    $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
+                    $rentalStart = $rentalStart->setTimezone($databaseTimezone);
+                    $rentalEnd = $rentalEnd->setTimezone($databaseTimezone);
+                    $court = $rentalCourt;
+                    $scope = $rentalScope;
+                    $availability->assertAvailable($venue, $rentalStart, $rentalEnd, scope: $scope, court: $court);
                     $event->booking()->create([
                         'venue_id' => $venue->id,
                         'venue_court_id' => $court?->id,
                         'created_by_actor_id' => $actor->id,
                         'status' => VenueBookingStatusEnum::CONFIRMED,
                         'scope' => $scope,
-                        'starts_at' => $event->starts_at,
-                        'ends_at' => $event->ends_at,
+                        'starts_at' => $rentalStart,
+                        'ends_at' => $rentalEnd,
                     ]);
-                    $event->forceFill(['booking_deferred' => false])->save();
+                    if ($syncTime) {
+                        app(\App\Modules\Event\Application\Services\EventTimeComment::class)
+                            ->confirmFromRental($event, $rentalStart, $rentalEnd, $actor);
+                    }
+                    $event->forceFill(['booking_deferred' => $event->starts_at === null])->save();
                     $interests->markBookingRequested($event);
                     DB::afterCommit(static fn () => event(new EventChanged($event->id)));
 
@@ -283,12 +273,11 @@ final class EventVenueBookingController extends Controller
                     throw new InvalidArgumentException('Сначала получите актуальный расчёт аренды.');
                 }
                 $quote = VenueBookingQuote::query()->where('public_id', $quoteId)->firstOrFail();
-                $scope = $event->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
                 if ($quote->venue_id !== $event->venue_id
-                    || ($event->venue_court_id !== null && $quote->venue_court_id !== $event->venue_court_id)
-                    || $quote->scope !== $scope
-                    || ! $quote->starts_at->equalTo($event->starts_at)
-                    || ! $quote->ends_at->equalTo($event->ends_at)
+                    || ($rentalCourt !== null && $quote->venue_court_id !== $rentalCourt->id)
+                    || $quote->scope !== $rentalScope
+                    || ! $quote->starts_at->equalTo($rentalStart)
+                    || ! $quote->ends_at->equalTo($rentalEnd)
                     || $quote->quoted_for_user_id !== $actor->user?->canonical()->id) {
                     throw new InvalidArgumentException('Расчёт больше не соответствует мероприятию. Обновите его.');
                 }
@@ -298,6 +287,7 @@ final class EventVenueBookingController extends Controller
                     'event_id' => $event->id,
                     'event_venue_interest_id' => $interest?->id,
                     'interest_booking_initiator' => $proposal !== null ? 'venue' : 'organizer',
+                    'event_time_sync_version' => $syncTime ? $event->participation_confirmation_version : null,
                 ])->save();
                 if ($interest !== null) {
                     $conversation = VenueBookingConversation::query()

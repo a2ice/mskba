@@ -7,7 +7,8 @@
     $venue = $event->venue;
     $address = $venue->location?->address?->full_address ?: $venue->raw_address;
     $booking = $event->sourceBooking ?? $event->booking;
-    $court = $booking?->court ?? $event->court;
+    $court = $event->court;
+    $bookingCourtLabel = $booking?->court?->name ?? 'Любой зал';
     $courtLabel = $court?->name ?? 'Любой зал';
     $photo = $court?->media?->first(fn ($item) => $item->collection === 'gallery') ?? $venue->media->first();
     $owner = auth()->user() && $event->organizerActor?->user?->canonical()?->id === auth()->user()->canonical()->id;
@@ -68,13 +69,17 @@
             </div>
             <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
             @if($event->starts_at)
-                <strong>{{ $event->starts_at->setTimezone($timezone)->locale('ru')->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
-                @if(!$finished && (!$booking || $booking->status->value !== 'confirmed'))<span class="muted">Время предварительное</span>@endif
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;position:relative;width:100%" data-event-date-row>
+                    <strong>{{ $event->starts_at->setTimezone($timezone)->locale('ru')->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
+                    @include('components.event-preliminary-time-comment', ['timeCommentEvent' => $event])
+                </div>
+                @include('components.event-participation-price', ['pricingEvent' => $event])
                 @if(count($event->proposed_time_options ?? []) > 1)
                     <ul>@foreach($event->proposed_time_options as $option)<li>{{ str_replace('T', ' ', $option['starts_at']) }} · {{ $option['duration_minutes'] }} мин.</li>@endforeach</ul>
                 @endif
             @else
                 <p>Дата и время не определены</p>
+                @include('components.event-participation-price', ['pricingEvent' => $event])
                 @if($owner && $editable)<button type="button" class="button secondary" data-event-dialog-open="event-schedule">Указать дату и время</button>@endif
             @endif
             @if(filled($event->description))<p class="app-venue-intro__copy app-event-description">{{ $event->description }}</p>@endif
@@ -122,7 +127,7 @@
                 <header class="app-venue-block__header"><h2>Аренда</h2></header>
             @if($booking)
                 <div class="app-event-rental-card">
-                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge" @if($rentalReview) style="visibility:hidden" aria-hidden="true" @endif data-event-rental-status="{{ $booking->status->value }}">{{ $rentalStatusLabel }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span>
+                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge" @if($rentalReview) style="visibility:hidden" aria-hidden="true" @endif data-event-rental-status="{{ $booking->status->value }}">{{ $rentalStatusLabel }}</span></span><strong class="app-venue-activity__title">{{ $bookingCourtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span>
                     @if($rentalPayment)<span class="app-event-rental-payment" data-event-rental-payment="{{ $rentalPayment['state'] }}"><span>Оплата</span><strong>{{ $rentalPayment['label'] }}</strong></span>@endif
                 </button>
                     @if($rentalReview)
@@ -234,7 +239,7 @@
             <p data-event-rental-payment="{{ $rentalPayment['state'] }}"><strong>Оплата:</strong> {{ $rentalPayment['label'] }}</p>
             @if($rentalPayment['due_at'])<p class="muted">Оплатить до {{ $rentalPayment['due_at']->setTimezone($timezone)->format('d.m.Y H:i') }}</p>@endif
         @endif
-        <p>{{ $venue->name }} · {{ $courtLabel }}</p><p>{{ $address }}</p><p>Организатор аренды: {{ $rentalCreatorName }}</p>
+        <p>{{ $venue->name }} · {{ $bookingCourtLabel }}</p><p>{{ $address }}</p><p>Организатор аренды: {{ $rentalCreatorName }}</p>
         <p>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('d.m.Y H:i') }}</p>
         @if($booking->scope)<p>{{ $booking->scope->label() }}</p>@endif
     </div>
@@ -247,6 +252,7 @@
     <form method="POST" action="{{ route('events.funnel.schedule', $event->routeIdentifier()) }}">@csrf
         <div class="mskba-modal__body mskba-scroll app-event-panel">
             <label class="field-group">Дата и время (МСК)<input name="starts_at" type="datetime-local" min="{{ now($timezone)->format('Y-m-d\TH:i') }}" required></label>
+            <label class="field-group">Статус даты и времени<select name="time_confirmed"><option value="0">Дата и время предварительные</option><option value="1">Дата и время подтверждены</option></select></label>
             <label class="field-group">Продолжительность<span class="select-control"><select name="duration_minutes">@foreach(range(30,480,30) as $duration)<option value="{{ $duration }}" @selected($duration === 90)>{{ $duration }} мин.</option>@endforeach</select><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></label>
         </div><footer class="mskba-modal__footer"><button type="submit" class="button primary">Опубликовать и отправить предзаявку</button></footer>
     </form>

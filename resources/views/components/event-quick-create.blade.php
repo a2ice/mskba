@@ -101,6 +101,7 @@
             </label>
             <label class="quick-event-dialog__field"><span>Максимум участников</span>
                 <input type="number" name="max_participants" min="2" max="500" placeholder="Без ограничения"></label>
+            @include('components.event-participation-pricing-fields')
             <label class="quick-event-dialog__field"><span>Описание</span>
                 <textarea name="description" rows="3" maxlength="5000"
                     placeholder="Кого ждёшь и как будет проходить мероприятие?"></textarea></label>
@@ -149,6 +150,7 @@
                     <span>Это <strong>несколько отдельных мероприятий</strong> — по одному на каждый интервал</span></label>
             </fieldset>
             </fieldset>
+            @include('components.event-time-comment-fields')
         </section>
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="review" hidden>
             <h3>3. Подтверждение</h3>

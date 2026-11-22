@@ -18,7 +18,7 @@
             <h2 id="booking-quote-heading">{{ $event->venue->name }}</h2>
             @if($selectedRental)
                 <p>{{ $selectedRental['court_name'] }} · {{ $selectedRental['date_label'] }} · {{ \App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::from($selectedRental['scope'])->label() }}</p>
-                @if($selectedRental['changes_event'])<p>При подтверждении аренды дата, время и выбранный зал мероприятия будут обновлены. До подтверждения мероприятие не изменится.</p>@endif
+                @if($selectedRental['changes_event'])<p>Выбранный интервал аренды отличается от текущих условий мероприятия.</p>@endif
             @else
                 <p>{{ $event->court?->name ?? 'Зал' }} · {{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $event->ends_at->setTimezone($timezone)->format('H:i') }}</p>
             @endif
@@ -44,6 +44,11 @@
                 @endif
                 @if($interestId)<input type="hidden" name="interest_id" value="{{ $interestId }}">@endif
                 @if($proposalId)<input type="hidden" name="proposal_id" value="{{ $proposalId }}">@endif
+                <input type="hidden" name="sync_event_time" value="0">
+                <label style="display:flex;align-items:flex-start;gap:8px;margin:12px 0">
+                    <input type="checkbox" name="sync_event_time" value="1" @checked((bool) old('sync_event_time', true))>
+                    Обновить и подтвердить дату и время мероприятия при подтверждении аренды
+                </label>
                 <div class="app-rental-pricing__actions">
                     <button class="button primary" type="submit">{{ $quote === null ? 'Подтвердить бесплатную аренду' : ($proposalId ? 'Принять предложение и отправить заявку' : 'Отправить заявку на аренду') }}</button>
                     @if($selectedRental)

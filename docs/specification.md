@@ -626,6 +626,8 @@ Telegram-канал спроектирован как many-to-many проекц�
 
 ## Мероприятия и бронирование
 
+Независимый контракт Event: `is_paid`, `total_cost_minor`, `participant_cost_minor`, `participant_cost_auto`, `cost_comment`, `time_comment`, `time_confirmed`. Обработка в `EventParticipationPricing` и `EventTimeComment` внутри транзакций создания/редактирования; цены в целых копейках, авторасчёт без связи с `VenueBooking`, шаблоны `default_event_cost_comment` и `default_event_time_comment` хранятся в canonical User и скрыты при сериализации. Общие Blade-компоненты ввода и раскрытия комментариев используются в обеих темах. `time_confirmed` — независимое булево поле Event, по умолчанию false; пустые комментарии сохраняются пустыми, системный шаблон используется только при отсутствии сохранённого значения. При создании связанной аренды `sync_event_time` записывает текущую `participation_confirmation_version` в `venue_bookings.event_time_sync_version`; отсутствие выбора оставляет поле NULL. Только подтверждение аренды и совпадающая ревизия мероприятия разрешают однократное обновление интервала и статуса времени; более поздние изменения организатора сохраняются. Ввод `event_time_only` меняет время мероприятия без переноса связанной аренды, с существующей историей изменений и повторным подтверждением участия. [Контракт и проверка](mskba_app/tasks/event-participation-pricing/description.md).
+
 Новый flow аренды внедряется независимо от legacy-создания Event и закрыт четырьмя
 переключателями в `config/features.php`: `rental_flow`, `coordination`,
 `external_payment`, `attendance_v2`. Все переключатели читаются через

@@ -38,7 +38,7 @@
                 <button type="button" class="venue-play-dialog__event" data-venue-play-preview="{{ $upcoming->id }}">
                     <span class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }}
                         @if($venueEventStart) · {{ $venueEventStart->format('d.m.Y H:i') }}@endif
-                        @if($upcoming->booking_deferred) · время предварительное @endif
+                        @if($upcoming->starts_at && !$upcoming->time_confirmed) · время предварительное @endif
                     </span>
                     <strong>{{ $upcoming->title }}</strong>
                     <small data-venue-play-card-count>{{ $upcoming->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)->count() }} пойдут · Подробнее</small>
@@ -74,7 +74,7 @@
                 hidden>
                 <div class="venue-play-dialog__summary">
                     <h3>{{ $upcoming->title }}</h3>
-                    <p class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }} · {{ $venueEventStart?->format('d.m.Y H:i') ?? 'Время уточняется' }}@if($upcoming->booking_deferred) · время предварительное @endif</p>
+                    <p class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }} · {{ $venueEventStart?->format('d.m.Y H:i') ?? 'Время уточняется' }}@if($upcoming->starts_at && !$upcoming->time_confirmed) · время предварительное @endif</p>
                     <p><strong>Описание:</strong> {{ $upcoming->description ?: 'Описание пока не добавлено.' }}</p>
                 </div>
                 @include('components.event-discussion', ['chatEvent' => $upcoming, 'chatCanRespond' => true])
