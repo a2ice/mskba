@@ -100,6 +100,7 @@
             <input id="eventCapacity" type="number" min="2" max="500" class="form-control @error('max_participants') is-invalid @enderror" name="max_participants" value="{{ old('max_participants', $event->max_participants) }}" placeholder="Без ограничения">
             @error('max_participants') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
+        @include('components.event-time-comment-fields', ['timeCommentEvent' => $event])
         @include('components.event-participation-pricing-fields', ['pricingEvent' => $event])
         <div class="form-group field mb-4">
             <label class="form-label" for="eventDescription">Описание</label>
