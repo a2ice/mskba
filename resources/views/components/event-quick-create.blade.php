@@ -150,6 +150,7 @@
                     <span>Это <strong>несколько отдельных мероприятий</strong> — по одному на каждый интервал</span></label>
             </fieldset>
             </fieldset>
+            @include('components.event-time-comment-fields')
         </section>
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="review" hidden>
             <h3>3. Подтверждение</h3>
