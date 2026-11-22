@@ -1549,7 +1549,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "Sanctum",
-        "description": "Токен mskba-editorial-news: с editorial-news:write, editorial-news:publish и отдельным опциональным editorial-news:social. Выдаётся суперадминистратором в Filament на 24 часа."
+        "description": "Токен mskba-editorial-news: с editorial-news:write, editorial-news:publish и отдельным опциональным editorial-news:social. Выдаётся суперадминистратором в Filament на 24 часа. Отдельный opt-in токен GitHub Actions на production — до 30 дней, строго три редакционных разрешения."
       }
     },
     "schemas": {

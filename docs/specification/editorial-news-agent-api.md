@@ -1,6 +1,6 @@
 # Editorial news agent API
 
-Separate from the project-updates API. Backoffice superadmin issues a 24-hour scoped token for existing system account dev under Контент → Доступ агента · Публикация новостей. Publication is opt-in; default token can only create/read drafts. A separate opt-in editorial-news:social ability is issued only together with editorial-news:publish; existing tokens retain their original site-only access. Revoke on the same page. Tokens are environment-specific; never put them in chat, git or logs.
+Separate from the project-updates API. Backoffice superadmin issues a 24-hour scoped token for existing system account dev under Контент → Доступ агента · Публикация новостей. Publication is opt-in; default token can only create/read drafts. A separate opt-in editorial-news:social ability is issued only together with editorial-news:publish; existing tokens retain their original site-only access. Revoke on the same page. Production superadmin may separately opt into a 30-day GitHub Actions bridge token with exactly the three editorial abilities. Ordinary tokens retain existing lifetime limits. Store only in the dedicated editorial-production environment secret MSKBA_EDITORIAL_NEWS_TOKEN; rotate before expiry. See ops/editorial-news/README.md. Tokens are environment-specific; never put them in chat, git or logs.
 
 Base route: /api/v1/internal/editorial-news. JSON Accept header and Bearer authentication are required.
 
