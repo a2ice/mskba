@@ -118,7 +118,8 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
                     type: UserNotificationTypeEnum::SYSTEM,
                     title: 'Новое мероприятие по вашим интересам',
                     body: '«'.$event->title.'» на площадке «'.$venue->name.'» — '.$start->format('d.m.Y H:i').'.'
-                        .($event->booking_deferred ? ' Время предварительное, бронирование не создано.' : '')
+                        .(!$event->time_confirmed ? ' Время предварительное.' : '')
+                        .($event->booking_deferred && $event->booking_id === null ? ' Бронирование не создано.' : '')
                         .(count($event->proposed_time_options ?? []) > 1 ? ' Есть альтернативные варианты времени.' : ''),
                     actionUrl: route('events.show', $event->routeIdentifier(), false),
                     actionText: 'Открыть мероприятие',
