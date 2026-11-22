@@ -13,9 +13,72 @@ final class EventParticipationPricing
 {
     public const DEFAULT_COMMENT = 'Стоимость участия рассчитана исходя из общей стоимости мероприятия и планируемого числа участников. Если участников будет больше, разницу вернут; если меньше — стоимость может увеличиться.';
 
+    public const INCLUSION_LABELS = [
+        'rent' => 'Аренда зала',
+        'organization' => 'Организация',
+        'equipment' => 'Инвентарь',
+        'water' => 'Вода',
+        'custom' => 'Свой вариант',
+    ];
+
+    public static function defaultInclusions(): array
+    {
+        return [
+            'rent' => ['price' => null, 'comment' => null],
+            'organization' => ['price' => null, 'comment' => null],
+        ];
+    }
+
+    private static function inclusionRules(): array
+    {
+        $rules = [
+            'cost_inclusions_present' => ['sometimes', 'boolean'],
+            'cost_inclusion_custom_title' => ['nullable', 'required_if:cost_inclusion_custom,1,true', 'string', 'max:100'],
+        ];
+        foreach (array_keys(self::INCLUSION_LABELS) as $key) {
+            $rules['cost_inclusion_'.$key] = ['sometimes', 'boolean'];
+            $rules['cost_inclusion_'.$key.'_price'] = ['nullable', 'regex:/^\d{1,8}(?:\.\d{1,2})?$/'];
+            $rules['cost_inclusion_'.$key.'_comment'] = ['nullable', 'string', 'max:250'];
+        }
+
+        return $rules;
+    }
+
+    private function inclusionAttributes(array $data, ?Event $event): array
+    {
+        if (! array_key_exists('cost_inclusions_present', $data)) {
+            return $event === null ? ['cost_inclusions' => self::defaultInclusions()] : [];
+        }
+
+        $data = Validator::make($data, self::inclusionRules())->validate();
+        $items = [];
+        foreach (array_keys(self::INCLUSION_LABELS) as $key) {
+            $prefix = 'cost_inclusion_'.$key;
+            if (! filter_var($data[$prefix] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                continue;
+            }
+            $price = $data[$prefix.'_price'] ?? null;
+            $comment = trim((string) ($data[$prefix.'_comment'] ?? ''));
+            $items[$key] = [
+                'price' => $price === null || $price === '' ? null : (string) $price,
+                'comment' => $comment === '' ? null : $comment,
+            ];
+            if ($key === 'custom') {
+                $title = trim((string) ($data[$prefix.'_title'] ?? ''));
+                if ($title === '') {
+                    throw ValidationException::withMessages([$prefix.'_title' => 'Укажите название своего варианта.']);
+                }
+                $items[$key]['title'] = $title;
+            }
+        }
+
+        return ['cost_inclusions' => $items];
+    }
+
     public static function rules(): array
     {
         return [
+            ...self::inclusionRules(),
             'is_paid' => ['sometimes', 'boolean'],
             'total_cost' => ['nullable', 'regex:/^\d{1,8}(?:\.\d{1,2})?$/'],
             'participant_cost' => ['nullable', 'regex:/^\d{1,8}(?:\.\d{1,2})?$/'],
@@ -35,12 +98,13 @@ final class EventParticipationPricing
     /** Price is an organizer's estimate; it is never derived from a rental quote. */
     public function attributes(Actor $actor, array $data, ?Event $event = null): array
     {
+        $inclusions = $this->inclusionAttributes($data, $event);
         if (! array_key_exists('is_paid', $data)) {
             if ($event?->is_paid && $event->participant_cost_auto && array_key_exists('max_participants', $data)) {
-                return ['participant_cost_minor' => $this->share($event->total_cost_minor, $data['max_participants'])];
+                return [...$inclusions, 'participant_cost_minor' => $this->share($event->total_cost_minor, $data['max_participants'])];
             }
 
-            return [];
+            return $inclusions;
         }
 
         $validated = Validator::make($data, self::rules());
@@ -49,6 +113,7 @@ final class EventParticipationPricing
         }
         if (! filter_var($data['is_paid'], FILTER_VALIDATE_BOOLEAN)) {
             return [
+                ...$inclusions,
                 'is_paid' => false, 'total_cost_minor' => null, 'participant_cost_minor' => null,
                 'participant_cost_auto' => true, 'cost_comment' => null,
             ];
@@ -71,6 +136,7 @@ final class EventParticipationPricing
         }
 
         return [
+            ...$inclusions,
             'is_paid' => true, 'total_cost_minor' => $total, 'participant_cost_minor' => $participant,
             'participant_cost_auto' => $auto, 'cost_comment' => $comment,
         ];
