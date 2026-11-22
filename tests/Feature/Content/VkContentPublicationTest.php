@@ -118,6 +118,43 @@ final class VkContentPublicationTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_expired_photo_token_waits_and_resumes_only_once(): void
+    {
+        $this->configureVk();
+        Queue::fake();
+        $this->fakeVk(['response' => ['post_id' => 42]]);
+        Http::preventStrayRequests();
+        $item = $this->item();
+        $manager = app(VkContentPublicationManager::class);
+        config(['vk.wall.user_token_expires_at' => now()->subMinute()->timestamp]);
+        $manager->sync($item, true);
+        $row = VkContentPublication::query()->sole();
+        $this->assertSame('awaiting_auth', $row->status);
+        $this->assertTrue($row->is_enabled);
+        $this->assertSame(0, $manager->resumeAwaitingAuthorization());
+        Http::assertNothingSent();
+
+        config(['vk.wall.user_token_expires_at' => now()->addHour()->timestamp]);
+        $this->assertSame(1, $manager->resumeAwaitingAuthorization());
+        $this->assertSame('pending', $row->fresh()->status);
+        $this->assertSame(0, $manager->resumeAwaitingAuthorization());
+        $job = new PublishVkContentJob($row->id);
+        config(['vk.wall.user_token_expires_at' => now()->subMinute()->timestamp]);
+        $job->handle(app(VkWallPublisher::class));
+        $this->assertSame('awaiting_auth', $row->fresh()->status);
+        Http::assertNothingSent();
+
+        config(['vk.wall.user_token_expires_at' => now()->addHour()->timestamp, 'vk.wall.group_id' => 56789]);
+        $this->assertSame(0, $manager->resumeAwaitingAuthorization());
+        config(['vk.wall.group_id' => 12345]);
+        $this->assertSame(1, $manager->resumeAwaitingAuthorization());
+        $job->handle(app(VkWallPublisher::class));
+        $this->assertSame(42, $row->fresh()->post_id);
+        $this->assertSame(0, $manager->resumeAwaitingAuthorization());
+        $job->handle(app(VkWallPublisher::class));
+        Http::assertSentCount(4);
+    }
+
     public function test_uncertain_result_is_not_reposted_on_save(): void
     {
         $this->configureVk();

@@ -12,9 +12,13 @@ final class VkWallPublisher
 {
     public static function configured(): bool
     {
+        return self::wallConfigured() && self::photoTokenAvailable();
+    }
+
+    public static function wallConfigured(): bool
+    {
         return config('vk.wall.enabled') && config('app.env') === 'production'
             && (int) config('vk.wall.group_id') > 0 && filled(config('vk.wall.community_token'))
-            && self::photoTokenAvailable()
             && parse_url((string) config('app.url'), PHP_URL_HOST) === 'mskba.ru';
     }
 

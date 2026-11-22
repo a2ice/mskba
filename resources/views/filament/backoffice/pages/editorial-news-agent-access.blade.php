@@ -1,12 +1,12 @@
 <x-filament-panels::page>
     <x-filament::section
         heading="Выпустить токен для новостей"
-        description="Системный пользователь dev · срок действия 24 часа."
+        description="Системный пользователь dev · обычный токен 24 часа."
         icon="heroicon-o-key"
     >
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
             По умолчанию токен позволяет только создавать и читать черновики обычных материалов. Публикация требует явного разрешения ниже.
-            Храни его в защищённых секретах клиента, не отправляй в переписку или GitHub.
+            Храни его только в защищённых секретах клиента или GitHub Actions Secrets, не отправляй в переписку, коммиты и задачи.
             Для каждой среды требуется свой токен.
         </p>
         <form wire:submit="issue" style="display:grid;gap:16px;max-width:36rem">
@@ -32,6 +32,12 @@
                 <x-filament::input.checkbox wire:model="allowSocial" />
                 Дополнительно разрешить публикацию в подключённых соцсетях (требуется разрешение публикации на сайте)
             </label>
+            @if(config('app.env') === 'production')
+                <label style="display:flex;align-items:center;gap:8px">
+                    <x-filament::input.checkbox wire:model="bridgeToken" />
+                    Токен GitHub Actions на 30 дней (только публикация новостей, требуются оба разрешения выше)
+                </label>
+            @endif
             <div><x-filament::button type="submit">Выпустить токен</x-filament::button></div>
         </form>
     </x-filament::section>
