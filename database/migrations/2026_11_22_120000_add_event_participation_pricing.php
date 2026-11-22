@@ -15,6 +15,10 @@ return new class extends Migration
             $table->boolean('participant_cost_auto')->default(true);
             $table->text('cost_comment')->nullable();
             $table->text('time_comment')->nullable();
+            $table->boolean('time_confirmed')->default(false);
+        });
+        Schema::table('venue_bookings', function (Blueprint $table): void {
+            $table->unsignedInteger('event_time_sync_version')->nullable();
         });
         Schema::table('users', function (Blueprint $table): void {
             $table->text('default_event_cost_comment')->nullable();
@@ -24,9 +28,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::table('venue_bookings', fn (Blueprint $table) => $table->dropColumn('event_time_sync_version'));
         Schema::table('users', fn (Blueprint $table) => $table->dropColumn(['default_event_cost_comment', 'default_event_time_comment']));
         Schema::table('events', fn (Blueprint $table) => $table->dropColumn([
-            'is_paid', 'total_cost_minor', 'participant_cost_minor', 'participant_cost_auto', 'cost_comment', 'time_comment',
+            'is_paid', 'total_cost_minor', 'participant_cost_minor', 'participant_cost_auto', 'cost_comment', 'time_comment', 'time_confirmed',
         ]));
     }
 };
