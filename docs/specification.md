@@ -862,6 +862,8 @@ Deep link имеет allowlisted формат
 
 ## Мероприятия, игры и турниры
 
+Итоговая оценка мероприятия поддерживает необязательный комментарий: `PUT events.report.reaction` принимает `reaction`, дополнительно `body` и UUID `client_request_id`. `SocialWallService` атомарно сохраняет голос и запись `event_report` под общей квотой действий; повтор UUID не создаёт дубль. Ответ содержит `likes`, `dislikes` и, при наличии комментария, `entry` в формате общей стены. Разрешение `report_comments_enabled` проверяется сервером независимо от права оценки. [UI-контракт](specification/ui-design-system.md).
+
 Утверждённая целевая композиция организационного `Event`, спортивной `Game`, отдельного агрегата
 `Tournament` и структурного `TournamentMatch` описана в
 [ADR Event, Game и Tournament](specification/event-game-tournament-architecture.md). Точные таблицы,
