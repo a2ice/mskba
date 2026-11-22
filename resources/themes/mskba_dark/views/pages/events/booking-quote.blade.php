@@ -26,7 +26,7 @@
         <h2 class="h5">{{ $event->venue->name }} · {{ $selectedRental['court_name'] ?? $event->court?->name ?? 'Зал' }}</h2>
         @if($selectedRental)
             <p>{{ $selectedRental['date_label'] }} · {{ \App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::from($selectedRental['scope'])->label() }}</p>
-            @if($selectedRental['changes_event'])<p>Дата, время и зал мероприятия будут обновлены только при подтверждении аренды.</p>@endif
+            @if($selectedRental['changes_event'])<p>Выбранный интервал аренды отличается от текущих условий мероприятия.</p>@endif
         @else
             <p>{{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }} –
                 {{ $event->ends_at->setTimezone($timezone)->format('H:i') }}</p>
@@ -49,6 +49,11 @@
             @if($proposalId)
                 <p class="alert alert-info mt-3">После отправки заявки предложение представителя площадки будет отмечено как принято. Окончательная цена указана выше и может отличаться от предварительной.</p>
             @endif
+            <input type="hidden" name="sync_event_time" value="0">
+            <label class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="sync_event_time" value="1" @checked((bool) old('sync_event_time', true))>
+                Обновить и подтвердить дату и время мероприятия при подтверждении аренды
+            </label>
             <button type="submit" class="btn btn--primary">{{ $quote === null ? 'Подтвердить бесплатную аренду' : ($proposalId ? 'Принять предложение и отправить заявку' : 'Отправить заявку на аренду') }}</button>
             <a href="{{ route('events.edit', $event->routeIdentifier()) }}" class="btn btn--secondary">Изменить место или время</a>
         </form>
