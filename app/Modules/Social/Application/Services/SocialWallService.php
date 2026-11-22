@@ -350,9 +350,9 @@ final class SocialWallService
                 default => 'изменил ответ на участие.',
             },
             'event_reaction_changed' => match ($status) {
-                'like' => $name.' поставил лайк',
-                'dislike' => $name.' поставил дизлайк',
-                default => $name.' убрал оценку',
+                'like' => $name.' — понравилось',
+                'dislike' => $name.' — не понравилось',
+                default => $name.' — оценка снята',
             },
             'group_admin_nominated' => $name.' подал заявку на администратора группы.',
             'group_admin_vote_cast' => $name.' подтвердил назначение '.$targetName.' администратором группы.',
@@ -376,7 +376,7 @@ final class SocialWallService
             ? ($entry->metadata['report_reaction'] ?? null) : null;
         $commentReaction = in_array($commentReaction, ['like', 'dislike'], true) ? $commentReaction : null;
         $commentText = $commentReaction !== null
-            ? $name.' поставил '.($commentReaction === 'like' ? 'лайк' : 'дизлайк').': '.$entry->body
+            ? $name.' — '.($commentReaction === 'like' ? 'понравилось' : 'не понравилось').': '.$entry->body
             : $entry->body;
         $displayDate = $editedAt !== null
             ? \Illuminate\Support\Carbon::parse($editedAt)->setTimezone(config('app.timezone'))
