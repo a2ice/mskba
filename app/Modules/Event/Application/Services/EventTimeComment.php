@@ -14,6 +14,7 @@ final class EventTimeComment
     {
         return [
             'time_comment' => ['nullable', 'string', 'max:2000'],
+            'time_confirmed' => ['sometimes', 'boolean'],
             'save_time_comment_default' => ['sometimes', 'boolean'],
         ];
     }
@@ -25,20 +26,23 @@ final class EventTimeComment
 
     public function attributes(Actor $actor, array $data, ?Event $event = null): array
     {
+        $attributes = [];
+        if (array_key_exists('time_confirmed', $data)) {
+            $attributes['time_confirmed'] = filter_var($data['time_confirmed'], FILTER_VALIDATE_BOOLEAN);
+        }
         if (! array_key_exists('time_comment', $data) && $event !== null) {
-            return [];
+            return $attributes;
         }
 
-        $comment = trim((string) ($data['time_comment'] ?? ''));
-        if ($comment === '') {
-            $comment = $event?->time_comment ?? self::defaultComment($actor->user);
-        }
+        $comment = array_key_exists('time_comment', $data)
+            ? trim((string) $data['time_comment'])
+            : self::defaultComment($actor->user);
 
         if (filter_var($data['save_time_comment_default'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $actor->user?->canonical()->forceFill(['default_event_time_comment' => $comment])->save();
         }
 
-        return ['time_comment' => $comment];
+        return [...$attributes, 'time_comment' => $comment];
     }
 
     public static function isPreliminary(Event $event): bool
@@ -46,6 +50,6 @@ final class EventTimeComment
         return $event->starts_at !== null
             && ! $event->hasEnded()
             && $event->status->value !== 'cancelled'
-            && ($event->sourceBooking ?? $event->booking)?->status?->value !== 'confirmed';
+            && ! $event->time_confirmed;
     }
 }
