@@ -69,12 +69,14 @@
             <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
             @if($event->starts_at)
                 <strong>{{ $event->starts_at->setTimezone($timezone)->locale('ru')->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
+                @include('components.event-participation-price', ['pricingEvent' => $event])
                 @if(!$finished && (!$booking || $booking->status->value !== 'confirmed'))<span class="muted">Время предварительное</span>@endif
                 @if(count($event->proposed_time_options ?? []) > 1)
                     <ul>@foreach($event->proposed_time_options as $option)<li>{{ str_replace('T', ' ', $option['starts_at']) }} · {{ $option['duration_minutes'] }} мин.</li>@endforeach</ul>
                 @endif
             @else
                 <p>Дата и время не определены</p>
+                @include('components.event-participation-price', ['pricingEvent' => $event])
                 @if($owner && $editable)<button type="button" class="button secondary" data-event-dialog-open="event-schedule">Указать дату и время</button>@endif
             @endif
             @if(filled($event->description))<p class="app-venue-intro__copy app-event-description">{{ $event->description }}</p>@endif
