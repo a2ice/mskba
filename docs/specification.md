@@ -176,6 +176,8 @@ AI-проверки ракурса; генерация сначала прове
 
 Telegram Mini App интеграция находится в `App\Modules\Telegram`.
 
+Публикация мероприятия: формы создания и изменения передают `publish_to_telegram` и `telegram_chat_ids` (локальные ID активных групп с `publishes_events`). `PrepareTelegramEventPublicationsHandler` идемпотентно создаёт записи `telegram_event_publications`; `SyncTelegramEventPublicationJob` синхронизирует публичные опубликованные мероприятия, удаляет недоступные посты и редактирует существующие. `TelegramEventMessageBuilder` показывает площадку, статус аренды из связанной брони, актуальные счётчики ответов через `EventIdentityParticipationService::publicStatusCounts` и кнопку «Подробнее» с `startapp=event_<id>`. События изменения аренды также ставят синхронизацию. Авторизация Mini App остаётся на существующем серверном обработчике подписанного initData.
+
 Конфигурация берется из `config/telegram.php` и env-переменных:
 
 - `TELEGRAM_BOT_TOKEN`;
