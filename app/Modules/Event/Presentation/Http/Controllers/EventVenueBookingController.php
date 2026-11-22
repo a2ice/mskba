@@ -243,6 +243,9 @@ final class EventVenueBookingController extends Controller
                 $rentalCourt = $selection['court'] ?? $event->court;
                 $rentalScope = $selection['scope'] ?? $event->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
                 if ($quoteId === null && $venue->hasFreeAccess()) {
+                    $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
+                    $rentalStart = $rentalStart->setTimezone($databaseTimezone);
+                    $rentalEnd = $rentalEnd->setTimezone($databaseTimezone);
                     $court = $rentalCourt;
                     $scope = $rentalScope;
                     $availability->assertAvailable($venue, $rentalStart, $rentalEnd, scope: $scope, court: $court);
