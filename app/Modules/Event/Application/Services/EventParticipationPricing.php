@@ -29,7 +29,7 @@ final class EventParticipationPricing
         ];
     }
 
-    private static function inclusionRules(): array
+    public static function inclusionRules(): array
     {
         $rules = [
             'cost_inclusions_present' => ['sometimes', 'boolean'],
@@ -44,7 +44,7 @@ final class EventParticipationPricing
         return $rules;
     }
 
-    private function inclusionAttributes(array $data, ?Event $event): array
+    public function inclusionAttributes(array $data, ?Event $event): array
     {
         if (! array_key_exists('cost_inclusions_present', $data)) {
             return $event === null ? ['cost_inclusions' => self::defaultInclusions()] : [];
