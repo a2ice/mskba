@@ -36,7 +36,7 @@ use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 
 #[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'first_logged_in_at', 'personal_data_distribution_required_at', 'personal_data_distribution_setup_completed_at', 'status', 'system_role', 'registration_channel'])]
-#[Hidden(['password', 'remember_token', 'default_event_cost_comment'])]
+#[Hidden(['password', 'remember_token', 'default_event_cost_comment', 'default_event_time_comment'])]
 class User extends Authenticatable implements FilamentUser, HasName
 {
     /** @use HasFactory<UserFactory> */
