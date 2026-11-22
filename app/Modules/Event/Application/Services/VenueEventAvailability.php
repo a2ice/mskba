@@ -168,10 +168,6 @@ final class VenueEventAvailability
 
         $applicableIntervals = $this->hours->intervals($venue, $court, $localStart);
 
-        if ($applicableIntervals !== null && $applicableIntervals->isEmpty()) {
-            throw new InvalidArgumentException('В выбранную дату площадка закрыта.');
-        }
-
         if ($applicableIntervals !== null) {
             $startTime = $localStart->format('H:i:s');
             $endTime = $allowEndAtMidnight && $endsAtMidnight
@@ -184,24 +180,39 @@ final class VenueEventAvailability
             $importedMidnight = $allowEndAtMidnight && $endsAtMidnight
                 && $court !== null
                 && $this->importedAvailability->activeFor($court) !== null;
-            $insideWorkingInterval = $applicableIntervals->contains(
-                function ($interval) use ($startTime, $endTime, $importedMidnight): bool {
-                    $endBoundary = $this->normalizeTime((string) $interval->ends_at);
-                    if ($importedMidnight && $endBoundary === '23:59:00') {
-                        $endBoundary = '24:00:00';
-                    }
-
-                    return $startTime >= $this->normalizeTime((string) $interval->starts_at)
-                        && $endTime <= $endBoundary;
+            $containsSelection = function ($interval) use ($startTime, $endTime, $importedMidnight): bool {
+                $endBoundary = $this->normalizeTime((string) $interval->ends_at);
+                if ($importedMidnight && $endBoundary === '23:59:00') {
+                    $endBoundary = '24:00:00';
                 }
-            );
 
-            if (! $insideWorkingInterval) {
-                throw new InvalidArgumentException('Выбранное время не входит в часы работы площадки.');
+                return $startTime >= $this->normalizeTime((string) $interval->starts_at)
+                    && $endTime <= $endBoundary;
+            };
+
+            if (! $applicableIntervals->contains($containsSelection)) {
+                // An imported exception represents free intervals only. A gap
+                // may be an occupied source slot, not a closed venue.
+                // Respect genuine parent closures and shortened exceptions.
+                if ($court !== null && $this->importedAvailability->activeFor($court) !== null) {
+                    $parentIntervals = $this->hours->intervals($venue, null, $localStart);
+                    $parentAllows = $parentIntervals === null
+                        || ($parentIntervals->isNotEmpty()
+                            && (! $this->hours->isException($venue, null, $localStart)
+                                || $parentIntervals->contains($containsSelection)));
+                    if ($parentAllows) {
+                        $this->importedAvailability->assertNotBlockedWithinCoverage($court, $startsAt, $endsAt);
+                    }
+                }
+
+                throw new InvalidArgumentException($applicableIntervals->isEmpty()
+                    ? 'В выбранную дату площадка закрыта.'
+                    : 'Выбранное время не входит в часы работы площадки.');
             }
         }
 
         if ($court !== null) {
+            $this->importedAvailability->assertNotBlockedWithinCoverage($court, $startsAt, $endsAt);
             $this->importedAvailability->assertAvailable($court, $startsAt, $endsAt);
         }
 
