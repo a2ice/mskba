@@ -27,7 +27,7 @@
         <div class="alert alert-info mb-3">
             <strong>Бронирование ещё не подтверждено.</strong>
             Статус заявки: {{ $sourceBooking->status->label() }}.
-            До подтверждения площадка и время не гарантированы.
+            Аренда площадки пока не гарантирована.
             @if($canRequestBooking)
                 <a href="{{ route('account.venue-bookings.show', $sourceBooking) }}">Перейти к заявке</a>
             @endif
@@ -35,7 +35,7 @@
     @else
         <div class="alert alert-warning mb-3">
             <strong>Площадка пока не забронирована.</strong>
-            Время мероприятия предварительное. Организатор набирает участников и позднее оформит бронь.
+            Организатор может оформить бронь отдельно.
             В любой момент интервал может быть занят другой заявкой.
         </div>
         @if($canRequestBooking)
@@ -50,6 +50,8 @@
                 <form method="POST" action="{{ route('events.booking.store', $event->routeIdentifier()) }}" class="mb-4">
                     @csrf
                     <input type="hidden" name="expected_version" value="{{ $event->participation_confirmation_version }}">
+                    <input type="hidden" name="sync_event_time" value="0">
+                    <label class="form-check mb-2"><input type="checkbox" class="form-check-input" name="sync_event_time" value="1" checked> Обновить и подтвердить дату и время мероприятия при подтверждении аренды</label>
                     <button type="submit" class="btn btn--primary btn--sm">Забронировать бесплатную площадку</button>
                 </form>
             @else
