@@ -27,6 +27,7 @@
         'chatComposerLabel' => $chatComposerLabel ?? 'Написать сообщение',
         'chatActions' => [],
     ])
+    @if($chatIsReport ?? false)<hr class="app-event-report-divider" data-report-notice-divider hidden>@endif
     <p class="muted" data-venue-play-comment-notice hidden>Написать сообщение могут участники мероприятия. <a class="venue-play-dialog__participation-link" href="{{ isset($chatEvent->id) && method_exists($chatEvent,'routeIdentifier') ? route('events.show', $chatEvent->routeIdentifier()) : '#' }}">Участвовать</a></p>
 </section>
 @endif
