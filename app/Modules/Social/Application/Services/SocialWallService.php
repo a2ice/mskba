@@ -244,33 +244,55 @@ final class SocialWallService
 
         return [
             'likes' => (clone $query)->where('reaction', 'like')->count(),
+            'dislikes' => (clone $query)->where('reaction', 'dislike')->count(),
             'reaction' => $viewer ? (clone $query)->where('user_id', $viewer->id)->value('reaction') : null,
             'can_react' => $this->canReactToEvent($event, $viewer),
         ];
     }
 
-    public function setEventReaction(Event $event, User $user, ?string $reaction): array
+    public function setEventReaction(Event $event, User $user, ?string $reaction, ?string $body = null, ?string $requestId = null): array
     {
         abort_unless(in_array($reaction, [null, 'like', 'dislike'], true), 422);
+        $body = trim($body ?? '');
+        abort_if($body !== '' && ($reaction === null || mb_strlen($body) > 200 || ! Str::isUuid($requestId ?? '')), 422);
         $user = $user->canonical();
         abort_unless($this->canReactToEvent($event, $user), 403);
 
-        return $this->limiter->run($user, 'event_report', $event->id, 'reaction', function () use ($event, $user, $reaction): array {
+        return $this->limiter->run($user, 'event_report', $event->id, 'reaction', function () use ($event, $user, $reaction, $body, $requestId): array {
             $locked = Event::query()->lockForUpdate()->findOrFail($event->id);
             abort_unless($this->canReactToEvent($locked, $user), 403);
+            $entry = null;
+            if ($body !== '') {
+                abort_unless($this->canCommentOnEvent($locked, $user, true), 403);
+                $entry = SocialWallEntry::query()->where('scope_type', 'event_report')->where('scope_id', $locked->id)
+                    ->where('actor_user_id', $user->id)->where('client_request_id', $requestId)->first();
+                if ($entry !== null) {
+                    return ['changed' => false, 'value' => [...$this->reportFeedback($locked, $user), 'entry' => $entry->load(['actor', 'target'])]];
+                }
+            }
+
             $key = ['event_id' => $locked->id, 'user_id' => $user->id];
             $current = DB::table('event_report_reactions')->where($key)->value('reaction');
-            if ($current === $reaction) {
-                return ['changed' => false, 'value' => $this->reportFeedback($locked, $user)];
+            if ($current !== $reaction) {
+                if ($reaction === null) {
+                    DB::table('event_report_reactions')->where($key)->delete();
+                } else {
+                    DB::table('event_report_reactions')->updateOrInsert($key, ['reaction' => $reaction, 'updated_at' => now()]);
+                }
+                $this->appendSystem('event_report', $locked->id, $user, 'event_reaction_changed', ['to' => $reaction]);
             }
-            if ($reaction === null) {
-                DB::table('event_report_reactions')->where($key)->delete();
-            } else {
-                DB::table('event_report_reactions')->updateOrInsert($key, ['reaction' => $reaction, 'updated_at' => now()]);
+            if ($body !== '') {
+                $entry = SocialWallEntry::query()->create([
+                    'scope_type' => 'event_report', 'scope_id' => $locked->id,
+                    'actor_user_id' => $user->id, 'kind' => 'comment', 'body' => $body,
+                    'client_request_id' => $requestId,
+                ])->load(['actor', 'target']);
             }
-            $this->appendSystem('event_report', $locked->id, $user, 'event_reaction_changed', ['to' => $reaction]);
 
-            return ['changed' => true, 'value' => $this->reportFeedback($locked, $user)];
+            return [
+                'changed' => $current !== $reaction || $entry !== null,
+                'value' => [...$this->reportFeedback($locked, $user), 'entry' => $entry],
+            ];
         });
     }
 
