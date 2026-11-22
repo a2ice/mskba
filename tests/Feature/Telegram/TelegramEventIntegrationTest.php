@@ -134,6 +134,20 @@ final class TelegramEventIntegrationTest extends TestCase
         $this->assertSame("https://t.me/MSKBABot?startapp=event_{$event->id}", $buttons[0][0]['url']);
     }
 
+    public function test_free_venue_with_inherited_booking_requirement_has_no_rental_requirement_in_post(): void
+    {
+        $event = Event::factory()->create(['venue_court_id' => null]);
+        $event->venue->forceFill([
+            'requires_booking' => null,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ])->save();
+
+        $event->unsetRelation('venue')->setRelation('booking', null)->setRelation('sourceBooking', null);
+        $builder = app(\App\Modules\Telegram\Application\Services\TelegramEventMessageBuilder::class);
+        $this->assertStringContainsString('Аренда не требуется', $builder->text($event));
+    }
+
     public function test_event_publications_are_prepared_for_each_selected_chat(): void
     {
         Queue::fake();
