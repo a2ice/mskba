@@ -156,6 +156,7 @@ final class CreateEventHandler
                 'max_participants' => $data['max_participants'] ?? null,
                 ...app(\App\Modules\Event\Application\Services\EventParticipationPricing::class)->attributes($actor, $data),
                 ...app(\App\Modules\Event\Application\Services\EventTimeComment::class)->attributes($actor, $data),
+                'time_confirmed' => $startsAt !== null && filter_var($data['time_confirmed'] ?? false, FILTER_VALIDATE_BOOLEAN),
             ]);
 
             if (! $bookingDeferred) {
