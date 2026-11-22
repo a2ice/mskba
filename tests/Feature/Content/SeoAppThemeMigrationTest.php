@@ -88,14 +88,14 @@ final class SeoAppThemeMigrationTest extends TestCase
             ->assertDontSee('mc.yandex.ru/watch/12345678', false);
     }
 
-    public function test_production_host_uses_same_metrika_id_once_only_after_consent(): void
+    public function test_production_host_uses_same_metrika_id_once_regardless_of_consent(): void
     {
         config(['services.yandex_metrika.id' => '12345678']);
 
         $this->get('https://mskba.ru/venues')
             ->assertOk()
-            ->assertDontSee('mc.yandex.ru/metrika/tag.js', false)
-            ->assertDontSee('mc.yandex.ru/watch/12345678', false);
+            ->assertSee('mc.yandex.ru/metrika/tag.js', false)
+            ->assertSee('mc.yandex.ru/watch/12345678', false);
 
         $response = $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('accepted')->getValue())->get('https://mskba.ru/venues')
             ->assertOk()

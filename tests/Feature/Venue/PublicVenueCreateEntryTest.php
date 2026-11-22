@@ -307,7 +307,7 @@ class PublicVenueCreateEntryTest extends TestCase
         $actor = $venue->creatorActor()->firstOrFail();
 
         $this->assertSame($user->id, $actor->user_id);
-        $this->assertNotNull($actor->user_fingerprint_id);
+        $this->assertNull($actor->user_fingerprint_id);
     }
 
     public function test_guest_cannot_submit_venue(): void

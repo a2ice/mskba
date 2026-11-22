@@ -21,24 +21,20 @@ class YandexMetrikaTest extends TestCase
             ->assertDontSee('mc.yandex.ru/watch/', false);
     }
 
-    public function test_counter_requires_opt_in_on_regular_and_telegram_pages(): void
+    public function test_counter_is_independent_of_internal_analytics_choice_on_regular_and_telegram_pages(): void
     {
         config(['services.yandex_metrika.id' => '12345678']);
 
         foreach ([route('welcome'), route('integrations.telegram.main')] as $url) {
-            $this->withCookie(CookieConsent::COOKIE_NAME, '')
-                ->get($url)
-                ->assertOk()
-                ->assertDontSee('mc.yandex.ru/metrika/tag.js', false)
-                ->assertDontSee('mc.yandex.ru/watch/', false);
-
-            $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('accepted')->getValue())->get($url)
-                ->assertOk()
-                ->assertSee('https://mc.yandex.ru/metrika/tag.js', false)
-                ->assertSee('ym(12345678, "init"', false)
-                ->assertSee('referrer: document.referrer', false)
-                ->assertSee('url: location.href', false)
-                ->assertSee('https://mc.yandex.ru/watch/12345678', false);
+            foreach (['', CookieConsent::guestCookie('rejected')->getValue(), CookieConsent::guestCookie('accepted')->getValue()] as $cookie) {
+                $this->withCookie(CookieConsent::COOKIE_NAME, $cookie)->get($url)
+                    ->assertOk()
+                    ->assertSee('https://mc.yandex.ru/metrika/tag.js', false)
+                    ->assertSee('ym(12345678, "init"', false)
+                    ->assertSee('referrer: document.referrer', false)
+                    ->assertSee('url: location.href', false)
+                    ->assertSee('https://mc.yandex.ru/watch/12345678', false);
+            }
         }
     }
 

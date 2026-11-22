@@ -21,6 +21,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
+use App\Support\Privacy\CookieConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -71,6 +72,22 @@ final class GameLiveAudienceTest extends TestCase
             ->postJson(route('events.games.live.audience', [$event->routeIdentifier(), $game->id]))
             ->assertOk()
             ->assertExactJson(['authenticated' => 1, 'total' => 1]);
+    }
+
+    public function test_live_presence_is_available_without_consent_but_history_requires_opt_in(): void
+    {
+        $event = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
+        $game = $this->game($event);
+        $url = route('events.games.live.audience', [$event->routeIdentifier(), $game->id]);
+
+        $this->postJson($url)->assertOk();
+        $this->assertDatabaseCount('game_live_view_sessions', 0);
+        $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('rejected')->getValue())
+            ->postJson($url)->assertOk();
+        $this->assertDatabaseCount('game_live_view_sessions', 0);
+        $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('accepted')->getValue())
+            ->postJson($url)->assertOk();
+        $this->assertDatabaseCount('game_live_view_sessions', 1);
     }
 
     public function test_live_audience_expires_inactive_viewers(): void
