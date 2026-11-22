@@ -322,11 +322,11 @@ final class UpdateEventHandler
             }
 
             if (filter_var($data['publish_to_telegram'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                    app(\App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler::class)
-                        ->handle($event, $data['telegram_chat_ids'] ?? []);
-                }
+                app(\App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler::class)
+                    ->handle($event, $data['telegram_chat_ids'] ?? []);
+            }
 
-                return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
+            return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
         });
 
         event(new EventChanged($event->id));
