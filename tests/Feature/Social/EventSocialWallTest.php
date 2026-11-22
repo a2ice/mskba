@@ -410,16 +410,16 @@ final class EventSocialWallTest extends TestCase
         $payload = ['reaction'=>'dislike', 'body'=>'Можно улучшить.', 'client_request_id'=>(string) Str::uuid()];
         $first = $this->putJson($reaction, $payload)->assertOk()
             ->assertJsonPath('likes', 0)->assertJsonPath('dislikes', 1)
-            ->assertJsonPath('entry.text', 'Olsen поставил дизлайк: Можно улучшить.')
+            ->assertJsonPath('entry.text', 'Olsen — не понравилось: Можно улучшить.')
             ->assertJsonPath('entry.comment_body', 'Можно улучшить.')
             ->assertJsonPath('entry.reaction', 'dislike')->json('entry.id');
         $this->putJson($reaction, $payload)->assertOk()->assertJsonPath('entry.id', $first);
-        $this->getJson($report)->assertOk()->assertJsonCount(1, 'entries')->assertJsonPath('entries.0.text', 'Olsen поставил дизлайк: Можно улучшить.')->assertJsonPath('dislikes', 1);
+        $this->getJson($report)->assertOk()->assertJsonCount(1, 'entries')->assertJsonPath('entries.0.text', 'Olsen — не понравилось: Можно улучшить.')->assertJsonPath('dislikes', 1);
         $this->putJson($reaction, ['reaction'=>'like'])->assertOk()->assertJsonPath('likes', 1)->assertJsonPath('dislikes', 0);
         $event->forceFill(['report_comments_enabled'=>false])->save();
         $this->putJson($reaction, ['reaction'=>'dislike','body'=>'Закрыто','client_request_id'=>(string) Str::uuid()])->assertForbidden();
         $this->getJson($report)->assertOk()->assertJsonPath('likes', 1)->assertJsonPath('dislikes', 0);
         $this->putJson($reaction, ['reaction'=>'dislike'])->assertOk()->assertJsonPath('dislikes', 1);
-        $this->getJson($report)->assertOk()->assertJsonCount(3, 'entries')->assertJsonPath('entries.1.text', 'Olsen поставил лайк')->assertJsonPath('entries.2.text', 'Olsen поставил дизлайк')->assertJsonPath('can_post', false);
+        $this->getJson($report)->assertOk()->assertJsonCount(3, 'entries')->assertJsonPath('entries.1.text', 'Olsen — понравилось')->assertJsonPath('entries.2.text', 'Olsen — не понравилось')->assertJsonPath('can_post', false);
     }
 }
