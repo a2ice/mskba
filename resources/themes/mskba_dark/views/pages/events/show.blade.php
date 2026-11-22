@@ -251,6 +251,7 @@
                             <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $locationName }}</span>
                         @endif
                     </div>
+                    @include('components.event-participation-price', ['pricingEvent' => $event])
                 </div>
             </section>
 
