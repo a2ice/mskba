@@ -142,6 +142,8 @@ Route::middleware(['auth:sanctum', 'throttle:15,1'])
     ->group(function (): void {
         Route::post('/', [EditorialNewsAgentApiController::class, 'store'])
             ->name('api.internal.editorial-news.store');
+        Route::get('/destinations/list', [EditorialNewsAgentApiController::class, 'destinations'])
+            ->name('api.internal.editorial-news.destinations');
         Route::get('/{alias}', [EditorialNewsAgentApiController::class, 'show'])
             ->where('alias', '[a-z0-9-]+')
             ->name('api.internal.editorial-news.show');

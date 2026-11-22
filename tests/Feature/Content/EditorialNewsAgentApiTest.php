@@ -6,8 +6,11 @@ use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Telegram\Domain\Models\TelegramChat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -61,6 +64,94 @@ final class EditorialNewsAgentApiTest extends TestCase
         $this->postJson(self::URI.'/winter-basketball/publish')->assertOk();
         $this->assertTrue($publishedAt->equalTo($item->fresh()->feed_published_at));
         $this->assertDatabaseCount('content_items', 1);
+    }
+
+    public function test_social_publication_is_explicit_scoped_and_idempotent(): void
+    {
+        Storage::fake('public');
+        Queue::fake();
+        Http::fake();
+        config([
+            'app.env' => 'production', 'app.url' => 'https://mskba.ru',
+            'telegram.bot_token' => 'test-bot',
+            'vk.wall.enabled' => true, 'vk.wall.group_id' => 174334075,
+            'vk.wall.community_token' => 'test-community', 'vk.wall.user_token' => 'test-photo',
+            'vk.wall.user_token_expires_at' => now()->addHour()->timestamp,
+        ]);
+        $official = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001234567891, 'title' => 'MSKBA Official', 'type' => 'supergroup', 'is_active' => true,
+        ]);
+        $other = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001234567892, 'title' => 'Other', 'type' => 'supergroup', 'is_active' => true,
+        ]);
+        $inactive = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001234567893, 'title' => 'Inactive', 'type' => 'supergroup', 'is_active' => false,
+        ]);
+        $dev = $this->dev();
+        $selected = ['telegram_chat_ids' => [$official->id], 'publish_in_vk' => true, 'vk_group_id' => 174334075];
+        $this->withToken($this->token($dev, ['editorial-news:write', 'editorial-news:publish']))
+            ->post(self::URI, [...$this->payload(), 'cover' => UploadedFile::fake()->image('cover.jpg', 400, 520)], ['Accept' => 'application/json'])
+            ->assertCreated();
+        $this->postJson(self::URI.'/winter-basketball/publish', $selected)->assertForbidden();
+        $this->getJson(self::URI.'/destinations/list')->assertForbidden();
+        app('auth')->forgetGuards();
+        $this->withToken($this->token($dev, ['editorial-news:write', 'editorial-news:publish', 'editorial-news:social']))
+            ->getJson(self::URI.'/destinations/list')
+            ->assertOk()->assertJsonCount(2, 'data.telegram')
+            ->assertJsonPath('data.vk.group_id', 174334075);
+        $this->postJson(self::URI.'/winter-basketball/publish', [
+            ...$selected, 'telegram_chat_ids' => [$inactive->id],
+        ])->assertUnprocessable();
+        $this->postJson(self::URI.'/winter-basketball/publish', [
+            ...$selected, 'vk_group_id' => 123,
+        ])->assertUnprocessable();
+        $this->assertFalse(ContentItem::query()->sole()->publish_in_feed);
+        $this->postJson(self::URI.'/winter-basketball/publish', $selected)
+            ->assertOk()->assertJsonPath('data.status', 'published')
+            ->assertJsonCount(1, 'data.telegram_publications')
+            ->assertJsonPath('data.telegram_publications.0.chat_id', $official->id)
+            ->assertJsonPath('data.telegram_publications.0.status', 'pending')
+            ->assertJsonPath('data.vk_publication.group_id', 174334075)
+            ->assertJsonPath('data.vk_publication.status', 'pending');
+        $this->postJson(self::URI.'/winter-basketball/publish', $selected)->assertOk();
+        $this->postJson(self::URI.'/winter-basketball/publish')->assertOk();
+        $this->postJson(self::URI.'/winter-basketball/publish', [
+            ...$selected, 'telegram_chat_ids' => [$other->id],
+        ])->assertConflict();
+        $this->getJson(self::URI.'/winter-basketball')->assertOk()
+            ->assertJsonPath('data.telegram_publications.0.chat_id', $official->id);
+        $this->assertDatabaseCount('telegram_content_publications', 1);
+        $this->assertDatabaseCount('vk_content_publications', 1);
+        Http::assertNothingSent();
+    }
+
+    public function test_social_publication_rejects_dev_and_vk_without_cover(): void
+    {
+        Queue::fake();
+        Http::fake();
+        $dev = $this->dev();
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001234567891, 'title' => 'Official', 'type' => 'supergroup', 'is_active' => true,
+        ]);
+        config(['app.env' => 'staging', 'app.url' => 'https://dev.mskba.ru', 'telegram.bot_token' => 'test-bot']);
+        $this->withToken($this->token($dev, ['editorial-news:write', 'editorial-news:publish', 'editorial-news:social']))
+            ->postJson(self::URI, $this->payload())->assertCreated();
+        $this->getJson(self::URI.'/destinations/list')->assertOk()
+            ->assertJsonCount(0, 'data.telegram')->assertJsonPath('data.vk.available', false);
+        $this->postJson(self::URI.'/winter-basketball/publish', ['telegram_chat_ids' => [$chat->id]])->assertUnprocessable();
+        config([
+            'app.env' => 'production', 'app.url' => 'https://mskba.ru',
+            'vk.wall.enabled' => true, 'vk.wall.group_id' => 174334075,
+            'vk.wall.community_token' => 'test-community', 'vk.wall.user_token' => 'test-photo',
+            'vk.wall.user_token_expires_at' => now()->addHour()->timestamp,
+        ]);
+        $this->postJson(self::URI.'/winter-basketball/publish', [
+            'publish_in_vk' => true, 'vk_group_id' => 174334075,
+        ])->assertUnprocessable();
+        $this->assertFalse(ContentItem::query()->sole()->publish_in_feed);
+        $this->assertDatabaseCount('telegram_content_publications', 0);
+        $this->assertDatabaseCount('vk_content_publications', 0);
+        Http::assertNothingSent();
     }
 
     public function test_existing_system_update_token_and_wildcard_cannot_use_editorial_api(): void
