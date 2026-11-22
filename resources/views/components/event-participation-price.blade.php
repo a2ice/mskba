@@ -11,7 +11,7 @@
             @foreach(\App\Modules\Event\Application\Services\EventParticipationPricing::INCLUSION_LABELS as $key => $label)
                 @if(isset($pricingEvent->cost_inclusions[$key]))
                     @php($item = $pricingEvent->cost_inclusions[$key])
-                    <li>{{ $key === 'custom' ? $item['title'] : $label }}@if(!empty($item['comment'])) — {{ $item['comment'] }}@endif</li>
+                    <li>{{ $key === 'custom' ? $item['title'] : $label }}@if(isset($item['comment']) && $item['comment'] !== '') — {{ $item['comment'] }}@endif</li>
                 @endif
             @endforeach
         </ul>
