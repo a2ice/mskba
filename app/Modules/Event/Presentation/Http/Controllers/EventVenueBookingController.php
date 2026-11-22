@@ -259,7 +259,7 @@ final class EventVenueBookingController extends Controller
                         app(\App\Modules\Event\Application\Services\EventTimeComment::class)
                             ->confirmFromRental($event, $rentalStart, $rentalEnd, $actor);
                     }
-                    $event->forceFill(['booking_deferred' => false])->save();
+                    $event->forceFill(['booking_deferred' => $event->starts_at === null])->save();
                     $interests->markBookingRequested($event);
                     DB::afterCommit(static fn () => event(new EventChanged($event->id)));
 
