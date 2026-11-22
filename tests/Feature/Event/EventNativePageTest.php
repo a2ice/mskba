@@ -110,6 +110,36 @@ final class EventNativePageTest extends TestCase
         $this->assertDatabaseCount('venue_bookings', 0);
     }
 
+    public function test_cost_inclusions_are_editable_and_item_prices_are_not_public(): void
+    {
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $event = $this->createEvent($user, $venue, ['is_paid' => true, 'total_cost' => '1000']);
+        $this->assertSame(['rent', 'organization'], array_keys($event->cost_inclusions));
+        $base = ['title' => $event->title, 'type' => 'training', 'visibility' => 'public'];
+        $url = route('events.update', $event->routeIdentifier());
+        $this->put($url, [...$base,
+            'cost_inclusions_present' => '1', 'cost_inclusion_equipment' => '1',
+            'cost_inclusion_equipment_price' => '73.19', 'cost_inclusion_equipment_comment' => 'Мячи и манишки',
+            'cost_inclusion_custom' => '1', 'cost_inclusion_custom_title' => 'Судейство',
+            'cost_inclusion_custom_price' => '0',
+        ])->assertRedirect();
+        $event->refresh();
+        $this->assertSame('73.19', $event->cost_inclusions['equipment']['price']);
+        $this->assertSame('0', $event->cost_inclusions['custom']['price']);
+        $this->assertSame(100000, $event->total_cost_minor);
+        $this->assertArrayNotHasKey('cost_inclusions', $event->toArray());
+        $this->get(route('events.show', $event->routeIdentifier()))->assertOk()
+            ->assertSee('Мячи и манишки')->assertSee('Судейство')->assertDontSee('73.19');
+        $this->get(route('events.edit', $event->routeIdentifier()))->assertOk()->assertSee('73.19');
+        $this->put($url, $base)->assertRedirect();
+        $this->assertSame('73.19', $event->fresh()->cost_inclusions['equipment']['price']);
+        $this->put($url, [...$base, 'cost_inclusions_present' => '1'])->assertRedirect();
+        $this->assertSame([], $event->fresh()->cost_inclusions);
+        $this->get(route('events.show', $event->routeIdentifier()))->assertOk()
+            ->assertDontSee('data-event-cost-inclusions', false);
+    }
+
     public function test_preliminary_time_comment_has_its_own_personal_template_and_independent_status(): void
     {
         $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
