@@ -72,12 +72,7 @@
                 <div class="form-group field mb-3"><label class="form-label" for="revisionReason">Причина изменения (необязательно)</label><input id="revisionReason" class="form-control" name="revision_reason" value="{{ old('revision_reason') }}" maxlength="255"></div>
             @endif
         @else
-            <div class="alert alert-info mb-3">
-                Для площадок с оплатой или подтверждением бронирования после подачи заявки изменение места и времени доступно только через отмену или согласованный перенос брони.
-            </div>
-            <input type="hidden" name="venue_id" value="{{ $event->venue_id }}">
-            <input type="hidden" name="starts_at" value="{{ $event->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
-            <input type="hidden" name="duration_minutes" value="{{ $currentDuration }}">
+            @include('components.event-time-only-fields')
         @endif
         <div class="row g-3 mb-3">
             <div class="col-md-6 form-group field">
