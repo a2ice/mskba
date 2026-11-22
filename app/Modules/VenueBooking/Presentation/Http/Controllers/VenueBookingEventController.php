@@ -64,6 +64,7 @@ final class VenueBookingEventController extends Controller
             'description' => ['nullable', 'string', 'max:10000'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:1000'],
             'emergency_reason' => ['nullable', 'string', 'max:2000'],
+            ...\App\Modules\Event\Application\Services\EventParticipationPricing::inclusionRules(),
         ]);
         try {
             $actor = $actors->resolveForRequest($request);
