@@ -68,9 +68,11 @@
             </div>
             <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
             @if($event->starts_at)
-                <strong>{{ $event->starts_at->setTimezone($timezone)->locale('ru')->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;position:relative;width:100%" data-event-date-row>
+                    <strong>{{ $event->starts_at->setTimezone($timezone)->locale('ru')->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
+                    @include('components.event-preliminary-time-comment', ['timeCommentEvent' => $event])
+                </div>
                 @include('components.event-participation-price', ['pricingEvent' => $event])
-                @if(!$finished && (!$booking || $booking->status->value !== 'confirmed'))<span class="muted">Время предварительное</span>@endif
                 @if(count($event->proposed_time_options ?? []) > 1)
                     <ul>@foreach($event->proposed_time_options as $option)<li>{{ str_replace('T', ' ', $option['starts_at']) }} · {{ $option['duration_minutes'] }} мин.</li>@endforeach</ul>
                 @endif
