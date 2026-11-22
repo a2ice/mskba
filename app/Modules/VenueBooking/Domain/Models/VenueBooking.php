@@ -25,7 +25,7 @@ use LogicException;
     'payment_state', 'payment_window_expires_at', 'status', 'scope', 'starts_at', 'ends_at',
     'hold_expires_at', 'effective_protection_until', 'optimistic_version',
     'requested_at', 'held_at', 'confirmed_at', 'terminal_at',
-    'event_venue_interest_id', 'interest_booking_initiator',
+    'event_venue_interest_id', 'interest_booking_initiator', 'event_time_sync_version',
     'pre_request_id', 'created_by_representative_id', 'proposal_expires_at', 'proposal_accepted_at',
 ])]
 class VenueBooking extends Model
@@ -173,6 +173,7 @@ class VenueBooking extends Model
     protected function casts(): array
     {
         return [
+            'event_time_sync_version' => 'integer',
             'venue_court_id' => 'integer',
             'pre_request_id' => 'integer',
             'created_by_representative_id' => 'integer',
