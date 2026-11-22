@@ -81,6 +81,7 @@ class CookieConsentTest extends TestCase
         $this->withCookie(CookieConsent::COOKIE_NAME, '')
             ->get(route('homepage.original'))
             ->assertCookieMissing('mskba_browser_fp');
+        $this->assertDatabaseCount('user_fingerprints', 1);
     }
 
     public function test_guest_rejection_and_revocation_survive_new_session(): void
@@ -160,6 +161,7 @@ class CookieConsentTest extends TestCase
 
         $this->postJson(route('cookie-consent.store'), ['analytics' => 'rejected'])
             ->assertOk()->assertJsonPath('analytics', 'rejected');
+        $fingerprintsBefore = DB::table('user_fingerprints')->count();
         Session::flush();
         $this->actingAs($first)->get(route('homepage.original'))
             ->assertCookieMissing('mskba_browser_fp');
@@ -168,6 +170,7 @@ class CookieConsentTest extends TestCase
             'analytics_choice' => 'rejected',
         ]);
         $this->assertDatabaseCount('cookie_consent_events', 2);
+        $this->assertDatabaseCount('user_fingerprints', $fingerprintsBefore);
     }
 
     public function test_updated_notice_version_requires_fresh_account_choice(): void

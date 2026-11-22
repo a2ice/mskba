@@ -8,7 +8,6 @@ use App\Support\Privacy\CookieConsent;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -45,7 +44,7 @@ final class RecordBrowserFingerprint
         }
 
         if (! $request->cookies->has(self::COOKIE_NAME)) {
-            Cookie::queue(cookie(
+            $response->headers->setCookie(cookie(
                 name: self::COOKIE_NAME,
                 value: $fingerprintId,
                 minutes: self::COOKIE_LIFETIME_MINUTES,
