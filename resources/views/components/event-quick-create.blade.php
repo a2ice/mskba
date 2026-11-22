@@ -106,6 +106,7 @@
                 <textarea name="description" rows="3" maxlength="5000"
                     placeholder="Кого ждёшь и как будет проходить мероприятие?"></textarea></label>
             @include('components.event-feedback-fields')
+            @include('components.event-social-publication-fields')
         </section>
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="schedule" hidden>
             <h3>2. Желаемая дата и время <small>необязательно</small></h3>
