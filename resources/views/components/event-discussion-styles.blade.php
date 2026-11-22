@@ -210,7 +210,12 @@ html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-sta
 [data-venue-play-messages-jump] svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .venue-play-dialog__participation-link{color:var(--accent);text-decoration:none}
 .venue-play-dialog__participation-link:hover{text-decoration:underline}
-.venue-play-dialog__messages li[data-reaction="like"] p{color:var(--success,#166534)}
-.venue-play-dialog__messages li[data-reaction="dislike"] p{color:var(--danger,#b91c1c)}
+.venue-play-dialog__messages li[data-reaction] .event-report-rating-message{display:flex;align-items:flex-start;gap:8px;color:inherit}
+.venue-play-dialog__messages .event-report-rating-icon{display:inline-flex;flex:0 0 20px;align-items:center;justify-content:center;width:20px;height:22px}
+.venue-play-dialog__messages .event-report-rating-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.venue-play-dialog__messages li[data-reaction="like"] .event-report-rating-icon{color:var(--success,#166534)}
+.venue-play-dialog__messages li[data-reaction="dislike"] .event-report-rating-icon{color:var(--danger,#b91c1c)}
+html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-reaction="like"] .event-report-rating-icon{color:#166534}
+html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-reaction="dislike"] .event-report-rating-icon{color:#b91c1c}
 </style>
 @endonce
