@@ -92,6 +92,7 @@ final readonly class CreateEventFromConfirmedVenueBookingHandler
                 'starts_at' => $booking->starts_at,
                 'ends_at' => $booking->ends_at,
                 'max_participants' => $data['max_participants'] ?? null,
+                ...app(\App\Modules\Event\Application\Services\EventParticipationPricing::class)->inclusionAttributes($data, null),
             ]);
             if ($booking->requester_user_id !== null) {
                 $event->participants()->create([
