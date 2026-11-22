@@ -130,6 +130,7 @@
             </select>
         </div>
     </div>
+    @include('components.event-participation-pricing-fields')
     <div class="form-group field mb-4">
         <label class="form-label" for="{{ $formIdPrefix }}Description">Описание</label>
         <textarea id="{{ $formIdPrefix }}Description" class="form-control @error('description') is-invalid @enderror" name="description" rows="5" maxlength="5000">{{ old('description', $defaultDescription ?? null) }}</textarea>
