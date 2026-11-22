@@ -155,6 +155,7 @@ final class CreateEventHandler
                 'proposed_time_options' => $funnel ? ($data['proposed_time_options'] ?? []) : null,
                 'max_participants' => $data['max_participants'] ?? null,
                 ...app(\App\Modules\Event\Application\Services\EventParticipationPricing::class)->attributes($actor, $data),
+                ...app(\App\Modules\Event\Application\Services\EventTimeComment::class)->attributes($actor, $data),
             ]);
 
             if (! $bookingDeferred) {
