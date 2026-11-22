@@ -59,10 +59,9 @@ final class EventParticipationPricing
         $participant = $auto
             ? $this->share($total, $data['max_participants'] ?? null)
             : $this->minor($data['participant_cost'] ?? null, 'participant_cost');
-        $comment = trim((string) ($data['cost_comment'] ?? $event?->cost_comment ?? self::defaultComment($actor->user)));
-        if ($comment === '') {
-            $comment = self::defaultComment($actor->user);
-        }
+        $comment = array_key_exists('cost_comment', $data)
+            ? trim((string) $data['cost_comment'])
+            : ($event?->cost_comment ?? self::defaultComment($actor->user));
         if (filter_var($data['save_cost_comment_default'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $user = $actor->user?->canonical();
             if ($user !== null) {
