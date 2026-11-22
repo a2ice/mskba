@@ -154,6 +154,27 @@ final class EditorialNewsAgentApiTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_production_bridge_token_has_separate_lifetime_and_exact_scopes(): void
+    {
+        $dev = $this->dev();
+        $abilities = ['editorial-news:write', 'editorial-news:publish', 'editorial-news:social'];
+        config(['app.env' => 'production', 'app.url' => 'https://mskba.ru']);
+        $ordinary = $dev->createToken('mskba-editorial-news:filament-test', $abilities, now()->addDays(20))->plainTextToken;
+        $this->withToken($ordinary)->postJson(self::URI, $this->payload())->assertForbidden();
+        app('auth')->forgetGuards();
+        $bridge = $dev->createToken('mskba-editorial-news:bridge-test', $abilities, now()->addDays(29))->plainTextToken;
+        $this->withToken($bridge)->postJson(self::URI, $this->payload())->assertCreated();
+        config(['app.env' => 'staging', 'app.url' => 'https://dev.mskba.ru']);
+        $this->getJson(self::URI.'/winter-basketball')->assertForbidden();
+        config(['app.env' => 'production', 'app.url' => 'https://mskba.ru']);
+        app('auth')->forgetGuards();
+        $broad = $dev->createToken('mskba-editorial-news:bridge-test', [...$abilities, '*'], now()->addDays(20))->plainTextToken;
+        $this->withToken($broad)->getJson(self::URI.'/winter-basketball')->assertForbidden();
+        app('auth')->forgetGuards();
+        $long = $dev->createToken('mskba-editorial-news:bridge-test', $abilities, now()->addDays(31))->plainTextToken;
+        $this->withToken($long)->getJson(self::URI.'/winter-basketball')->assertForbidden();
+    }
+
     public function test_existing_system_update_token_and_wildcard_cannot_use_editorial_api(): void
     {
         $this->postJson(self::URI, $this->payload())->assertUnauthorized();

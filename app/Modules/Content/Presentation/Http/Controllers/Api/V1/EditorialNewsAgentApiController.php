@@ -169,6 +169,15 @@ final class EditorialNewsAgentApiController extends Controller
         $actor = $request->user();
         $token = $actor?->currentAccessToken();
 
+        $bridge = $token instanceof PersonalAccessToken
+            && str_starts_with((string) $token->name, 'mskba-editorial-news:bridge-');
+        if ($bridge) {
+            $abilities = $token->abilities ?? [];
+            sort($abilities);
+            abort_unless($this->productionSocial()
+                && $abilities === ['editorial-news:publish', 'editorial-news:social', 'editorial-news:write'], 403);
+        }
+
         abort_unless(
             $actor instanceof User
             && $actor->username === 'dev'
@@ -178,7 +187,7 @@ final class EditorialNewsAgentApiController extends Controller
             && str_starts_with((string) $token->name, 'mskba-editorial-news:')
             && $token->expires_at !== null
             && $token->expires_at->isFuture()
-            && $token->expires_at->lessThanOrEqualTo(now()->addDays(7))
+            && $token->expires_at->lessThanOrEqualTo(now()->addDays($bridge ? 30 : 7))
             && in_array($ability, $token->abilities ?? [], true),
             403,
         );
