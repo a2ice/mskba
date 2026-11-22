@@ -3,6 +3,13 @@
     $timeCommentDefault = \App\Modules\Event\Application\Services\EventTimeComment::defaultComment(auth()->user());
 @endphp
 <div class="field-group" data-event-time-comment-fields style="display:grid;gap:8px;margin:10px 0">
+    <label class="field-group">
+        <span>Статус даты и времени</span>
+        <select class="form-control" name="time_confirmed">
+            <option value="0" @selected(!(bool) old('time_confirmed', $timeCommentEvent?->time_confirmed ?? false))>Дата и время предварительные</option>
+            <option value="1" @selected((bool) old('time_confirmed', $timeCommentEvent?->time_confirmed ?? false))>Дата и время подтверждены</option>
+        </select>
+    </label>
     <label class="field-group" style="display:grid;gap:5px">
         <span>Комментарий к предварительному времени</span>
         <textarea class="form-control" name="time_comment" rows="3" maxlength="2000">{{ old('time_comment', $timeCommentEvent?->time_comment ?? $timeCommentDefault) }}</textarea>
