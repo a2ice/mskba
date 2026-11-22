@@ -180,6 +180,7 @@
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </span>
             </div>
+            @include('components.event-time-comment-fields')
             @include('components.event-participation-pricing-fields')
             <div class="field-group">
                 <label for="eventDescription">Описание</label>
