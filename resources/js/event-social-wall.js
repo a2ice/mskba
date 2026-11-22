@@ -208,6 +208,7 @@ export function mountEventDiscussion(root, {
             if(stamp){item.dataset.messageStamp=stamp[3]+'-'+stamp[2]+'-'+stamp[1]+'T'+stamp[4];time.dateTime=item.dataset.messageStamp;time.title=entry.date;}
             time.textContent=(stamp?stamp[4]:(entry.date||''))+(entry.edited?' (изменено)':'');
             const body=document.createElement('p');body.textContent=entry.text||'';
+            if(typeof entry.comment_body==='string')item.dataset.commentBody=entry.comment_body;
             item.append(label,time,body);
             if(entry.can_edit&&entry.edit_url){
                 const edit=document.createElement('button');edit.type='button';edit.className='venue-play-dialog__edit';
@@ -475,7 +476,8 @@ export function mountEventDiscussion(root, {
             const edit=event.target.closest('[data-venue-play-edit]');
             if(!edit||sending||form.dataset.chatCanPost!=='true')return;
             if(!editing)draft=field.value;
-            const original=edit.closest('li').querySelector('p').textContent;
+            const row=edit.closest('li');
+            const original=row.dataset.commentBody??row.querySelector('p').textContent;
             editing={url:edit.dataset.venuePlayEdit,deleteUrl:edit.dataset.deleteUrl,version:Number(edit.dataset.version),original};
             field.value=original;form.classList.add('is-editing');cancel.hidden=false;remove.hidden=!editing.deleteUrl;syncChatActions(form);
             submit.title='Сохранить изменения';submit.setAttribute('aria-label',submit.title);
