@@ -38,6 +38,10 @@ final class TelegramEventMessageBuilder
             'Тип активности: '.$this->escape($event->type->label()),
         ];
 
+        if ($this->title($event) !== $event->title) {
+            $lines[] = 'Название: '.$this->escape($event->title);
+        }
+
         if ($event->type === EventTypeEnum::GAME && $primaryGame !== null) {
             $lines[] = 'Формат: '.$this->escape($this->gameFormat($primaryGame));
             if ($primaryGame->recruitment_mode !== null) {
@@ -66,7 +70,7 @@ final class TelegramEventMessageBuilder
         );
         $lines[] = '';
         $lines[] = '📍 '.$this->escape($event->venue->name);
-        $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone);
+        $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone).($event->time_confirmed ? '' : ' (предварительно)');
         if ($event->type !== EventTypeEnum::GAME) {
             $lines[] = '👥 Участники: '.$capacity;
         }
@@ -139,7 +143,7 @@ final class TelegramEventMessageBuilder
         // }
 
         $rows[] = [[
-            'text' => '🏀 Открыть мероприятие',
+            'text' => 'Посмотреть',
             'url' => $this->eventUrl($event),
         ]];
 
