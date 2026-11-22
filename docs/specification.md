@@ -626,6 +626,8 @@ Telegram-канал спроектирован как many-to-many проекц�
 
 ## Мероприятия и бронирование
 
+Независимый контракт Event: `is_paid`, `total_cost_minor`, `participant_cost_minor`, `participant_cost_auto`, `cost_comment`, `time_comment`. Обработка в `EventParticipationPricing` и `EventTimeComment` внутри транзакций создания/редактирования; цены в целых копейках, авторасчёт без связи с `VenueBooking`, шаблоны `default_event_cost_comment` и `default_event_time_comment` хранятся в canonical User и скрыты при сериализации. Общие Blade-компоненты ввода и раскрытия комментариев используются в обеих темах. Признак предварительного времени пока следует существующей логике подтверждения брони, отдельный статус Event не введён. [Контракт и проверка](mskba_app/tasks/event-participation-pricing/description.md).
+
 Новый flow аренды внедряется независимо от legacy-создания Event и закрыт четырьмя
 переключателями в `config/features.php`: `rental_flow`, `coordination`,
 `external_payment`, `attendance_v2`. Все переключатели читаются через
