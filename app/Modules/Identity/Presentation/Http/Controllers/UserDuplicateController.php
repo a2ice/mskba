@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\Services\UserAccountCompleteness;
 use App\Modules\Identity\Application\Services\UserDuplicateSelfServiceProofStore;
 use App\Modules\Identity\Application\UseCases\ResolveUserDuplicateHandler;
 use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
@@ -19,17 +20,24 @@ final class UserDuplicateController extends Controller
         Request $request,
         UserDuplicate $userDuplicate,
         UserDuplicateSelfServiceProofStore $proofs,
+        UserAccountCompleteness $completeness,
     ): Response {
         $this->assertVisibleToUser($request, $userDuplicate, $proofs);
 
-        return ThemeResolver::page('account.user-duplicate', [
-            'duplicate' => $userDuplicate->loadMissing([
+        $userDuplicate->loadMissing([
                 'user.profile',
                 'user.telegramAccount',
                 'duplicateUser.profile',
                 'duplicateUser.telegramAccount',
                 'evidence',
-            ]),
+        ]);
+
+        return ThemeResolver::page('account.user-duplicate', [
+            'duplicate' => $userDuplicate,
+            'completeness' => [
+                $userDuplicate->user->id => $completeness->summarize($userDuplicate->user),
+                $userDuplicate->duplicateUser->id => $completeness->summarize($userDuplicate->duplicateUser),
+            ],
         ]);
     }
 

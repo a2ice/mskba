@@ -127,3 +127,13 @@ if (eventAvailabilityDialog && eventAvailabilityUrl.searchParams.get('availabili
     for (const key of ['availability','availability_date','availability_time','availability_court']) query.delete(key);
     history.replaceState(history.state, '', eventAvailabilityUrl);
 }
+
+const duplicateDialog = document.querySelector('[data-account-duplicate-dialog]');
+if (duplicateDialog && typeof duplicateDialog.showModal === 'function') {
+    duplicateDialog.removeAttribute('open');
+    duplicateDialog.showModal();
+    duplicateDialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        window.location.assign(duplicateDialog.querySelector('a').href);
+    });
+}

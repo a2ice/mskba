@@ -33,6 +33,7 @@
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
+    <p>Заполненность — ориентир по полям профиля, игровым характеристикам, контактам и наличию связей. Данные профиля будут взяты из выбранного основного аккаунта.</p>
     <form method="POST" action="{{ route('account.user-duplicates.merge', $duplicate) }}">
         @csrf
 
@@ -40,6 +41,7 @@
             <input class="form-check-input" type="radio" name="canonical_user_id" id="canonical-user-{{ $first->id }}" value="{{ $first->id }}" required>
             <label class="form-check-label" for="canonical-user-{{ $first->id }}">
                 <strong>#{{ $first->id }} · {{ $label($first) }}</strong><br>
+                <strong>Заполненность: {{ $completeness[$first->id]['percent'] }}%</strong><br>
                 <span>{{ $first->telegramAccount?->username ? '@'.$first->telegramAccount->username : 'Telegram не привязан' }}</span>
             </label>
         </div>
@@ -48,6 +50,7 @@
             <input class="form-check-input" type="radio" name="canonical_user_id" id="canonical-user-{{ $second->id }}" value="{{ $second->id }}" required>
             <label class="form-check-label" for="canonical-user-{{ $second->id }}">
                 <strong>#{{ $second->id }} · {{ $label($second) }}</strong><br>
+                <strong>Заполненность: {{ $completeness[$second->id]['percent'] }}%</strong><br>
                 <span>{{ $second->telegramAccount?->username ? '@'.$second->telegramAccount->username : 'Telegram не привязан' }}</span>
             </label>
         </div>
