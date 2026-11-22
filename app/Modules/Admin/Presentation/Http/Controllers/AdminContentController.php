@@ -335,7 +335,8 @@ final class AdminContentController extends Controller
             'types' => ContentTypeEnum::cases(),
             'faqSections' => FaqSection::query()->orderBy('sort_order')->orderBy('id')->get(),
             'formats' => ContentFormatEnum::cases(),
-            'vkConfigured' => VkWallPublisher::configured(),
+            'vkConfigured' => VkWallPublisher::wallConfigured(),
+            'vkPhotoAuthorized' => VkWallPublisher::photoTokenAvailable(),
             'telegramChats' => TelegramChat::query()
                 ->where('is_active', true)
                 ->orderBy('title')

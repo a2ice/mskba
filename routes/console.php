@@ -254,3 +254,19 @@ Schedule::command('rewards:grant-completed-rentals')
     ->hourly()
     ->onOneServer()
     ->withoutOverlapping();
+
+Artisan::command('vk:resume-awaiting-auth', function (
+    \App\Modules\Portal\Application\Services\SocialIntegrationSettings $settings,
+    \App\Modules\Vk\Application\Services\VkContentPublicationManager $publications,
+) {
+    if (config('app.env') !== 'production' || parse_url((string) config('app.url'), PHP_URL_HOST) !== 'mskba.ru') {
+        return;
+    }
+    $settings->apply();
+    $this->info('Возобновлено публикаций ВКонтакте: '.$publications->resumeAwaitingAuthorization());
+})->purpose('Возобновляет только публикации, ожидавшие авторизацию до отправки на стену');
+
+Schedule::command('vk:resume-awaiting-auth')
+    ->everyFiveMinutes()
+    ->onOneServer()
+    ->withoutOverlapping();

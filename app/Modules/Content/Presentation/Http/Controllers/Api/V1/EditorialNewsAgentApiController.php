@@ -72,13 +72,14 @@ final class EditorialNewsAgentApiController extends Controller
         $this->authorizeAgent($request, 'editorial-news:publish');
         $this->authorizeAgent($request, 'editorial-news:social');
         $telegram = $this->productionSocial() && filled(config('telegram.bot_token'));
-        $vk = VkWallPublisher::configured();
+        $vk = VkWallPublisher::wallConfigured();
 
         return response()->json(['data' => [
             'telegram' => $telegram ? TelegramChat::query()->where('is_active', true)
                 ->orderBy('title')->orderBy('id')->get(['id', 'title', 'type']) : [],
             'vk' => [
-                'available' => (bool) $vk,
+                'available' => VkWallPublisher::configured(),
+                'can_defer' => (bool) $vk,
                 'group_id' => $vk ? (int) config('vk.wall.group_id') : null,
             ],
         ]], 200, ['Cache-Control' => 'private, no-store']);
@@ -95,19 +96,21 @@ final class EditorialNewsAgentApiController extends Controller
             'telegram_chat_ids' => ['sometimes', 'array', 'max:100'],
             'telegram_chat_ids.*' => ['required', 'integer', 'distinct', 'min:1'],
             'publish_in_vk' => ['sometimes', 'boolean'],
+            'defer_vk_until_authorized' => ['sometimes', 'boolean', 'prohibited_unless:publish_in_vk,true'],
             'vk_group_id' => ['required_if:publish_in_vk,true', 'prohibited_unless:publish_in_vk,true', 'integer', 'min:1'],
         ]);
 
         $chatIds = array_map('intval', $data['telegram_chat_ids'] ?? []);
         sort($chatIds);
         $sendVk = (bool) ($data['publish_in_vk'] ?? false);
+        $deferVk = $sendVk && (bool) ($data['defer_vk_until_authorized'] ?? false);
         $groupId = $sendVk ? (int) $data['vk_group_id'] : null;
-        $explicit = $request->hasAny(['telegram_chat_ids', 'publish_in_vk', 'vk_group_id']);
+        $explicit = $request->hasAny(['telegram_chat_ids', 'publish_in_vk', 'vk_group_id', 'defer_vk_until_authorized']);
 
         if ($explicit) {
             $this->authorizeAgent($request, 'editorial-news:social');
         }
-        $item = DB::transaction(function () use ($actor, $alias, $telegram, $vk, $chatIds, $sendVk, $groupId, $explicit): ContentItem {
+        $item = DB::transaction(function () use ($actor, $alias, $telegram, $vk, $chatIds, $sendVk, $groupId, $explicit, $deferVk): ContentItem {
             $item = $this->items($actor)->where('alias', $alias)->lockForUpdate()->firstOrFail();
             if ($item->status === ContentStatusEnum::PUBLISHED && $item->publish_in_feed) {
                 if ($explicit) {
@@ -128,7 +131,8 @@ final class EditorialNewsAgentApiController extends Controller
                 || TelegramChat::query()->where('is_active', true)->whereIn('id', $chatIds)->count() !== count($chatIds))) {
                 throw ValidationException::withMessages(['telegram_chat_ids' => 'Выберите активные подключённые Telegram-чаты на production.']);
             }
-            if ($sendVk && (! VkWallPublisher::configured() || $groupId !== (int) config('vk.wall.group_id') || ! $item->cover()->exists())) {
+            if ($sendVk && (! VkWallPublisher::wallConfigured() || (! $deferVk && ! VkWallPublisher::photoTokenAvailable())
+                || $groupId !== (int) config('vk.wall.group_id') || ! $item->cover()->exists())) {
                 throw ValidationException::withMessages(['publish_in_vk' => 'ВКонтакте недоступен, изменилось сообщество или отсутствует обложка.']);
             }
 
@@ -169,6 +173,15 @@ final class EditorialNewsAgentApiController extends Controller
         $actor = $request->user();
         $token = $actor?->currentAccessToken();
 
+        $bridge = $token instanceof PersonalAccessToken
+            && str_starts_with((string) $token->name, 'mskba-editorial-news:bridge-');
+        if ($bridge) {
+            $abilities = $token->abilities ?? [];
+            sort($abilities);
+            abort_unless($this->productionSocial()
+                && $abilities === ['editorial-news:publish', 'editorial-news:social', 'editorial-news:write'], 403);
+        }
+
         abort_unless(
             $actor instanceof User
             && $actor->username === 'dev'
@@ -178,7 +191,7 @@ final class EditorialNewsAgentApiController extends Controller
             && str_starts_with((string) $token->name, 'mskba-editorial-news:')
             && $token->expires_at !== null
             && $token->expires_at->isFuture()
-            && $token->expires_at->lessThanOrEqualTo(now()->addDays(7))
+            && $token->expires_at->lessThanOrEqualTo(now()->addDays($bridge ? 30 : 7))
             && in_array($ability, $token->abilities ?? [], true),
             403,
         );

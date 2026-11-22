@@ -1378,7 +1378,7 @@
         ],
         "operationId": "publishEditorialNews",
         "summary": "Опубликовать новость на сайте и по выбору в соцсетях",
-        "description": "editorial-news:publish. Без тела — только сайт. Явный выбор получателей требует editorial-news:social; внешние отправки только на production. Повтор с теми же получателями не создаёт новые задания; иной выбор после публикации возвращает 409. Статус pending не подтверждает доставку.",
+        "description": "editorial-news:publish. Без тела — только сайт. Явный выбор получателей требует editorial-news:social; внешние отправки только на production. Повтор с теми же получателями не создаёт новые задания; иной выбор после публикации возвращает 409. Статус pending не подтверждает доставку. При явном defer_vk_until_authorized=true допускается статус VK awaiting_auth; позднее отправится полноценная запись, без текстового режима.",
         "parameters": [
           {
             "name": "alias",
@@ -1549,7 +1549,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "Sanctum",
-        "description": "Токен mskba-editorial-news: с editorial-news:write, editorial-news:publish и отдельным опциональным editorial-news:social. Выдаётся суперадминистратором в Filament на 24 часа."
+        "description": "Токен mskba-editorial-news: с editorial-news:write, editorial-news:publish и отдельным опциональным editorial-news:social. Выдаётся суперадминистратором в Filament на 24 часа. Отдельный opt-in токен GitHub Actions на production — до 30 дней, строго три редакционных разрешения."
       }
     },
     "schemas": {
@@ -2754,6 +2754,11 @@
             "type": "integer",
             "minimum": 1,
             "description": "Обязателен при publish_in_vk=true; должен совпадать с подключённым сообществом. Иначе не передавать."
+          },
+          "defer_vk_until_authorized": {
+            "type": "boolean",
+            "default": false,
+            "description": "Только при publish_in_vk=true. Разрешает публикацию на сайте/Telegram сейчас, а VK с обязательной фотографией — после восстановления авторизации."
           }
         },
         "if": {
@@ -2773,8 +2778,17 @@
         },
         "else": {
           "not": {
-            "required": [
-              "vk_group_id"
+            "anyOf": [
+              {
+                "required": [
+                  "vk_group_id"
+                ]
+              },
+              {
+                "required": [
+                  "defer_vk_until_authorized"
+                ]
+              }
             ]
           }
         }
@@ -2822,17 +2836,24 @@
                 "type": "object",
                 "required": [
                   "available",
-                  "group_id"
+                  "group_id",
+                  "can_defer"
                 ],
                 "properties": {
                   "available": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Готово к немедленной отправке с обложкой."
                   },
                   "group_id": {
                     "type": [
                       "integer",
                       "null"
-                    ]
+                    ],
+                    "description": "ID настроенного сообщества, даже если авторизация фото истекла."
+                  },
+                  "can_defer": {
+                    "type": "boolean",
+                    "description": "Сообщество настроено; можно явно отложить отправку до восстановления авторизации фото."
                   }
                 }
               }
