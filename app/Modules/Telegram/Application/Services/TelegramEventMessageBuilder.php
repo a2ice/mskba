@@ -2,6 +2,7 @@
 
 namespace App\Modules\Telegram\Application\Services;
 
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -24,9 +25,8 @@ final class TelegramEventMessageBuilder
         $timezone = $event->venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
         $startsAt = $event->starts_at->setTimezone($timezone);
         $endsAt = $event->ends_at->setTimezone($timezone);
-        $participants = $event->participants()
-            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
-            ->count();
+        $counts = app(EventIdentityParticipationService::class)->publicStatusCounts($event);
+        $participants = $counts['confirmed'];
         $capacity = $event->max_participants === null
             ? (string) $participants
             : "{$participants}/{$event->max_participants}";
@@ -71,9 +71,8 @@ final class TelegramEventMessageBuilder
         $lines[] = '';
         $lines[] = '📍 '.$this->escape($event->venue->name);
         $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone).($event->time_confirmed ? '' : ' (предварительно)');
-        if ($event->type !== EventTypeEnum::GAME) {
-            $lines[] = '👥 Участники: '.$capacity;
-        }
+        $lines[] = '✅ Пойду: '.$capacity;
+        $lines[] = '🤔 Подумаю: '.$counts['tentative'];
 
         $responsibles = $event->participants
             ->filter(fn ($participant) => $participant->status === EventParticipantStatusEnum::CONFIRMED
@@ -143,7 +142,7 @@ final class TelegramEventMessageBuilder
         // }
 
         $rows[] = [[
-            'text' => 'Посмотреть',
+            'text' => 'Подробнее',
             'url' => $this->eventUrl($event),
         ]];
 
