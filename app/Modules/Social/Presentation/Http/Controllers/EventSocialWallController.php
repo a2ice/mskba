@@ -49,7 +49,7 @@ final class EventSocialWallController extends Controller
             'counts' => $wall->eventCounts($item),
             'can_post' => $canPost,
             'can_post_reason' => $report
-                ? (! ($item->report_comments_enabled ?? true) ? 'Комментарии закрыты.' : 'Оценивать и комментировать могут только участники и организатор мероприятия.')
+                ? (! ($item->report_comments_enabled ?? true) ? 'Комментарии закрыты.' : 'Оценивать и комментировать могут только участники мероприятия.')
                 : ($item->hasEnded() ? 'Мероприятие завершено. Обсуждение закрыто.' : (! ($item->discussion_enabled ?? true) ? 'Обсуждение закрыто.' : null)),
             ...($report ? $wall->reportFeedback($item, $request->user()) : []),
             ...($request->boolean('include_roster') ? ['roster' => app(EventPreviewRoster::class)->forEvent($item, $request->user())] : []),
@@ -121,13 +121,22 @@ final class EventSocialWallController extends Controller
     }
     public function reaction(Request $request, string $event, SocialWallService $wall): JsonResponse
     {
-        $data = $request->validate(['reaction' => ['present', 'nullable', 'in:like,dislike']]);
+        $data = $request->validate([
+            'reaction' => ['present', 'nullable', 'in:like,dislike'],
+            'body' => ['nullable', 'string', 'max:200'],
+            'client_request_id' => ['required_with:body', 'nullable', 'uuid'],
+        ]);
         $item = $this->event($event);
         $user = $request->user();
         abort_unless($user instanceof User && $wall->canViewEvent($item, $user), 403);
 
         try {
-            return response()->json($wall->setEventReaction($item, $user, $data['reaction']));
+            $result = $wall->setEventReaction($item, $user, $data['reaction'], $data['body'] ?? null, $data['client_request_id'] ?? null);
+            if (isset($result['entry'])) {
+                $result['entry'] = $this->present($result['entry'], $item, $request, $wall);
+            }
+
+            return response()->json($result);
         } catch (SocialActionRateLimitException $exception) {
             return response()->json(['message' => $exception->getMessage(), 'retry_after' => $exception->retryAfter], 429)
                 ->header('Retry-After', (string) $exception->retryAfter);
