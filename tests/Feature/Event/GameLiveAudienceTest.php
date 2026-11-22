@@ -82,10 +82,10 @@ final class GameLiveAudienceTest extends TestCase
 
         $this->postJson($url)->assertOk();
         $this->assertDatabaseCount('game_live_view_sessions', 0);
-        $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('rejected')->getValue())
+        $this->withCredentials()->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('rejected')->getValue())
             ->postJson($url)->assertOk();
         $this->assertDatabaseCount('game_live_view_sessions', 0);
-        $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('accepted')->getValue())
+        $this->withCredentials()->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('accepted')->getValue())
             ->postJson($url)->assertOk();
         $this->assertDatabaseCount('game_live_view_sessions', 1);
     }

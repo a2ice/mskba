@@ -52,7 +52,6 @@ class CookieConsentTest extends TestCase
 
     public function test_guest_choice_survives_new_session_in_same_browser(): void
     {
-
         $response = $this->postJson(route('cookie-consent.store'), ['analytics' => 'accepted'])
             ->assertOk()->assertJsonPath('analytics', 'accepted')
             ->assertCookie(CookieConsent::COOKIE_NAME);
@@ -183,7 +182,7 @@ class CookieConsentTest extends TestCase
         $this->get(route('homepage.original'))->assertCookieNotExpired('mskba_browser_fp');
         $this->assertDatabaseHas('user_cookie_consent_preferences', [
             'user_id' => $user->id,
-            'notice_version' => '2027-01-01',
+            'notice_version' => CookieConsent::version(),
         ]);
     }
 
