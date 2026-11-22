@@ -114,6 +114,11 @@ final class UpdateEventHandler
                     'time_confirmed' => false,
                 ])->save();
 
+                if (filter_var($data['publish_to_telegram'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    app(\App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler::class)
+                        ->handle($event, $data['telegram_chat_ids'] ?? []);
+                }
+
                 return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
             }
 
@@ -316,7 +321,12 @@ final class UpdateEventHandler
                     ]);
             }
 
-            return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
+            if (filter_var($data['publish_to_telegram'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    app(\App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler::class)
+                        ->handle($event, $data['telegram_chat_ids'] ?? []);
+                }
+
+                return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
         });
 
         event(new EventChanged($event->id));
