@@ -83,6 +83,7 @@ final class CreateEventRequest extends FormRequest
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
             ...\App\Modules\Event\Application\Services\EventParticipationPricing::rules(),
+            ...\App\Modules\Event\Application\Services\EventTimeComment::rules(),
             'game_recruitment_mode' => [
                 Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
                 'nullable',
