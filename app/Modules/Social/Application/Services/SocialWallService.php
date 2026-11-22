@@ -279,12 +279,15 @@ final class SocialWallService
                 } else {
                     DB::table('event_report_reactions')->updateOrInsert($key, ['reaction' => $reaction, 'updated_at' => now()]);
                 }
-                $this->appendSystem('event_report', $locked->id, $user, 'event_reaction_changed', ['to' => $reaction]);
+                if ($body === '') {
+                    $this->appendSystem('event_report', $locked->id, $user, 'event_reaction_changed', ['to' => $reaction]);
+                }
             }
             if ($body !== '') {
                 $entry = SocialWallEntry::query()->create([
                     'scope_type' => 'event_report', 'scope_id' => $locked->id,
                     'actor_user_id' => $user->id, 'kind' => 'comment', 'body' => $body,
+                    'metadata' => ['report_reaction' => $reaction],
                     'client_request_id' => $requestId,
                 ])->load(['actor', 'target']);
             }
@@ -347,9 +350,9 @@ final class SocialWallService
                 default => 'изменил ответ на участие.',
             },
             'event_reaction_changed' => match ($status) {
-                'like' => 'Пользователю '.$name.' нравится мероприятие.',
-                'dislike' => 'Пользователю '.$name.' не нравится мероприятие.',
-                default => 'Пользователь '.$name.' убрал оценку.',
+                'like' => $name.' поставил лайк',
+                'dislike' => $name.' поставил дизлайк',
+                default => $name.' убрал оценку',
             },
             'group_admin_nominated' => $name.' подал заявку на администратора группы.',
             'group_admin_vote_cast' => $name.' подтвердил назначение '.$targetName.' администратором группы.',
@@ -369,6 +372,12 @@ final class SocialWallService
         $deleted = $entry->deleted_at !== null;
         $editedAt = $entry->kind === 'comment' && ! $hidden && ! $deleted
             ? ($entry->metadata['edited_at'] ?? null) : null;
+        $commentReaction = $entry->scope_type === 'event_report' && $entry->kind === 'comment'
+            ? ($entry->metadata['report_reaction'] ?? null) : null;
+        $commentReaction = in_array($commentReaction, ['like', 'dislike'], true) ? $commentReaction : null;
+        $commentText = $commentReaction !== null
+            ? $name.' поставил '.($commentReaction === 'like' ? 'лайк' : 'дизлайк').': '.$entry->body
+            : $entry->body;
         $displayDate = $editedAt !== null
             ? \Illuminate\Support\Carbon::parse($editedAt)->setTimezone(config('app.timezone'))
             : $entry->created_at;
@@ -377,13 +386,14 @@ final class SocialWallService
             'kind' => $entry->kind,
             'actor' => $name,
             'text' => $entry->kind === 'comment'
-                ? ($deleted ? null : ($hidden ? 'Сообщение скрыто модератором.' : $entry->body))
+                ? ($deleted ? null : ($hidden ? 'Сообщение скрыто модератором.' : $commentText))
                 : $message,
             'deleted' => $entry->deleted_at !== null,
             'hidden' => $hidden,
             'system' => $entry->kind !== 'comment',
             'rsvp_status' => $entry->kind === 'event_rsvp_changed' ? $status : null,
-            'reaction' => $entry->kind === 'event_reaction_changed' && in_array($status, ['like','dislike'], true) ? $status : null,
+            'reaction' => $entry->kind === 'event_reaction_changed' && in_array($status, ['like','dislike'], true) ? $status : ($hidden || $deleted ? null : $commentReaction),
+            'comment_body' => $commentReaction !== null && ! $hidden && ! $deleted ? $entry->body : null,
             'version' => $entry->kind === 'comment' ? (int) ($entry->metadata['version'] ?? 1) : null,
             'date' => $displayDate?->format('d.m.Y H:i'),
             'edited' => $editedAt !== null,
