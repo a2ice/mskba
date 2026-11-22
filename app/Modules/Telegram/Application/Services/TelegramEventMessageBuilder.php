@@ -69,7 +69,7 @@ final class TelegramEventMessageBuilder
             $description === '' ? '—' : Str::limit($description, 1000),
         );
         $lines[] = '';
-        $lines[] = '📍 '.$this->escape($event->venue->name);
+        $lines[] = '📍 Площадка: '.$this->escape($event->venue->name);
         $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone).($event->time_confirmed ? '' : ' (предварительно)');
         $booking = $event->sourceBooking ?? $event->booking;
         $rentalStatus = match (true) {
