@@ -28,6 +28,10 @@
                 <x-filament::input.checkbox wire:model="allowPublish" />
                 Разрешить публикацию новостей на сайте
             </label>
+            <label style="display:flex;align-items:center;gap:8px">
+                <x-filament::input.checkbox wire:model="allowSocial" />
+                Дополнительно разрешить публикацию в подключённых соцсетях (требуется разрешение публикации на сайте)
+            </label>
             <div><x-filament::button type="submit">Выпустить токен</x-filament::button></div>
         </form>
     </x-filament::section>

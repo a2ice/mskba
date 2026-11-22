@@ -25,6 +25,8 @@ final class EditorialNewsAgentAccess extends Page
     public string $password = '';
 
     public bool $allowPublish = false;
+
+    public bool $allowSocial = false;
     public ?string $plainTextToken = null;
     public ?string $expiresAt = null;
 
@@ -73,9 +75,16 @@ final class EditorialNewsAgentAccess extends Page
         }
 
         $expiresAt = now()->addDay();
+        $abilities = ['editorial-news:write'];
+        if ($this->allowPublish) {
+            $abilities[] = 'editorial-news:publish';
+            if ($this->allowSocial) {
+                $abilities[] = 'editorial-news:social';
+            }
+        }
         $token = $dev->createToken(
             'mskba-editorial-news:filament-'.now()->format('YmdHis'),
-            $this->allowPublish ? ['editorial-news:write', 'editorial-news:publish'] : ['editorial-news:write'],
+            $abilities,
             $expiresAt,
         );
         $this->plainTextToken = $token->plainTextToken;
