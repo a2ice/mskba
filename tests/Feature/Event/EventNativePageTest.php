@@ -110,6 +110,46 @@ final class EventNativePageTest extends TestCase
         $this->assertDatabaseCount('venue_bookings', 0);
     }
 
+    public function test_preliminary_time_comment_has_its_own_personal_template_and_disappears_after_booking_confirmation(): void
+    {
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
+        $comment = 'Время уточним в пятницу.';
+        $event = $this->createEvent($user, $venue, [
+            'slots' => [['starts_at' => $start->format('Y-m-d\TH:i'), 'duration_minutes' => 90]],
+            'time_comment' => $comment,
+            'save_time_comment_default' => true,
+        ]);
+        $this->assertSame($comment, $event->time_comment);
+        $this->assertSame($comment, $user->fresh()->default_event_time_comment);
+        $this->assertNull($user->fresh()->default_event_cost_comment);
+        $this->assertNull($other->fresh()->default_event_time_comment);
+        $this->assertArrayNotHasKey('default_event_time_comment', $user->fresh()->toArray());
+        $url = route('events.show', $event->routeIdentifier());
+        $this->get($url)->assertOk()->assertSee($comment);
+        $second = $this->createEvent($user, $venue);
+        $this->assertSame($comment, $second->time_comment);
+        $this->put(route('events.update', $second->routeIdentifier()), [
+            'title' => $second->title, 'type' => 'training', 'visibility' => 'public',
+            'time_comment' => 'Только для этого события.',
+        ])->assertRedirect();
+        $this->assertSame('Только для этого события.', $second->fresh()->time_comment);
+        $this->assertSame($comment, $user->fresh()->default_event_time_comment);
+
+        $booking = $event->booking()->create([
+            'venue_id' => $venue->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => VenueBookingStatusEnum::CONFIRMED,
+            'scope' => VenueBookingScopeEnum::WHOLE,
+            'starts_at' => $event->starts_at,
+            'ends_at' => $event->ends_at,
+        ]);
+        $this->get($url)->assertOk()->assertDontSee($comment);
+        $this->assertSame($comment, $event->fresh()->time_comment);
+    }
+
     public function test_undated_page_keeps_organizer_and_discussion_and_does_not_book(): void
     {
         $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
