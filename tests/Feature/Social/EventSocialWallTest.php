@@ -397,4 +397,26 @@ final class EventSocialWallTest extends TestCase
         $this->actingAs($this->confirmedUser())->putJson($reaction, ['reaction'=>'like'])->assertForbidden();
         $this->getJson($report)->assertOk()->assertJsonPath('can_react', false)->assertJsonPath('can_post', false);
     }
+
+    public function test_report_reaction_and_optional_comment_are_atomic_and_retry_safe(): void
+    {
+        $event = $this->event();
+        $event->forceFill(['starts_at'=>now()->subHours(3), 'ends_at'=>now()->subHour(), 'status'=>EventStatusEnum::COMPLETED])->save();
+        $user = $event->organizerActor->user;
+        $this->actingAs($user);
+        $reaction = route('events.report.reaction', $event->routeIdentifier());
+        $report = route('events.wall.index', ['event' => $event->routeIdentifier(), 'report' => 1]);
+        $payload = ['reaction'=>'dislike', 'body'=>'Можно улучшить.', 'client_request_id'=>(string) Str::uuid()];
+        $first = $this->putJson($reaction, $payload)->assertOk()
+            ->assertJsonPath('likes', 0)->assertJsonPath('dislikes', 1)
+            ->assertJsonPath('entry.text', 'Можно улучшить.')->json('entry.id');
+        $this->putJson($reaction, $payload)->assertOk()->assertJsonPath('entry.id', $first);
+        $this->getJson($report)->assertOk()->assertJsonCount(2, 'entries')->assertJsonPath('dislikes', 1);
+        $this->putJson($reaction, ['reaction'=>'like'])->assertOk()->assertJsonPath('likes', 1)->assertJsonPath('dislikes', 0);
+        $event->forceFill(['report_comments_enabled'=>false])->save();
+        $this->putJson($reaction, ['reaction'=>'dislike','body'=>'Закрыто','client_request_id'=>(string) Str::uuid()])->assertForbidden();
+        $this->getJson($report)->assertOk()->assertJsonPath('likes', 1)->assertJsonPath('dislikes', 0);
+        $this->putJson($reaction, ['reaction'=>'dislike'])->assertOk()->assertJsonPath('dislikes', 1);
+        $this->getJson($report)->assertOk()->assertJsonCount(4, 'entries')->assertJsonPath('can_post', false);
+    }
 }
