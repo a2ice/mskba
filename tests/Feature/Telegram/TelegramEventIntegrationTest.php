@@ -122,6 +122,7 @@ final class TelegramEventIntegrationTest extends TestCase
         $this->assertStringContainsString('<b>Играем на '.e($event->venue->name).'</b>', $text);
         $this->assertStringContainsString('Тип активности: Игровая тренировка', $text);
         $this->assertStringContainsString('Описание: —', $text);
+        $this->assertStringContainsString('Площадка: '.e($event->venue->name), $text);
         $this->assertStringContainsString('Пойду: 2/10', $text);
         $this->assertStringContainsString('Подумаю: 0', $text);
         $this->assertStringContainsString('Ответственные: game-responsible', $text);
