@@ -145,6 +145,7 @@ final class EventFirstCreationController extends Controller
                 'status' => EventStatusEnum::PUBLISHED,
                 'booking_deferred' => true,
             ])->save();
+            $draft->booking()->whereNotNull('event_time_sync_version')->update(['event_time_sync_version' => null]);
             if (! $draft->booking()->exists() && $draft->booking_id === null) {
                 $interests->createFor($draft, $actor);
             }
