@@ -227,6 +227,14 @@ final class UpdateEventHandler
                 throw new InvalidArgumentException('Лимит участников не может быть меньше числа уже записавшихся.');
             }
 
+            // A later explicit time-status edit supersedes a pending rental sync,
+            // without changing the participation revision for a status-only edit.
+            if ($booking?->event_time_sync_version !== null
+                && array_key_exists('time_confirmed', $data)
+                && filter_var($data['time_confirmed'], FILTER_VALIDATE_BOOLEAN) !== (bool) $event->time_confirmed) {
+                $booking->forceFill(['event_time_sync_version' => null])->save();
+            }
+
             $previousVenue = $event->venue_id;
             $previousCourt = $event->venue_court_id;
             $previousStart = $event->starts_at;
