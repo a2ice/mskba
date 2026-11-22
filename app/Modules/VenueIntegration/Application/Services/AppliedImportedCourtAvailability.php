@@ -102,7 +102,7 @@ final class AppliedImportedCourtAvailability
             || (config('venue_integrations.public_schedule_refresh_enabled', false)
                 && $snapshot->observed_at->addSeconds(FindSportOnDemandRefresh::REFRESH_AFTER_SECONDS)
                     ->lessThan($reference))) {
-            throw new InvalidArgumentException('Расписание FindSport устарело: сначала обновите и примените снимок.');
+            throw new InvalidArgumentException('Требуется обновление расписания');
         }
     }
 
