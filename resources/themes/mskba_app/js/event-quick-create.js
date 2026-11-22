@@ -240,6 +240,12 @@
         const place=venueSearch.value.trim()||'Площадка';
         info.textContent=kind+' · '+(title.value.trim()||kind)+' · '+place;
         node.append(info);
+        const pricing=values();
+        const priceInfo=document.createElement('p');
+        priceInfo.textContent=pricing.is_paid==='1'
+            ? 'Стоимость участия: '+pricing.participant_cost+' руб.'
+            : 'Бесплатное мероприятие';
+        node.append(priceInfo);
         if(type.value==='game'){
             const gameInfo=document.createElement('p');
             gameInfo.textContent=createGame.checked
@@ -323,6 +329,7 @@
             const control=form.elements.namedItem(name);
             if(control&&typeof value==='string'&&typeof control.value==='string')control.value=value;
         }
+        form.dispatchEvent(new Event('mskba:event-pricing-restore'));
         editingTitle=true;
         if(venue.value)venue.dispatchEvent(new Event('change',{bubbles:true}));
         createGame.checked=saved.draft.create_game!=='0';
