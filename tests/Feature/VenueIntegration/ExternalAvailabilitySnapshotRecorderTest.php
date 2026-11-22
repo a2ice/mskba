@@ -534,7 +534,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $assertInterval('2026-11-15 10:00', 60, 'В выбранную дату площадка закрыта.');
 
         $this->travelTo($snapshot->observed_at->addHours(2));
-        $assertInterval('2026-11-14 08:00', 60, 'Расписание FindSport устарело: сначала обновите и примените снимок.');
+        $assertInterval('2026-11-14 08:00', 60, 'Требуется обновление расписания');
     }
 
     public function test_day_occupancy_bar_becomes_fully_red_when_all_slots_are_booked(): void
