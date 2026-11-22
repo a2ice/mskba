@@ -1377,8 +1377,8 @@
           }
         ],
         "operationId": "publishEditorialNews",
-        "summary": "Опубликовать новость на сайте",
-        "description": "editorial-news:publish. Повторный вызов не меняет дату публикации. Telegram не затрагивается.",
+        "summary": "Опубликовать новость на сайте и по выбору в соцсетях",
+        "description": "editorial-news:publish. Без тела — только сайт. Явный выбор получателей требует editorial-news:social; внешние отправки только на production. Повтор с теми же получателями не создаёт новые задания; иной выбор после публикации возвращает 409. Статус pending не подтверждает доставку.",
         "parameters": [
           {
             "name": "alias",
@@ -1441,6 +1441,83 @@
               }
             }
           },
+          "422": {
+            "description": "Недоступный получатель или отсутствует обложка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorialNewsPublishRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/editorial-news/destinations/list": {
+      "get": {
+        "tags": [
+          "Внутренний API · Новости"
+        ],
+        "security": [
+          {
+            "editorialNewsAgentBearer": []
+          }
+        ],
+        "operationId": "listEditorialNewsDestinations",
+        "summary": "Доступные получатели для публикации новости",
+        "description": "editorial-news:publish и editorial-news:social. Только активные подключённые группы; вне production возвращается пустой список и недоступный VK.",
+        "responses": {
+          "200": {
+            "description": "Получатели",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialNewsDestinationsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Превышен лимит запросов",
             "content": {
@@ -1472,7 +1549,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "Sanctum",
-        "description": "Токен mskba-editorial-news: с editorial-news:write и/или editorial-news:publish. Выдаётся суперадминистратором в Filament на 24 часа."
+        "description": "Токен mskba-editorial-news: с editorial-news:write, editorial-news:publish и отдельным опциональным editorial-news:social. Выдаётся суперадминистратором в Filament на 24 часа."
       }
     },
     "schemas": {
@@ -2569,7 +2646,9 @@
               "status",
               "title",
               "has_cover",
-              "url"
+              "url",
+              "telegram_publications",
+              "vk_publication"
             ],
             "properties": {
               "id": {
@@ -2593,6 +2672,169 @@
                   "null"
                 ],
                 "format": "uri"
+              },
+              "telegram_publications": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "chat_id",
+                    "status",
+                    "message_id"
+                  ],
+                  "properties": {
+                    "chat_id": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              },
+              "vk_publication": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "group_id",
+                      "status",
+                      "post_id"
+                    ],
+                    "properties": {
+                      "group_id": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "post_id": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "EditorialNewsPublishRequest": {
+        "type": "object",
+        "properties": {
+          "telegram_chat_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 100,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Локальные ID активных чатов из destinations/list. По умолчанию пусто."
+          },
+          "publish_in_vk": {
+            "type": "boolean",
+            "default": false
+          },
+          "vk_group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Обязателен при publish_in_vk=true; должен совпадать с подключённым сообществом. Иначе не передавать."
+          }
+        },
+        "if": {
+          "required": [
+            "publish_in_vk"
+          ],
+          "properties": {
+            "publish_in_vk": {
+              "const": true
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "vk_group_id"
+          ]
+        },
+        "else": {
+          "not": {
+            "required": [
+              "vk_group_id"
+            ]
+          }
+        }
+      },
+      "EditorialNewsDestinationsResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "telegram",
+              "vk"
+            ],
+            "properties": {
+              "telegram": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "type"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "vk": {
+                "type": "object",
+                "required": [
+                  "available",
+                  "group_id"
+                ],
+                "properties": {
+                  "available": {
+                    "type": "boolean"
+                  },
+                  "group_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                }
               }
             }
           }
