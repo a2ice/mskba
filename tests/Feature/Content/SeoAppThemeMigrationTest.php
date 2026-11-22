@@ -97,12 +97,7 @@ final class SeoAppThemeMigrationTest extends TestCase
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false)
             ->assertDontSee('mc.yandex.ru/watch/12345678', false);
 
-        $response = $this->withSession([
-            CookieConsent::SESSION_CHOICE_KEY => [
-                'version' => CookieConsent::version(),
-                'analytics' => 'accepted',
-            ],
-        ])->get('https://mskba.ru/venues')
+        $response = $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('accepted')->getValue())->get('https://mskba.ru/venues')
             ->assertOk()
             ->assertSee('ym(12345678, "init"', false)
             ->assertSee('https://mc.yandex.ru/watch/12345678', false);

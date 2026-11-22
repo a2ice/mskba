@@ -5,14 +5,15 @@ namespace App\Support\Privacy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Cookie;
 
 final class CookieConsent
 {
-    // Legacy cookie is expired on the next decision; it is never trusted as
-    // proof of consent after introducing account and session scoped choices.
-    public const COOKIE_NAME = 'mskba_cookie_consent';
+    public const LEGACY_COOKIE_NAME = 'mskba_cookie_consent';
 
-    public const SESSION_CHOICE_KEY = 'mskba.cookie_consent.choice';
+    public const COOKIE_NAME = 'mskba_guest_cookie_consent_v2';
+
+    public const GUEST_COOKIE_DAYS = 365;
 
     public const SESSION_VISITOR_KEY = 'mskba.cookie_consent.visitor_id';
 
@@ -52,15 +53,24 @@ final class CookieConsent
                 : null;
         }
 
-        if (! $request->hasSession()) {
+        // The web middleware decrypts and authenticates this host-only cookie.
+        // Never use the legacy cookie or an account's decision as guest consent.
+        $cookie = $request->cookie(self::COOKIE_NAME);
+        if (! is_string($cookie)) {
             return null;
         }
 
-        $choice = $request->session()->get(self::SESSION_CHOICE_KEY);
+        $parts = explode('|', $cookie);
+        if (count($parts) !== 3) {
+            return null;
+        }
 
-        return is_array($choice)
-            && hash_equals(self::version(), (string) ($choice['version'] ?? ''))
-            ? self::validatedChoice($choice['analytics'] ?? null)
+        [$version, $choice, $expiresAt] = $parts;
+
+        return hash_equals(self::version(), $version)
+            && ctype_digit($expiresAt)
+            && (int) $expiresAt > now()->timestamp
+            ? self::validatedChoice($choice)
             : null;
     }
 
@@ -69,12 +79,21 @@ final class CookieConsent
         return in_array($value, ['accepted', 'rejected'], true) ? $value : null;
     }
 
-    public static function rememberGuestChoice(Request $request, string $choice): void
+    public static function guestCookie(string $choice): Cookie
     {
-        $request->session()->put(self::SESSION_CHOICE_KEY, [
-            'version' => self::version(),
-            'analytics' => $choice,
-        ]);
+        $expiresAt = now()->addDays(self::GUEST_COOKIE_DAYS)->timestamp;
+
+        return Cookie::create(
+            self::COOKIE_NAME,
+            self::version().'|'.$choice.'|'.$expiresAt,
+            $expiresAt,
+            '/',
+            null,
+            true,
+            true,
+            false,
+            Cookie::SAMESITE_LAX,
+        );
     }
 
     public static function visitorId(?Request $request = null): string
