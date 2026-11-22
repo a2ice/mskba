@@ -154,6 +154,36 @@ final class EditorialNewsAgentApiTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_expired_vk_authorization_requires_explicit_deferral(): void
+    {
+        Storage::fake('public');
+        Queue::fake();
+        Http::fake();
+        config([
+            'app.env' => 'production', 'app.url' => 'https://mskba.ru',
+            'vk.wall.enabled' => true, 'vk.wall.group_id' => 174334075,
+            'vk.wall.community_token' => 'test-community', 'vk.wall.user_token' => 'test-photo',
+            'vk.wall.user_token_expires_at' => now()->subMinute()->timestamp,
+        ]);
+        $dev = $this->dev();
+        $this->withToken($this->token($dev, ['editorial-news:write', 'editorial-news:publish', 'editorial-news:social']))
+            ->post(self::URI, [...$this->payload(), 'cover' => UploadedFile::fake()->image('cover.jpg', 400, 520)], ['Accept' => 'application/json'])
+            ->assertCreated();
+        $this->getJson(self::URI.'/destinations/list')->assertOk()
+            ->assertJsonPath('data.vk.available', false)
+            ->assertJsonPath('data.vk.can_defer', true)
+            ->assertJsonPath('data.vk.group_id', 174334075);
+        $selection = ['publish_in_vk' => true, 'vk_group_id' => 174334075];
+        $this->postJson(self::URI.'/winter-basketball/publish', $selection)->assertUnprocessable();
+        $this->assertFalse(ContentItem::query()->sole()->publish_in_feed);
+        $this->postJson(self::URI.'/winter-basketball/publish', [...$selection, 'defer_vk_until_authorized' => true])
+            ->assertOk()->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.vk_publication.status', 'awaiting_auth')
+            ->assertJsonPath('data.vk_publication.post_id', null);
+        $this->assertDatabaseCount('vk_content_publications', 1);
+        Http::assertNothingSent();
+    }
+
     public function test_production_bridge_token_has_separate_lifetime_and_exact_scopes(): void
     {
         $dev = $this->dev();

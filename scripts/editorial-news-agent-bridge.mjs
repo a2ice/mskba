@@ -7,7 +7,7 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function validatePlan(plan) {
     if (!plan || typeof plan !== 'object' || Array.isArray(plan)) throw new Error('Invalid request.');
-    const allowed = ['alias', 'title', 'summary', 'content', 'cover', 'telegram_chat_titles', 'vk_group_id', 'resume_existing_draft'];
+    const allowed = ['alias', 'title', 'summary', 'content', 'cover', 'telegram_chat_titles', 'vk_group_id', 'resume_existing_draft', 'allow_vk_wait'];
     if (Object.keys(plan).some(key => !allowed.includes(key))) throw new Error('Unexpected request field.');
     for (const [key, max] of [['alias', 230], ['title', 255], ['summary', 1000], ['content', 50000]]) {
         if (typeof plan[key] !== 'string' || !plan[key].trim() || plan[key].length > max) throw new Error('Invalid ' + key);
@@ -19,6 +19,7 @@ export function validatePlan(plan) {
     if (new Set(names.map(normalize)).size !== names.length) throw new Error('Duplicate Telegram targets.');
     if (plan.vk_group_id !== null && (!Number.isSafeInteger(plan.vk_group_id) || plan.vk_group_id <= 0)) throw new Error('Invalid VK target.');
     if (plan.resume_existing_draft !== undefined && typeof plan.resume_existing_draft !== 'boolean') throw new Error('Invalid resume flag.');
+    if (plan.allow_vk_wait !== undefined && (typeof plan.allow_vk_wait !== 'boolean' || plan.vk_group_id === null)) throw new Error('Invalid VK deferral flag.');
     return plan;
 }
 
@@ -32,8 +33,8 @@ export function selectDestinations(plan, registry) {
     });
     if (new Set(ids).size !== ids.length) throw new Error('Duplicate target IDs.');
     const vk = plan.vk_group_id;
-    if (vk !== null && (registry.vk?.available !== true || registry.vk.group_id !== vk)) throw new Error('Requested VK group is unavailable; no publication sent.');
-    return { telegram_chat_ids: ids, publish_in_vk: vk !== null, ...(vk === null ? {} : { vk_group_id: vk }) };
+    if (vk !== null && (registry.vk?.group_id !== vk || (registry.vk?.available !== true && !(plan.allow_vk_wait === true && registry.vk?.can_defer === true)))) throw new Error('Requested VK group is unavailable; no publication sent.');
+    return { telegram_chat_ids: ids, publish_in_vk: vk !== null, ...(vk === null ? {} : { vk_group_id: vk }), ...(plan.allow_vk_wait === true ? { defer_vk_until_authorized: true } : {}) };
 }
 
 export function verifySelection(data, selection) {
@@ -47,6 +48,7 @@ export function delivery(data, selection) {
     verifySelection(data, selection);
     const rows = [...data.telegram_publications, ...(data.vk_publication ? [data.vk_publication] : [])];
     if (rows.some(row => ['failed', 'unknown', 'closed'].includes(row.status))) return 'failed';
+    if (data.vk_publication?.status === 'awaiting_auth' && data.telegram_publications.every(row => row.status === 'published')) return 'awaiting_auth';
     return data.status === 'published' && typeof data.url === 'string' && data.url.startsWith('https://mskba.ru/')
         && rows.every(row => row.status === 'published' && Number.isSafeInteger(row.message_id ?? row.post_id) && (row.message_id ?? row.post_id) > 0) ? 'published' : 'pending';
 }
@@ -107,6 +109,7 @@ async function main(requestPath, token) {
         const result = delivery(item, selection);
         if (result !== 'pending') {
             console.log(JSON.stringify({ alias: plan.alias, url: item.url, status: item.status, telegram: item.telegram_publications, vk: item.vk_publication }));
+            if (result === 'awaiting_auth') throw new Error('VK is waiting for photo authorization; no text-only post or retry performed.');
             if (result !== 'published') throw new Error('At least one external delivery failed or is unknown; reconcile before retrying.');
             return;
         }

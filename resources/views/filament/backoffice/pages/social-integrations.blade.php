@@ -87,6 +87,7 @@
                     не подключена
                 @endif
             </p>
+            <p class="text-sm">Ожидающие авторизацию публикации с обложкой автоматически возобновляются после её восстановления (проверка каждые 5 минут). Записи с неизвестным результатом отправки не повторяются.</p>
             <input type="hidden" name="enabled" value="0">
             <label style="display:flex;align-items:center;gap:8px">
                 <input class="fi-checkbox-input" type="checkbox" name="enabled" value="1" @checked($vk['enabled']) @disabled(config('app.env') !== 'production')>
