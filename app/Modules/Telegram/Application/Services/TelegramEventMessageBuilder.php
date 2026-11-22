@@ -72,11 +72,14 @@ final class TelegramEventMessageBuilder
         $lines[] = '📍 Площадка: '.$this->escape($event->venue->name);
         $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone).($event->time_confirmed ? '' : ' (предварительно)');
         $booking = $event->sourceBooking ?? $event->booking;
+        $freeAccess = $event->court === null
+            ? $event->venue->hasFreeAccess()
+            : ! app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
+                ->resolve($event->venue, $event->court)['requires_booking'];
         $rentalStatus = match (true) {
             $booking?->status?->value === 'confirmed' => '✅ Аренда подтверждена',
             $booking !== null => '⏳ Аренда не подтверждена',
-            ($event->court?->requires_booking ?? $event->venue->requires_booking) === false
-                && ! ($event->court?->requires_booking_approval ?? $event->venue->requires_booking_approval) => 'Аренда не требуется',
+            $freeAccess => 'Аренда не требуется',
             default => '⏳ Аренда не подтверждена',
         };
         $lines[] = $rentalStatus;
