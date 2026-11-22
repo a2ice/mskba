@@ -187,6 +187,7 @@
                 <textarea id="eventDescription" rows="4" maxlength="5000" name="description">{{ old('description') }}</textarea>
             </div>
             @include('components.event-feedback-fields')
+            @include('components.event-social-publication-fields')
             <h2>Планирование аренды</h2>
             <p>Если у площадки предусмотрена аренда, мероприятие будет опубликовано без бронирования. Предзаявка — необязательный сигнал площадке для планирования и переписки, она не занимает слот.</p>
             <input type="hidden" name="send_pre_request" value="0">
