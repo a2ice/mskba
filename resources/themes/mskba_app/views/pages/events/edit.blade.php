@@ -108,6 +108,7 @@
                 <input id="eventCapacity" type="number" min="2" max="500" name="max_participants"
                     value="{{ old('max_participants', $event->max_participants) }}" placeholder="Без ограничения">
             </div>
+            @include('components.event-time-comment-fields', ['timeCommentEvent' => $event])
             @include('components.event-participation-pricing-fields', ['pricingEvent' => $event])
             <div class="field-group">
                 <label for="eventDescription">Описание</label>
