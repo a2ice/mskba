@@ -202,12 +202,30 @@ export function mountEventDiscussion(root, {
             if(entry.kind==='event_rsvp_changed'&&['confirmed','tentative','left'].includes(entry.rsvp_status))item.dataset.rsvpStatus=entry.rsvp_status;
             if(['like','dislike'].includes(entry.reaction))item.dataset.reaction=entry.reaction;
             item.classList.toggle('is-deleted',!!entry.deleted);
-            const label=document.createElement('strong');label.textContent=entry.system?'Событие':(entry.actor||'Участник');
+            const isRating=pane.hasAttribute('data-event-report-wall')&&['like','dislike'].includes(entry.reaction);
+            const label=document.createElement('strong');label.textContent=entry.system&&!isRating?'Событие':(entry.actor||'Участник');
             const time=document.createElement('time');
             const stamp=/^([0-9]{2})\.([0-9]{2})\.([0-9]{4}) ([0-9]{2}:[0-9]{2})$/.exec(entry.date||'');
             if(stamp){item.dataset.messageStamp=stamp[3]+'-'+stamp[2]+'-'+stamp[1]+'T'+stamp[4];time.dateTime=item.dataset.messageStamp;time.title=entry.date;}
             time.textContent=(stamp?stamp[4]:(entry.date||''))+(entry.edited?' (изменено)':'');
-            const body=document.createElement('p');body.textContent=entry.text||'';
+            const body=document.createElement('p');
+            if(isRating){
+                body.classList.add('event-report-rating-message');
+                const ratingIcon=document.createElement('span');
+                ratingIcon.className='event-report-rating-icon';
+                ratingIcon.setAttribute('role','img');
+                ratingIcon.setAttribute('aria-label',entry.reaction==='like'?'Понравилось':'Не понравилось');
+                ratingIcon.title=ratingIcon.getAttribute('aria-label');
+                ratingIcon.innerHTML=entry.reaction==='like'
+                    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg>'
+                    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg>';
+                body.append(ratingIcon);
+                if(typeof entry.comment_body==='string'&&entry.comment_body!==''){
+                    const comment=document.createElement('span');
+                    comment.textContent=entry.comment_body;
+                    body.append(comment);
+                }
+            }else body.textContent=entry.text||'';
             if(typeof entry.comment_body==='string')item.dataset.commentBody=entry.comment_body;
             item.append(label,time,body);
             if(entry.can_edit&&entry.edit_url){
