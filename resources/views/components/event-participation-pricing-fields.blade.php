@@ -32,6 +32,7 @@
             <input type="checkbox" data-event-cost-save-default @disabled(!$pricingPaid)> Использовать этот комментарий по умолчанию
         </label>
     </div>
+    @include('components.event-cost-inclusion-fields', ['pricingEvent' => $pricingEvent])
     @error('total_cost') <small role="alert">{{ $message }}</small> @enderror
     @error('participant_cost') <small role="alert">{{ $message }}</small> @enderror
     @error('cost_comment') <small role="alert">{{ $message }}</small> @enderror
