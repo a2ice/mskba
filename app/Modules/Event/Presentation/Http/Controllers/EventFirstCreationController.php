@@ -167,6 +167,7 @@ final class EventFirstCreationController extends Controller
             'report_comments_enabled' => ['sometimes', 'boolean'],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'max_participants' => ['nullable', 'integer', 'between:2,500'],
+            ...\App\Modules\Event\Application\Services\EventParticipationPricing::rules(),
             // The event can be created independently from its optional Game child.
             'create_game' => ['sometimes', 'boolean'],
             'add_organizer_role' => ['sometimes', 'boolean'],
