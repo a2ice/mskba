@@ -132,7 +132,7 @@ final class TelegramBotContactLinkTest extends TestCase
         $token = $this->startLink($requester);
         app(HandleTelegramBotLinkCallback::class)->handle($this->linkCallback($token, 888));
 
-        $this->postJson(route('account.telegram.bot.link.status'), ['token' => $token])
+        $response = $this->postJson(route('account.telegram.bot.link.status'), ['token' => $token])
             ->assertStatus(409)
             ->assertJsonPath('status', 'duplicate');
         $this->assertDatabaseHas('telegram_accounts', [
@@ -142,6 +142,12 @@ final class TelegramBotContactLinkTest extends TestCase
         $this->assertDatabaseMissing('contacts', [
             'contactable_id' => $requester->id, 'type' => 'telegram', 'value' => '888',
         ]);
+        $this->assertAuthenticatedAs($requester);
+
+        $url = $response->json('redirect_url');
+        $this->get($url)->assertOk()->assertSee('Заполненность');
+        $this->post($url.'/merge', ['canonical_user_id' => $requester->id])->assertRedirect(route('account'));
+        $this->assertSame($requester->id, $existingOwner->fresh()->canonical_user_id);
         $this->assertAuthenticatedAs($requester);
     }
 

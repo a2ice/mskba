@@ -3,6 +3,8 @@
 namespace App\Modules\Telegram\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\Services\UserDuplicateSelfServiceProofStore;
+use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
 use App\Modules\Telegram\Application\DTO\TelegramLoginWidgetUserDTO;
 use App\Modules\Telegram\Application\Services\TelegramBotLoginChallengeStore;
 use App\Modules\Telegram\Application\UseCases\LinkTelegramIdentityHandler;
@@ -16,6 +18,7 @@ final class TelegramBotLinkStatusController extends Controller
         Request $request,
         TelegramBotLoginChallengeStore $challenges,
         LinkTelegramIdentityHandler $link,
+        UserDuplicateSelfServiceProofStore $proofs,
     ): JsonResponse {
         $data = $request->validate(['token' => ['required', 'string', 'size:43']]);
         $browserKey = (string) $request->session()->get('telegram_bot_link_browser_key');
@@ -28,7 +31,7 @@ final class TelegramBotLinkStatusController extends Controller
             $result = $challenges->consumeForBrowser(
                 $data['token'],
                 $browserKey,
-                function (array $challenge) use ($currentUser, $link): array {
+                function (array $challenge) use ($currentUser, $link, $proofs, $request): array {
                     if ((int) ($challenge['initiator_user_id'] ?? 0) !== (int) $currentUser->id) {
                         throw new InvalidArgumentException('Данная привязка принадлежит другому аккаунту.');
                     }
@@ -47,6 +50,19 @@ final class TelegramBotLinkStatusController extends Controller
                     );
 
                     $linked = $link->linkVerifiedUser($currentUser, $verified);
+                    if ($linked['status'] === 'duplicate') {
+                        $candidate = $linked['duplicate'];
+                        if ($candidate === null || $candidate->status !== UserDuplicateStatusEnum::PENDING) {
+                            throw new InvalidArgumentException('Эта пара аккаунтов уже была рассмотрена. Обратитесь к администратору.');
+                        }
+                        $proofs->issue(
+                            candidate: $candidate,
+                            actor: $currentUser,
+                            telegramUserId: (int) $verified->id,
+                            sessionId: $request->session()->getId(),
+                        );
+                    }
+
                     return [
                         'status' => $linked['status'],
                         'duplicate_id' => $linked['duplicate']?->id,
