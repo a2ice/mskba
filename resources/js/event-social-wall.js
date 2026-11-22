@@ -236,11 +236,19 @@ export function mountEventDiscussion(root, {
             if(href){const a=document.createElement('a');a.className='venue-play-dialog__participation-link';a.href=href;a.textContent='Участвовать';noticeNode.append(a);}
         }
         noticeNode.hidden=!!response.can_post;
+        const noticeDivider=pane.querySelector('[data-report-notice-divider]');
+        if(noticeDivider)noticeDivider.hidden=noticeNode.hidden;
         if(!response.can_post)pane.querySelectorAll('[data-venue-play-edit]').forEach(b=>b.hidden=true);
         if(pane.hasAttribute('data-event-report-wall')){
             pane.dataset.reportReaction=response.reaction||'';
             pane.dataset.canReact=response.can_react?'1':'0';
-            pane.querySelectorAll('[data-report-reaction]').forEach(b=>{b.disabled=!response.can_react;b.setAttribute('aria-pressed',String(b.dataset.reportReaction===response.reaction));});
+            pane.querySelectorAll('[data-report-reaction]').forEach(b=>{
+                b.disabled=!response.can_react;
+                b.setAttribute('aria-pressed',String(b.dataset.reportReaction===response.reaction));
+                const count=response[b.dataset.reportReaction==='like'?'likes':'dislikes'];
+                const counter=b.querySelector('[data-report-reaction-count]');
+                if(counter&&Number.isInteger(count)){counter.textContent=String(count);b.setAttribute('aria-label',(b.dataset.reportReaction==='like'?'Нравится: ':'Не нравится: ')+count);}
+            });
             const tally=document.querySelector('[data-report-like-count]');
             if(tally&&Number.isInteger(response.likes)){tally.textContent=String(response.likes);tally.setAttribute('aria-label','Лайков: '+response.likes);}
         }
@@ -352,16 +360,58 @@ export function mountEventDiscussion(root, {
         if(pane&&['confirmed','tentative','left'].includes(status))void respond(pane,status);
     }));
     for(const pane of panes){
-        let reacting=false;
-        pane.querySelectorAll('[data-report-reaction]').forEach(button=>button.addEventListener('click',async()=>{
+        let reacting=false, pendingReaction=null, reactionRequestId=null;
+        const reactionDialog=pane.querySelector('[data-report-reaction-dialog]');
+        const reactionForm=reactionDialog?.querySelector('[data-report-reaction-form]');
+        const reactionField=reactionForm?.querySelector('[name="body"]');
+        const reactionError=reactionDialog?.querySelector('[data-report-reaction-error]');
+        const canComment=()=>pane.querySelector('[data-chat-composer]')?.dataset.chatCanPost==='true';
+        async function saveReaction(reaction,body='',requestId=null){
             if(reacting||pane.dataset.canReact!=='1')return;
-            reacting=true;const reaction=pane.dataset.reportReaction===button.dataset.reportReaction?null:button.dataset.reportReaction;
+            reacting=true;
             pane.querySelectorAll('[data-report-reaction]').forEach(b=>b.disabled=true);
-            try{const result=await request(pane.dataset.reactionUrl,'PUT',{reaction});
-                paintWallAccess(pane,{...result,can_post:pane.querySelector('[data-chat-composer]').dataset.chatCanPost==='true',can_post_reason:pane.querySelector('[data-venue-play-comment-notice]').textContent});
-                await refreshWall(pane);
-            }catch(e){notice(pane,e.message,true);}
-            finally{reacting=false;pane.querySelectorAll('[data-report-reaction]').forEach(b=>{b.disabled=pane.dataset.canReact!=='1';});}
+            reactionForm?.querySelectorAll('button,textarea').forEach(b=>b.disabled=true);
+            if(reactionError)reactionError.hidden=true;
+            try{
+                const result=await request(pane.dataset.reactionUrl,'PUT',{reaction,...(body?{body,client_request_id:requestId}:{})});
+                paintWallAccess(pane,{...result,can_post:canComment(),can_post_reason:pane.querySelector('[data-venue-play-comment-notice]').textContent});
+                if(reactionDialog?.open)reactionDialog.close();
+                await refreshWall(pane,result.entry||null);
+                if(result.entry){
+                    const list=messages(pane);
+                    if(!list.querySelector('[data-entry-id="'+Number(result.entry.id)+'"]'))appendEntries(pane,[result.entry]);
+                    list.querySelector('[data-entry-id="'+Number(result.entry.id)+'"]')?.scrollIntoView({block:'nearest',behavior:'smooth'});
+                }
+            }catch(e){
+                if(reactionDialog?.open){reactionError.textContent=e.message;reactionError.hidden=false;}
+                else notice(pane,e.message,true);
+            }finally{
+                reacting=false;
+                reactionForm?.querySelectorAll('button,textarea').forEach(b=>b.disabled=false);
+                pane.querySelectorAll('[data-report-reaction]').forEach(b=>{b.disabled=pane.dataset.canReact!=='1';});
+            }
+        }
+        if(reactionDialog){
+            bindBackdropDismiss(reactionDialog,()=>!reacting);
+            reactionDialog.addEventListener('cancel',event=>{if(reacting)event.preventDefault();});
+            reactionDialog.querySelectorAll('[data-report-reaction-cancel]').forEach(button=>button.addEventListener('click',()=>{if(!reacting)reactionDialog.close();}));
+            reactionForm.addEventListener('submit',event=>{
+                event.preventDefault();
+                if(!pendingReaction||reacting)return;
+                const body=reactionField.value.trim();
+                if([...body].length>200)return;
+                void saveReaction(pendingReaction,body,reactionRequestId);
+            });
+            reactionField.addEventListener('input',()=>{reactionRequestId=crypto.randomUUID();});
+        }
+        pane.querySelectorAll('[data-report-reaction]').forEach(button=>button.addEventListener('click',()=>{
+            if(reacting||pane.dataset.canReact!=='1'||reactionDialog?.open)return;
+            const reaction=pane.dataset.reportReaction===button.dataset.reportReaction?null:button.dataset.reportReaction;
+            if(reaction&&reactionDialog&&canComment()){
+                pendingReaction=reaction;reactionRequestId=crypto.randomUUID();reactionField.value='';reactionError.hidden=true;
+                reactionDialog.querySelector('[data-report-reaction-title]').textContent=reaction==='like'?'Нравится':'Не нравится';
+                reactionDialog.showModal();
+            }else void saveReaction(reaction);
         }));
         pane.querySelector('[data-venue-play-roster-retry]')?.addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const messageList=messages(pane);
