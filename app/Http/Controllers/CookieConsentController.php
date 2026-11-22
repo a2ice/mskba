@@ -47,20 +47,19 @@ final class CookieConsentController extends Controller
             }
         });
 
-        // A guest decision lives in their current Laravel session only.
-        // Never transfer it into a different account automatically.
-        if ($accountId === null) {
-            CookieConsent::rememberGuestChoice($request, $choice);
-        }
-
         $response = $request->expectsJson()
             ? response()->json(['analytics' => $choice])
             : redirect()->back(303);
 
-        // Expire old year-long browser cookies from the previous implementation:
-        // they must not override a different signed-in account's preference.
-        return $response
-            ->header('Cache-Control', 'private, no-store')
-            ->cookie(cookie()->forget(CookieConsent::COOKIE_NAME));
+        // Only guest decisions update the browser preference. Account choices
+        // remain independent and never inherit a guest preference.
+        $response->header('Cache-Control', 'private, no-store')
+            ->cookie(cookie()->forget(CookieConsent::LEGACY_COOKIE_NAME));
+
+        if ($accountId === null) {
+            $response->cookie(CookieConsent::guestCookie($choice));
+        }
+
+        return $response;
     }
 }

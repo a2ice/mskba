@@ -5,6 +5,7 @@ namespace Tests\Feature\Identity;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
+use App\Support\Privacy\CookieConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -22,6 +23,7 @@ class BrowserFingerprintTest extends TestCase
         config()->set('identity_tracking.activity_store', 'array');
         config()->set('identity_tracking.activity_write_interval_seconds', 600);
         Cache::store('array')->clear();
+        $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::guestCookie('accepted')->getValue());
     }
 
     protected function tearDown(): void
@@ -29,6 +31,25 @@ class BrowserFingerprintTest extends TestCase
         Carbon::setTestNow();
 
         parent::tearDown();
+    }
+
+    private function allowAccount(User $user): void
+    {
+        DB::table('user_cookie_consent_preferences')->insert([
+            'user_id' => $user->id,
+            'analytics_choice' => 'accepted',
+            'notice_version' => CookieConsent::version(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public function test_guest_without_consent_or_after_refusal_is_not_tracked(): void
+    {
+        foreach (['', CookieConsent::guestCookie('rejected')->getValue()] as $choice) {
+            $this->withCookie(CookieConsent::COOKIE_NAME, $choice)->get('/')
+                ->assertOk()->assertCookieMissing('mskba_browser_fp');
+        }
+        $this->assertDatabaseCount('user_fingerprints', 0);
     }
 
     public function test_guest_visit_records_anonymous_browser_fingerprint(): void
@@ -54,6 +75,7 @@ class BrowserFingerprintTest extends TestCase
         $user = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
         ]);
+        $this->allowAccount($user);
 
         $response = $this
             ->get('/')
@@ -94,6 +116,7 @@ class BrowserFingerprintTest extends TestCase
             'password' => 'password',
             'status' => UserStatusEnum::CONFIRMED,
         ]);
+        $this->allowAccount($user);
 
         $response = $this
             ->get('/')
@@ -132,6 +155,8 @@ class BrowserFingerprintTest extends TestCase
             'username' => 'fingerprint_second_user',
             'status' => UserStatusEnum::CONFIRMED,
         ]);
+        $this->allowAccount($firstUser);
+        $this->allowAccount($secondUser);
 
         $response = $this
             ->get('/')
@@ -168,6 +193,7 @@ class BrowserFingerprintTest extends TestCase
         $user = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
         ]);
+        $this->allowAccount($user);
 
         $this
             ->actingAs($user)
