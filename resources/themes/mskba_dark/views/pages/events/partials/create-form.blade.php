@@ -130,6 +130,7 @@
             </select>
         </div>
     </div>
+    @include('components.event-time-comment-fields')
     @include('components.event-participation-pricing-fields')
     <div class="form-group field mb-4">
         <label class="form-label" for="{{ $formIdPrefix }}Description">Описание</label>
