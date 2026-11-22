@@ -110,6 +110,7 @@ final class UpdateEventHandler
                 ...($event->canManageFeedback($actor->user) ? array_intersect_key($data, array_flip(['discussion_enabled', 'report_comments_enabled'])) : []),
                     'max_participants' => $maxParticipants,
                 ...app(\App\Modules\Event\Application\Services\EventParticipationPricing::class)->attributes($actor, $data, $event),
+                ...app(\App\Modules\Event\Application\Services\EventTimeComment::class)->attributes($actor, $data, $event),
                 ])->save();
 
                 return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
@@ -231,6 +232,7 @@ final class UpdateEventHandler
                 ...($event->canManageFeedback($actor->user) ? array_intersect_key($data, array_flip(['discussion_enabled', 'report_comments_enabled'])) : []),
                 'max_participants' => $maxParticipants,
                 ...app(\App\Modules\Event\Application\Services\EventParticipationPricing::class)->attributes($actor, $data, $event),
+                ...app(\App\Modules\Event\Application\Services\EventTimeComment::class)->attributes($actor, $data, $event),
                 'venue_id' => $targetVenue->id,
                 'venue_court_id' => $bookingDataProvided ? $targetCourt?->id : $event->venue_court_id,
                 'planned_booking_scope' => $bookingScope,
