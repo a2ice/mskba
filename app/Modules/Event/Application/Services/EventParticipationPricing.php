@@ -7,7 +7,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use InvalidArgumentException;
+use Illuminate\Validation\ValidationException;
 
 final class EventParticipationPricing
 {
@@ -45,7 +45,7 @@ final class EventParticipationPricing
 
         $validated = Validator::make($data, self::rules());
         if ($validated->fails()) {
-            throw new InvalidArgumentException('Проверьте суммы и комментарий к стоимости мероприятия.');
+            throw new ValidationException($validated);
         }
         if (! filter_var($data['is_paid'], FILTER_VALIDATE_BOOLEAN)) {
             return [
@@ -54,11 +54,11 @@ final class EventParticipationPricing
             ];
         }
 
-        $total = $this->minor($data['total_cost'] ?? null);
+        $total = $this->minor($data['total_cost'] ?? null, 'total_cost');
         $auto = filter_var($data['participant_cost_auto'] ?? true, FILTER_VALIDATE_BOOLEAN);
         $participant = $auto
             ? $this->share($total, $data['max_participants'] ?? null)
-            : $this->minor($data['participant_cost'] ?? null);
+            : $this->minor($data['participant_cost'] ?? null, 'participant_cost');
         $comment = trim((string) ($data['cost_comment'] ?? $event?->cost_comment ?? self::defaultComment($actor->user)));
         if ($comment === '') {
             $comment = self::defaultComment($actor->user);
@@ -77,15 +77,15 @@ final class EventParticipationPricing
         ];
     }
 
-    private function minor(mixed $amount): int
+    private function minor(mixed $amount, string $field): int
     {
         if (! is_scalar($amount) || ! preg_match('/^\d{1,8}(?:\.\d{1,2})?$/D', (string) $amount)) {
-            throw new InvalidArgumentException('Укажите корректную стоимость мероприятия и участия.');
+            throw ValidationException::withMessages([$field => 'Укажите корректную стоимость мероприятия и участия.']);
         }
         [$whole, $fraction] = array_pad(explode('.', (string) $amount, 2), 2, '');
         $minor = (int) $whole * 100 + (int) str_pad($fraction, 2, '0');
         if ($minor <= 0) {
-            throw new InvalidArgumentException('Стоимость платного мероприятия и участия должна быть больше нуля.');
+            throw ValidationException::withMessages([$field => 'Стоимость платного мероприятия и участия должна быть больше нуля.']);
         }
 
         return $minor;
