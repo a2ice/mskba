@@ -49,6 +49,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'participant_cost_minor',
     'participant_cost_auto',
     'cost_comment',
+    'time_comment',
     'completed_at',
     'completed_by_actor_id',
     'cancelled_at',
