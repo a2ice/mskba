@@ -452,7 +452,10 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-player-details-open', false)
             ->getContent();
         $this->assertGreaterThanOrEqual(2, substr_count($ownHtml, 'src="/storage/avatars/hidden-self-unique.jpg"'));
-        $this->assertSame(3, substr_count($ownHtml, 'data-venue-play-open'));
+        // The interested-players dialog now adds the venue directly to favorites;
+        // only the actual play/open actions retain data-venue-play-open.
+        $this->assertSame(2, substr_count($ownHtml, 'data-venue-play-open'));
+        $this->assertStringContainsString('data-venue-favorite-follow-action', $ownHtml);
         $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
 
         auth()->logout();
