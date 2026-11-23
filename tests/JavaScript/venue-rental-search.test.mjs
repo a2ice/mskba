@@ -1,5 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+// Run the venue description UI contract alongside the standard venue rental suite.
+import './venue-description-lightbox.test.mjs';
 import {readFileSync} from 'node:fs';
 import {rentalDefaults, rangeSlots, eligibleRuns, summarizeRental, groupRentalSlots} from '../../resources/themes/mskba_app/js/venue-rental-search-logic.js';
 const date = '2026-11-20';
