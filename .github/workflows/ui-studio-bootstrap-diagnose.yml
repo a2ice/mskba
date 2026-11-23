@@ -1,0 +1,50 @@
+name: UI Studio bootstrap diagnostic (read only)
+
+on:
+  push:
+    branches: [ops/ui-studio-995-preflight]
+    paths: [.github/workflows/ui-studio-bootstrap-diagnose.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Read-only Laravel bridge dispatch and TLS response checks
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 4m
+          script: |
+            set -euo pipefail
+            echo '--- IS ROOT PATCH ACTIVE? ---'
+            if grep -qF 'MSKBA_UI_STUDIO_SSO_V1' /etc/nginx/sites-enabled/mskba-ui; then echo 'NGINX_PATCH=ACTIVE'; else echo 'NGINX_PATCH=ROLLED_BACK'; fi
+            echo '--- PUBLIC ROUTES ---'
+            for path in /uikit /uikit/bridge /uikit/session; do
+              code=$(curl --silent --show-error --max-time 9 --output /dev/null --write-out '%{http_code}' "https://ui.mskba.ru$path" || true)
+              echo "GET_$path=$code"
+            done
+            echo '--- LOCAL LARAVEL BOOTSTRAP DISPATCH ---'
+            docker exec -w /workspace mskba-ui-php php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              try {
+                $kernel = $app->make(\Illuminate\Contracts\Http\Kernel::class);
+                $request = \Illuminate\Http\Request::create("https://ui.mskba.ru/uikit/bridge", "GET");
+                $response = $kernel->handle($request);
+                echo "LOCAL_BRIDGE_RESPONSE=".$response->getStatusCode()."\n";
+                echo "LOCAL_BRIDGE_CLASS=".get_class($response)."\n";
+                $kernel->terminate($request, $response);
+              } catch (\Throwable $e) {
+                echo "LOCAL_BRIDGE_ERROR_CLASS=".get_class($e)."\n";
+                echo "LOCAL_BRIDGE_ERROR_CODE=".$e->getCode()."\n";
+                exit(1);
+              }
+            '
+            echo 'UI_STUDIO_DIAGNOSTIC=COMPLETE'
