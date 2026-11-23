@@ -212,7 +212,10 @@ final class VenueCourtDetailInheritanceTest extends TestCase
             'full_description' => '<h4>Удобное расположение</h4><p>Крытый <strong>зал</strong></p>'
                 .'<ul><li>Мячи</li><li>Раздевалки</li></ul>'
                 .'<script>alert(1)</script><p onclick="alert(2)">Подробности</p>'
-                .'<a href="javascript:alert(3)">Ссылка</a>',
+                .'<a href="javascript:alert(3)">Ссылка</a>'
+                .'<div class="d-flex flex-wrap gap-3 content-gallery"><a href="/storage/test.webp" class="content-lightbox" data-venue-lightbox="images"><img src="/storage/test.webp" alt="Зал"></a></div>'
+                .'<a href="#app-venue-schedule" data-venue-rental-open="1">Арендовать</a>'
+                .'<a href="#app-venue-about" data-venue-play-open="1">Хочу играть</a>',
         ]);
 
         $court = $venue->primaryCourt()->firstOrFail();
@@ -224,6 +227,10 @@ final class VenueCourtDetailInheritanceTest extends TestCase
                 ->assertSee('<h4>Удобное расположение</h4>', false)
                 ->assertSee('<strong>зал</strong>', false)
                 ->assertSee('<ul><li>Мячи</li><li>Раздевалки</li></ul>', false)
+                ->assertSee('class="d-flex flex-wrap gap-3 content-gallery"', false)
+                ->assertSee('data-venue-lightbox="images"', false)
+                ->assertSee('data-venue-rental-open="1"', false)
+                ->assertSee('data-venue-play-open="1"', false)
                 ->assertDontSee('&lt;h4&gt;', false)
                 ->assertDontSee('<script>alert(1)</script>', false)
                 ->assertDontSee('onclick="alert(2)"', false)
