@@ -309,6 +309,14 @@ final class CourtsRelationManager extends RelationManager
                     $this->syncNotification($result);
                 }),
         ])->recordActions([
+            Action::make('unifiedTariffGrid')->label('Тарифная сетка')
+                ->icon('heroicon-o-table-cells')
+                ->url(fn (VenueCourt $record): string => route('account.venues.tariff-grid.edit', [
+                    'venue' => $this->getOwnerRecord()->id,
+                    'court' => $record->id,
+                ]))
+                ->openUrlInNewTab()
+                ->visible(fn (): bool => VenueResource::authorized()),
             EditAction::make()
                 ->label('Редактировать')
                 ->modalHeading(fn (VenueCourt $record): string => 'Редактировать: '.$record->name)
@@ -358,57 +366,6 @@ final class CourtsRelationManager extends RelationManager
                         (bool) ($data['include_prices'] ?? false),
                     );
                     $this->syncNotification($result);
-                }),
-            Action::make('courtPricePeriods')->label('Тарифные интервалы')
-                ->icon('heroicon-o-currency-dollar')
-                ->schema([
-                    Repeater::make('prices')->label('Цены зала по дням и времени')
-                        ->helperText('Приоритет: интервал зала → базовая цена зала → интервал площадки → базовая цена площадки.')
-                        ->schema([
-                            Select::make('day_of_week')->label('День')->required()
-                                ->options([
-                                    1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда',
-                                    4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье',
-                                ]),
-                            TimePicker::make('starts_at')->label('Начало шага')->required()->seconds(false),
-                            $this->rublePriceInput('whole_price_per_step_minor', 'Весь зал, ₽'),
-                            $this->rublePriceInput('half_price_per_step_minor', 'Половина, ₽'),
-                        ])->columns(4),
-                ])
-                ->fillForm(fn (VenueCourt $record): array => [
-                    'prices' => $record->slotPrices()->orderBy('day_of_week')->orderBy('starts_at')
-                        ->get()->map(fn ($price): array => [
-                            'day_of_week' => $price->day_of_week,
-                            'starts_at' => substr((string) $price->starts_at, 0, 5),
-                            'whole_price_per_step_minor' => $price->whole_price_per_step_minor,
-                            'half_price_per_step_minor' => $price->half_price_per_step_minor,
-                        ])->all(),
-                ])
-                ->action(function (VenueCourt $record, array $data): void {
-                    abort_unless(VenueResource::authorized(), 403);
-                    $rows = array_values($data['prices'] ?? []);
-                    $keys = [];
-                    foreach ($rows as $row) {
-                        $key = $row['day_of_week'].'|'.substr((string) $row['starts_at'], 0, 5);
-                        if (isset($keys[$key])) {
-                            throw ValidationException::withMessages([
-                                'prices' => 'Один и тот же тарифный шаг указан дважды.',
-                            ]);
-                        }
-                        $keys[$key] = true;
-                        if (($row['whole_price_per_step_minor'] ?? null) === null
-                            && ($row['half_price_per_step_minor'] ?? null) === null) {
-                            throw ValidationException::withMessages([
-                                'prices' => 'Укажите цену хотя бы для одного типа аренды.',
-                            ]);
-                        }
-                    }
-                    DB::transaction(function () use ($record, $rows): void {
-                        $record->slotPrices()->delete();
-                        foreach ($rows as $row) {
-                            $record->slotPrices()->create($row);
-                        }
-                    });
                 }),
             Action::make('uploadCourtPhoto')->label('Добавить фото')->icon('heroicon-o-photo')
                 ->schema([

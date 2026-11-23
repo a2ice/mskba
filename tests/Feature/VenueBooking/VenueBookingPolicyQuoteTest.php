@@ -555,10 +555,10 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData());
 
         $this->actingAs($owner)->get(route('account.venues.booking-policy.edit', $venue->id))
-            ->assertOk()->assertSeeText('Базовые условия площадки')->assertSeeText('Цены по датам');
+            ->assertOk()->assertSeeText('Базовые условия площадки')->assertSeeText('Тарифная сетка');
 
         $this->actingAs($owner)->get(route('account.venues.courts.index', $venue->routeIdentifier()))
-            ->assertOk()->assertSeeText('Условия аренды')->assertSeeText('Цены по датам');
+            ->assertOk()->assertSeeText('Условия аренды')->assertSeeText('Тарифная сетка');
 
         $this->get(route('venues.rental.show', $venue->id))
             ->assertOk()->assertSeeText('Аренда зала')->assertSeeText('Параметры аренды');

@@ -9,6 +9,7 @@ use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueScheduleSlotPrice;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
+use Illuminate\Support\Facades\DB;
 
 final class VenueSlotPricing
 {
@@ -49,6 +50,15 @@ final class VenueSlotPricing
             fn ($price): string => $price->date->format('Y-m-d').'|'.substr((string) $price->starts_at, 0, 5)
         ) ?? collect();
 
+        // An independent manual overlay always wins over imported prices.
+        // Keeping it outside venue_court_calendar_slot_prices makes refresh safe.
+        $manualWeekly = $court === null ? collect() : DB::table('venue_court_manual_slot_prices')
+            ->where('venue_court_id', $court->id)->whereNull('date')->get()
+            ->keyBy(fn ($price): string => $price->day_of_week.'|'.substr((string) $price->starts_at, 0, 5));
+        $manualCalendar = $court === null ? collect() : DB::table('venue_court_manual_slot_prices')
+            ->where('venue_court_id', $court->id)->whereBetween('date', [$dateFrom, $dateTo])->get()
+            ->keyBy(fn ($price): string => $price->date.'|'.substr((string) $price->starts_at, 0, 5));
+
         $courtBase = $court?->{$column};
         $venueBase = (int) $policy->{$column};
         // The venue-level tariff is a minimum for each payable policy step.
@@ -65,7 +75,9 @@ final class VenueSlotPricing
 
             // An explicit court-level value overrides inherited venue prices.
             // NULL (not zero) means "inherit" for either rental scope.
-            $courtCustom = $courtCalendar->get($dateKey)?->{$column}
+            $courtCustom = $manualCalendar->get($dateKey)?->{$column}
+                ?? $manualWeekly->get($weekdayKey)?->{$column}
+                ?? $courtCalendar->get($dateKey)?->{$column}
                 ?? $courtWeekly->get($weekdayKey)?->{$column}
                 ?? $courtBase;
 
