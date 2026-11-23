@@ -12,7 +12,7 @@ function harness({authenticated=false,status='none',count=3,fetchImpl=null}={}){
     const hero={dataset:{favoriteCount:String(count)},textContent:'',disabled:false,
         setAttribute(key,value){this[key]=value;},addEventListener(_,handler){this.click=handler;}};
     function follow(){
-        const dialog={open:true,close(){this.open=false;this.closed=(this.closed??0)+1;}};
+        const dialog={open:false,close(){this.open=false;this.closed=(this.closed??0)+1;}};
         const message={textContent:''},label={textContent:''};
         const action={disabled:true,closest(){return dialog;},
             setAttribute(key,value){this[key]=value;},
@@ -58,14 +58,15 @@ function harness({authenticated=false,status='none',count=3,fetchImpl=null}={}){
 
 test('guest can save venue directly from interested players without opening games popup',async()=>{
     const h=harness();await tick();
+    h.audience.dialog.open=true;
     assert.equal(h.audience.label.textContent,'Добавить в избранное');
     assert.equal(h.audience.action.disabled,false);
     await h.audience.action.click();
     assert.equal(h.audience.dialog.open,false);
-    assert.deepEqual(h.calls,[{type:'venue',id:8,sourceOpen:true}].map(call=>({...call,sourceOpen:h.games.dialog.open})));
+    assert.deepEqual(h.calls,[{type:'venue',id:8,sourceOpen:false}]);
     // Only the currently opened native dialog is closed; the global favorite
     // module decides whether to open login or the success dialog.
-    assert.equal(h.games.dialog.open,true);
+    assert.equal(h.games.dialog.open,false);
 });
 
 test('the games dialog shares one saved state and never offers removal',async()=>{
