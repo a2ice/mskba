@@ -71,7 +71,7 @@ final class VenueTariffGridController extends Controller
 
             'ranges' => ['nullable', 'array', 'max:16'],
             'ranges.*.days' => ['nullable', 'array', 'max:7'],
-            'ranges.*.days.*' => ['required', 'integer', 'between:1,7', 'distinct'],
+            'ranges.*.days.*' => ['required', 'integer', 'between:1,7'],
             'ranges.*.starts_at' => ['required', 'date_format:H:i'],
             'ranges.*.ends_at' => ['required', 'date_format:H:i'],
             'ranges.*.operation' => ['required', Rule::in(['set', 'clear'])],
