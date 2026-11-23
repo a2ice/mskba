@@ -25,6 +25,7 @@
 @section('content')
 <section class="container {{ $categoryRootClass }}" id="{{ $categoryRootId }}"
     data-default-category data-default-category-view="{{ $categoryView }}"
+    data-context-result-total="{{ $categoryResultTotal ?? '' }}"
     @if($categoryRootId === 'venues-catalog' && $categoryView !== 'map') data-venue-infinite-catalog data-next-page="{{ $hasMore ? $page + 1 : '' }}" @endif
     aria-labelledby="{{ $categoryHeadingId }}">
     <header class="{{ $categoryHeaderClass }}">
