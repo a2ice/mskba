@@ -179,6 +179,7 @@ final class TelegramEventIntegrationTest extends TestCase
             'whole_price_per_step_minor' => 500, 'half_price_per_step_minor' => 300,
             'hold_duration_minutes' => 30, 'requires_payment' => true,
             'payment_window_minutes' => 30, 'quote_validity_minutes' => 15,
+            'published_by_user_id' => User::factory()->create()->id,
             'published_at' => now(),
         ]);
 
