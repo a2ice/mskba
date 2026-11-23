@@ -131,16 +131,7 @@
         </form>
     </section>
 
-    @if($policy)
-        @include('theme::pages.venues.partials.calendar-price-editor', [
-            'calendarPrices' => $venue->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
-            'calendarStoreUrl' => route('account.venues.calendar-prices.store', $venue->id),
-            'calendarDeleteUrl' => route('account.venues.calendar-prices.destroy', [$venue->id, '__PRICE__']),
-            'calendarStep' => $policy->time_step_minutes,
-            'calendarCurrency' => $policy->currency,
-            'calendarId' => 'venue-calendar',
-        ])
-    @endif
+
 </div>
 </div>
 @endsection
