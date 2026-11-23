@@ -1530,6 +1530,69 @@
           }
         }
       }
+    },
+    "/api/v1/internal/editorial-news/{alias}/telegram/{chatId}/retry": {
+      "post": {
+        "tags": [
+          "Внутренний API · Новости"
+        ],
+        "operationId": "retryEditorialNewsTelegramDelivery",
+        "summary": "Повторить только ошибочную доставку новости в выбранную группу Telegram",
+        "description": "Только production, editorial-news:publish + editorial-news:social. Идемпотентно для pending/published. Повтор допускается для однозначного HTTP-отклонения Telegram или уже известного message_id; ошибки с неизвестным исходом возвращают 409. Никаких изменений публикации на сайте или в ВК.",
+        "security": [
+          {
+            "editorialNewsAgentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          },
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Локальный TelegramChat ID; ранее выбранный для новости."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Обновлённый статус; pending не означает доставку.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialNewsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется токен"
+          },
+          "403": {
+            "description": "Недостаточно прав либо не production"
+          },
+          "404": {
+            "description": "Материал или ранее выбранный чат не найдены"
+          },
+          "409": {
+            "description": "Нельзя безопасно повторить: неизвестен результат отправки либо конфликт статусов"
+          },
+          "429": {
+            "description": "Превышен лимит запросов"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2629,6 +2692,21 @@
             "type": "string",
             "format": "binary",
             "description": "JPEG, PNG, WebP; до 5 MiB, 6000×6000."
+          },
+          "meta_title": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "SEO title. По умолчанию заголовок новости."
+          },
+          "meta_description": {
+            "type": "string",
+            "maxLength": 320,
+            "description": "SEO description. По умолчанию нормализованный summary до 320 символов."
+          },
+          "meta_keywords": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Ключевые слова через запятую. По умолчанию: баскетбол, Москва, MSKBA."
           }
         }
       },
@@ -2680,7 +2758,9 @@
                   "required": [
                     "chat_id",
                     "status",
-                    "message_id"
+                    "message_id",
+                    "error_code",
+                    "retry_safe"
                   ],
                   "properties": {
                     "chat_id": {
@@ -2695,6 +2775,26 @@
                         "integer",
                         "null"
                       ]
+                    },
+                    "error_code": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "chat_not_found",
+                        "bot_access_denied",
+                        "rate_limited",
+                        "outcome_unknown",
+                        "telegram_rejected",
+                        "delivery_error",
+                        null
+                      ],
+                      "description": "Код ошибки без текста провайдера и токена."
+                    },
+                    "retry_safe": {
+                      "type": "boolean",
+                      "description": "Можно безопасно повторить только Telegram-публикацию после устранения причины."
                     }
                   }
                 }
@@ -2728,6 +2828,31 @@
                     "type": "null"
                   }
                 ]
+              },
+              "seo": {
+                "type": "object",
+                "required": [
+                  "meta_title",
+                  "meta_description",
+                  "meta_keywords"
+                ],
+                "properties": {
+                  "meta_title": {
+                    "type": "string"
+                  },
+                  "meta_description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "meta_keywords": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
               }
             }
           }
