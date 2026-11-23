@@ -26,6 +26,7 @@
         'new' => 'Сначала новые',
     ];
     $categorySidebarLabel = 'Фильтры площадок';
+    $categoryResultTotal = $total;
 @endphp
 @extends('theme::layouts.category')
 
