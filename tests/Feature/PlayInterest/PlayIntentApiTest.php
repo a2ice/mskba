@@ -168,6 +168,60 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame('hide-this-profile', $visible['direct'][0]['name']);
     }
 
+
+    public function test_guest_venue_favorite_total_and_consented_social_avatar_are_visible(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $publicUser = User::factory()->create(['username' => 'open-avatar-player']);
+        $privateUser = User::factory()->create(['username' => 'closed-avatar-player']);
+        $trashedUser = User::factory()->create();
+
+        \App\Modules\Telegram\Domain\Models\TelegramAccount::query()->create([
+            'user_id' => $publicUser->id,
+            'telegram_user_id' => 100051,
+            'photo_url' => 'https://cdn.telegram.test/public-venue-avatar.jpg',
+        ]);
+        \App\Modules\Vk\Domain\Models\VkAccount::query()->create([
+            'user_id' => $privateUser->id,
+            'vk_user_id' => '100052',
+            'avatar_url' => 'https://vk.test/private-venue-avatar.jpg',
+        ]);
+        foreach ([
+            [$publicUser, null],
+            [$privateUser, null],
+            [$trashedUser, now()],
+        ] as [$user, $trashedAt]) {
+            \App\Modules\Favorites\Domain\Models\Favorite::query()->create([
+                'user_id' => $user->id, 'entity_type' => 'venue',
+                'entity_id' => $venue->id, 'trashed_at' => $trashedAt,
+            ]);
+        }
+
+        // Explicit venue-public opt-in is required even for a social-network avatar.
+        $this->actingAs($publicUser)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'show_on_venue' => true,
+        ])->assertCreated();
+        auth()->logout();
+
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)->forVenue($venue);
+        $public = collect($audience['direct'])->firstWhere('name', 'open-avatar-player');
+        $private = collect($audience['direct'])->firstWhere('name', 'closed-avatar-player');
+        $this->assertSame('https://cdn.telegram.test/public-venue-avatar.jpg', $public['avatar']);
+        $this->assertNull($private['avatar']);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('В избранное (2)')
+            ->assertSee('data-favorite-count="2"', false)
+            ->assertSee('public-venue-avatar.jpg')
+            ->assertDontSee('private-venue-avatar.jpg');
+    }
+
     public function test_guest_sees_avatar_and_player_details_when_any_matching_subscription_is_public(): void
     {
         config()->set('themes.active', 'mskba_app');
