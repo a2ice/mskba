@@ -778,7 +778,8 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .mskba-venue-map-balloon-action{display:flex;justify-content:center;align-items:center;min-height:36px;margin-top:8px;padding:6px 12px;border-radius:7px;background:var(--accent,#b94c00);color:var(--accent-contrast,#fff)!important;font:600 13px/1.3 system-ui,sans-serif;text-decoration:none!important;white-space:nowrap}
 
 /* Full venue descriptions accept sanitized HTML while preserving plain-text line breaks. */
-.app-venue-block__description.app-venue-description{width:100%;min-width:0;line-height:1.6;white-space:pre-line;overflow-wrap:anywhere}
+.app-venue-block__description.app-venue-description{width:100%;min-width:0;line-height:1.6;white-space:normal;overflow-wrap:anywhere}
+.app-venue-block__description.app-venue-description--plain{white-space:pre-line}
 .app-venue-description :is(p,h2,h3,h4,ul,ol,blockquote){margin:0 0 .85em;white-space:normal}
 .app-venue-description :is(p,h2,h3,h4,ul,ol,blockquote):last-child{margin-bottom:0}
 .app-venue-description :is(h2,h3,h4){color:var(--text);line-height:1.35}
