@@ -746,12 +746,8 @@
                     <div class="venue-show-section__heading">
                         <h2 id="venue-full-description-title">О площадке</h2>
                     </div>
-                    @php
-                        $venueDescriptionHtml = app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription);
-                        $venueDescriptionHasBlocks = preg_match('~<(?:p|div|h[2-4]|ul|ol|li|blockquote|pre|figure|figcaption|table|thead|tbody|tr|td|th|hr)\b~i', $venueDescriptionHtml) === 1;
-                    @endphp
-                    <div class="venue-show-section__description{{ $venueDescriptionHasBlocks ? '' : ' venue-show-section__description--plain' }}">
-                        {!! $venueDescriptionHtml !!}
+                    <div class="venue-show-section__description">
+                        {!! app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription) !!}
                     </div>
                 </section>
             @endif
