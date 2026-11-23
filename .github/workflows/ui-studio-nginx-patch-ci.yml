@@ -1,0 +1,54 @@
+name: Verify UI Studio Nginx patch
+
+on:
+  push:
+    branches: [feature/ui-studio-995-nginx-bridge]
+    paths:
+      - '.github/workflows/ui-studio-nginx-patch-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Python syntax
+        run: python3 -m py_compile ops/ui-studio/enable-nginx-bridge.py
+      - name: Exercise deterministic Nginx patch and idempotence without server access
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          space = {'__name__': 'ui_studio_patch_test'}
+          code = Path("ops/ui-studio/enable-nginx-bridge.py").read_text()
+          exec(compile(code, "nginx_patch", "exec"), space)
+          baseline = """server {
+              server_name ui.mskba.ru;
+              auth_basic "MSKBA UI Studio";
+              location ^~ /build/ {
+                  limit_except GET { deny all; }
+              }
+              location ~ ^/uikit(/|$) {
+                  limit_except GET { deny all; }
+                  include fastcgi_params;
+                  fastcgi_param SCRIPT_FILENAME /workspace/public/index.php;
+                  fastcgi_param SCRIPT_NAME /index.php;
+                  fastcgi_param DOCUMENT_ROOT /workspace/public;
+                  fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+                  fastcgi_param HTTP_COOKIE "";
+                  fastcgi_pass unix:/var/www/mskba-ui-runtime/php-fpm.sock;
+              }
+          }"""
+          baseline = "\n".join(s[10:] if s.startswith("          ") else s for s in baseline.split("\n")) + "\n"
+          updated, changed = space["patch"](baseline)
+          assert changed
+          assert "location ~ ^/uikit/(session|reviews)$" in updated
+          assert updated.count('fastcgi_param HTTP_COOKIE "mskba_ui_session=$cookie_mskba_ui_session"') == 2
+          assert updated.count('auth_basic off;') == 3
+          again, second = space["patch"](updated)
+          assert not second and again == updated
+          print("UI_STUDIO_NGINX_PATCH_TESTS=PASS")
+          PY
