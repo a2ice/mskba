@@ -365,7 +365,11 @@
                 @else
                     <p class="app-venue-court-overview"><strong>Залов и кортов:</strong> {{ count($venue->courts) }}</p>
                 @endif
-                @if(trim((string) $venue->fullDescription) !== '')<p class="app-venue-block__description">{{ $venue->fullDescription }}</p>@endif
+                @if(trim((string) $venue->fullDescription) !== '')
+                    <div class="app-venue-block__description app-venue-description">
+                        {!! app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription) !!}
+                    </div>
+                @endif
                 @if($venueAboutPromotions->isNotEmpty())
                     <div class="app-venue-about__promotions" aria-label="Акции площадки">
                         @foreach($venueAboutPromotions as $promotion)
