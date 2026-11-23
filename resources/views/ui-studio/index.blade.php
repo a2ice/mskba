@@ -9,8 +9,26 @@
 @if(!$case)
     <h2>Интерфейсы</h2>
     @foreach($cases as $slug => $item)
-        <div class="case"><a href="{{ route('ui-studio.show',['ui_name'=>$slug],false) }}">{{ $item['title'] }}</a><span>{{ $item['status'] }} · r{{ $item['revision'] }}</span><a href="https://github.com/a2ice/mskba/issues/{{ $item['issue'] }}">#{{ $item['issue'] }}</a></div>
+        <div class="case"><a href="{{ route('ui-studio.show',['ui_name'=>$slug],false) }}">{{ $item['title'] }}</a><span>{{ !empty($acceptedCases[$slug]) ? 'Принято к интеграции' : $item['status'] }} · r{{ $item['revision'] }}</span><a href="https://github.com/a2ice/mskba/issues/{{ $item['issue'] }}">#{{ $item['issue'] }}</a></div>
     @endforeach
+
+    <section class="case" style="display:block">
+        <h2>UI Kit · принятые кандидаты</h2>
+        <p class="muted">Выбранные общие изменения формируют план обновления действующего UI Kit. Их код и гайдлайн вступают в силу только после отдельного интеграционного PR.</p>
+        @php($kitCount = 0)
+        @foreach($acceptedCases as $slug => $review)
+            @if($review && count($review['kit_selected'] ?? []))
+                <h3><a href="{{ route('ui-studio.show', ['ui_name' => $slug], false) }}">{{ $cases[$slug]['title'] }}</a> · r{{ $review['revision'] }}</h3>
+                @foreach($review['kit_changes'] as $change)
+                    @if(in_array($change['id'], $review['kit_selected'], true))
+                        @php($kitCount++)
+                        <p><strong>{{ $change['title'] }}</strong><br><span class="muted">{{ $change['description'] }}</span></p>
+                    @endif
+                @endforeach
+            @endif
+        @endforeach
+        @if($kitCount === 0)<p class="muted">Пока нет согласованных новых общих компонентов.</p>@endif
+    </section>
     <p><a href="https://github.com/a2ice/mskba/blob/main/docs/specification/ui-design-system.md">Гайдлайн проекта</a> · <a href="https://github.com/a2ice/mskba/issues/933">Регламент и развитие UI Studio</a></p>
 @else
     <h2>{{ $case['title'] }}</h2><p>{{ $case['status'] }} · r{{ $case['revision'] }} · <a href="https://github.com/a2ice/mskba/issues/{{ $case['issue'] }}">#{{ $case['issue'] }}</a></p>
