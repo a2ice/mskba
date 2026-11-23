@@ -89,7 +89,7 @@ if (dock) {
         const result = document.querySelector(
             '[data-default-category] .app-category__count, ' +
             '[data-default-category] [data-venue-visible-count], ' +
-            '.app-shop__toolbar-count, [data-favorites-count], [data-subscriptions-count]'
+            '.app-shop__toolbar-count, [data-context-results-count], [data-favorites-count], [data-subscriptions-count]'
         );
         filterCount.textContent = result?.closest('[role="status"]')?.textContent?.trim()
             || result?.textContent?.trim() || 'Поиск и фильтры раздела';
