@@ -1,6 +1,7 @@
 <div class="app-rental-pricing venue-tariff-grid" data-tariff-grid>
     <style>
         .venue-tariff-grid{max-width:1160px;margin:0 auto;padding:1.25rem 0 3rem}
+        .venue-tariff-grid [hidden]{display:none!important}
         .venue-tariff-grid__panel{margin-bottom:1rem;padding:1.25rem;border:1px solid var(--border-color,#d6d6d6);border-radius:12px}
         .venue-tariff-grid__fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.9rem;align-items:end}
         .venue-tariff-grid label{display:flex;flex-direction:column;gap:.3rem;font-size:.9rem}
@@ -80,7 +81,7 @@
                                 <div class="venue-tariff-grid__slot">
                                     <strong>{{ $cell['time'] }}</strong>
                                     <span>{{ number_format($cell['whole']/100, 2, ',', ' ') }} ₽ / {{ number_format($cell['half']/100, 2, ',', ' ') }} ₽</span>
-                                    <small>{{ $cell['source'] }}</small>
+                                    <small>{{ $cell['source'] }}@if($cell['availability']) · {{ $cell['availability'] }}@endif</small>
                                     <button type="button" class="button secondary" data-tariff-edit-slot
                                         data-day="{{ $day['day'] }}" data-time="{{ $cell['time'] }}"
                                         data-whole="{{ number_format($cell['whole']/100, 2, '.', '') }}"
@@ -118,8 +119,8 @@
                 </fieldset>
             @endif
             <div class="venue-tariff-grid__fields">
-                <label>Начало диапазона<input type="time" name="starts_at" value="08:00" required step="{{ $step * 60 }}"></label>
-                <label>Конец диапазона<input type="time" name="ends_at" value="10:00" required step="{{ $step * 60 }}"></label>
+                <label>Начало диапазона<input type="time" name="starts_at" value="{{ sprintf('%02d:%02d', intdiv(intdiv(480, $step) * $step, 60), (intdiv(480, $step) * $step) % 60) }}" required step="{{ $step * 60 }}"></label>
+                <label>Конец диапазона<input type="time" name="ends_at" value="{{ sprintf('%02d:%02d', intdiv((intdiv(480, $step) + 2) * $step, 60), ((intdiv(480, $step) + 2) * $step) % 60) }}" required step="{{ $step * 60 }}"></label>
                 <label>Весь зал, ₽ / шаг<input name="whole_price_per_step" inputmode="decimal" placeholder="Наследовать"></label>
                 <label>Половина зала, ₽ / шаг<input name="half_price_per_step" inputmode="decimal" placeholder="Наследовать"></label>
                 <label>Действие
