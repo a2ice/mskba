@@ -193,44 +193,7 @@
                             <button class="btn btn--primary btn--sm mt-3" type="submit">Сохранить условия зала</button>
                         </form>
                     </details>
-                    <details class="mt-3"><summary class="fw-semibold">Стоимость по временным слотам</summary>
-                        @foreach($court->slotPrices()->orderBy('day_of_week')->orderBy('starts_at')->get() as $slotPrice)
-                            <div class="d-flex gap-2 align-items-center mt-2 flex-wrap">
-                                <span>День {{ $slotPrice->day_of_week }}, {{ substr($slotPrice->starts_at, 0, 5) }}:
-                                    {{ $slotPrice->whole_price_per_step_minor === null ? '—' : number_format($slotPrice->whole_price_per_step_minor / 100, 2, ',', ' ') }}
-                                    / {{ $slotPrice->half_price_per_step_minor === null ? '—' : number_format($slotPrice->half_price_per_step_minor / 100, 2, ',', ' ') }}</span>
-                                <form method="POST" action="{{ route('account.venues.courts.prices.destroy', [$venue->routeIdentifier(), $court->routeIdentifier(), $slotPrice->id]) }}">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn--danger btn--sm">Удалить</button>
-                                </form>
-                            </div>
-                        @endforeach
-                        <form method="POST" class="mt-3" action="{{ route('account.venues.courts.prices.store', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}">
-                            @csrf
-                            <label class="form-label">День недели
-                                <select class="form-select" name="day_of_week" required>
-                                    @foreach([1=>'Пн',2=>'Вт',3=>'Ср',4=>'Чт',5=>'Пт',6=>'Сб',7=>'Вс'] as $day => $label)
-                                        <option value="{{ $day }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-                            <label class="form-label">Начало шага <input class="form-control" type="time" name="starts_at" required></label>
-                            <label class="form-label">Весь зал <input class="form-control" name="whole_price_per_step" placeholder="Не переопределять"></label>
-                            <label class="form-label">Половина <input class="form-control" name="half_price_per_step" placeholder="Не переопределять"></label>
-                            <button type="submit" class="btn btn--secondary btn--sm mt-2">Добавить / обновить тариф</button>
-                        </form>
-                    </details>
-                    @if($policy)
-                        @include('theme::partials.venues.calendar-price-editor', [
-                            'calendarPrices' => $court->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
-                            'calendarStoreUrl' => route('account.venues.courts.calendar-prices.store', [$venue->routeIdentifier(), $court->routeIdentifier()]),
-                            'calendarDeleteUrl' => route('account.venues.courts.calendar-prices.destroy', [$venue->routeIdentifier(), $court->routeIdentifier(), '__PRICE__']),
-                            'calendarStep' => $court->time_step_minutes ?? $policy->time_step_minutes,
-                            'calendarCurrency' => $policy->currency,
-                            'calendarId' => 'court-calendar-'.$court->id,
-                            'amounts' => app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class),
-                        ])
-                    @endif
+                    <p class="mt-3"><a href="{{ route('account.venues.tariff-grid.edit', ['venue' => $venue->id, 'court' => $court->id]) }}">Тарифная сетка зала: интервалы, исключения, интеграция</a></p>
                 @endif
 
                 @if($canManageVenue && $courts->count() > 1)
