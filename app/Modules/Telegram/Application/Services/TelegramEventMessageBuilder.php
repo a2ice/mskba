@@ -16,6 +16,7 @@ use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Illuminate\Support\Str;
 
 final class TelegramEventMessageBuilder
@@ -72,10 +73,14 @@ final class TelegramEventMessageBuilder
         $lines[] = '📍 Площадка: '.$this->escape($event->venue->name);
         $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone).($event->time_confirmed ? '' : ' (предварительно)');
         $booking = $event->sourceBooking ?? $event->booking;
+        // Apply the same active policy as the rental quote path: inherited court
+        // requirements must not be inferred from the venue flag alone.
+        $policy = VenueBookingPolicy::query()
+            ->where('venue_id', $event->venue->id)->where('active_marker', true)->first();
         $freeAccess = $event->court === null
-            ? $event->venue->hasFreeAccess()
+            ? $event->venue->hasFreeAccess() && ! ($policy?->requires_payment ?? false)
             : ! app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
-                ->resolve($event->venue, $event->court)['requires_booking'];
+                ->resolve($event->venue, $event->court, $policy)['requires_booking'];
         $rentalStatus = match (true) {
             $booking?->status?->value === 'confirmed' => '✅ Аренда подтверждена',
             $booking !== null => '⏳ Аренда не подтверждена',
