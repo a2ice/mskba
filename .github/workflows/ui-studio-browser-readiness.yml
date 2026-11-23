@@ -31,7 +31,7 @@ jobs:
             echo "STUDIO_BRIDGE_STATUS=$code"
             test "$code" = 200
             grep -qF 'mskba-ui-studio:ready' "$body"
-            grep -qF 'csrf' "$body"
+            grep -qF 'X-CSRF-TOKEN' "$body"
             echo 'STUDIO_BRIDGE_CONTENT=VALID'
             if grep -qi '^x-frame-options:' "$headers"; then
               echo 'STUDIO_FRAME_BLOCKER_X_FRAME_OPTIONS=PRESENT'
