@@ -168,4 +168,19 @@ jobs:
               echo "STUDIO_CONFIGURED_CONTAINER_USER=$(test -n "$user" && echo explicit || echo default)"
               docker exec mskba-ui-php sh -lc 'for path in storage/framework/sessions storage/framework/cache storage/app/private; do if [ -d "$path" ]; then echo "CONTAINER_DIRECTORY_$path=EXISTS"; else echo "CONTAINER_DIRECTORY_$path=MISSING"; fi; if [ -w "$path" ]; then echo "CONTAINER_WRITABLE_$path=YES"; else echo "CONTAINER_WRITABLE_$path=NO"; fi; done' || true
             fi
+            echo '--- PROXY CONFIG LOCATION, NO SECRET OUTPUT ---'
+            docker ps --format '{{.Names}} {{.Image}}' 2>/dev/null | grep -Ei 'nginx|caddy|proxy|traefik|mskba-ui' | head -n 25 || true
+            for dir in /etc/nginx /var/www/mskba-ui-runtime /var/www/mskba-ui; do
+              if [ -d "$dir" ]; then
+                find "$dir" -maxdepth 4 -type f \( -name '*.conf' -o -name 'compose*.yml' -o -name 'Caddyfile' \) 2>/dev/null \
+                  | grep -Ev '/(vendor|node_modules|\.git)/' | head -n 30
+              fi
+            done
+            echo '--- HOST NGINX DIRECTIVES (NON-SECRET) ---'
+            if [ -d /etc/nginx ]; then
+              grep -RilF --include='*.conf' 'ui.mskba.ru' /etc/nginx 2>/dev/null | head -n 10 | while IFS= read -r path; do
+                echo "MATCHED_NGINX_CONFIG=$path"
+                grep -nE 'server_name|auth_basic|limit_except|location|deny |allow ' "$path" 2>/dev/null | cut -c1-150 | head -n 45
+              done
+            fi
             echo 'UI_STUDIO_PREFLIGHT=FINISHED'
