@@ -2,9 +2,10 @@ name: Verify UI Studio Nginx patch
 
 on:
   push:
-    branches: [feature/ui-studio-995-nginx-bridge]
+    branches: [fix/ui-studio-995-nginx-reload-smoke]
     paths:
       - '.github/workflows/ui-studio-nginx-patch-ci.yml'
+      - 'ops/ui-studio/enable-nginx-bridge.py'
   workflow_dispatch:
 
 permissions:
@@ -50,5 +51,16 @@ jobs:
           assert updated.count('auth_basic off;') == 3
           again, second = space["patch"](updated)
           assert not second and again == updated
-          print("UI_STUDIO_NGINX_PATCH_TESTS=PASS")
+          calls = iter(["401", "401", "200"])
+          space["status"] = lambda url, method="GET": next(calls)
+          space["time"].sleep = lambda seconds: None
+          space["await_http"]("https://ui.mskba.ru/uikit/bridge", {"200"}, "bootstrap", tries=3)
+          assert space["await_http"].__name__ == "await_http"
+          space["status"] = lambda url, method="GET": "403"
+          try:
+              space["await_http"]("https://ui.mskba.ru/uikit/session", {"419", "422"}, "session", tries=2)
+              raise AssertionError("Expected failure when proxy blocks POST")
+          except RuntimeError as ex:
+              assert "got 403" in str(ex)
+          print("UI_STUDIO_NGINX_PATCH_AND_RETRY_TESTS=PASS")
           PY
