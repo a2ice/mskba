@@ -1,0 +1,65 @@
+name: Diagnose approved Telegram news delivery (read only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-editorial-telegram.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect only the existing publication status on production
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            test -f .env
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'APP_URL=https://mskba.ru' .env
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T phpfpm php artisan tinker --execute='
+              $alias = "bolshe-basketbola-menshe-organizatsionnyh-hlopot";
+              $content = \App\Modules\Content\Domain\Models\ContentItem::query()->where("alias", $alias)->first();
+              if (! $content) { echo "NEWS_MISSING\n"; exit(1); }
+              $chat = \App\Modules\Telegram\Domain\Models\TelegramChat::query()->find(1);
+              if (! $chat || $chat->title !== "Основной чат MSKBA") { echo "CHAT_IDENTITY_MISMATCH\n"; exit(1); }
+              $publication = \App\Modules\Telegram\Domain\Models\TelegramContentPublication::query()->where("content_item_id", $content->id)->where("chat_id", 1)->first();
+              if (! $publication) { echo "PUBLICATION_MISSING\n"; exit(1); }
+              $err = mb_strtolower((string) $publication->last_error);
+              $kind = match (true) {
+                $err === "" => "NO_ERROR_RECORDED",
+                str_contains($err, "chat not found") => "CHAT_NOT_FOUND",
+                str_contains($err, "bot was kicked"), str_contains($err, "bot is not a member") => "BOT_NOT_MEMBER",
+                str_contains($err, "not enough rights"), str_contains($err, "not enough permissions") => "INSUFFICIENT_BOT_RIGHTS",
+                str_contains($err, "forbidden") => "FORBIDDEN",
+                str_contains($err, "failed to get http"), str_contains($err, "connection failed") => "CONNECTION_ERROR",
+                str_contains($err, "too many requests") => "RATE_LIMIT",
+                str_contains($err, "photo") => "PHOTO_ERROR",
+                str_contains($err, "reply_markup") => "MARKUP_ERROR",
+                default => "OTHER",
+              };
+              preg_match("/HTTP ([0-9]{3})/", (string) $publication->last_error, $http);
+              echo json_encode([
+                "news_status" => $content->status->value,
+                "chat_active" => (bool) $chat->is_active,
+                "chat_type" => $chat->type,
+                "has_remote_chat_id" => (bool) $chat->telegram_chat_id,
+                "publication_status" => $publication->status,
+                "has_message_id" => $publication->message_id !== null,
+                "last_error_kind" => $kind,
+                "http_status" => isset($http[1]) ? (int) $http[1] : null,
+                "error_fingerprint" => substr(hash("sha256", (string) $publication->last_error), 0, 12),
+              ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n";
+            '
