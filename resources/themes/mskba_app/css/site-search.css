@@ -1,0 +1,30 @@
+.app-site-search { padding-top: 32px; padding-bottom: 100px; }
+.app-site-search__header { margin-bottom: 24px; }
+.app-site-search__header h1 { font-size: clamp(30px, 4vw, 48px); font-weight: 850; margin-bottom: 10px; }
+.app-site-search__form { display: grid; gap: 13px; padding: 22px; margin-bottom: 22px; }
+.app-site-search__form > label { font-size: 14px; color: var(--muted); font-weight: 750; }
+.app-site-search__row { display: flex; gap: 10px; }
+.app-site-search__row input { flex: 1; min-width: 0; min-height: 45px; padding: 10px 12px; border: 1px solid var(--control-line); border-radius: var(--radius-control); background: var(--field); color: var(--text); }
+.app-site-search__types { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 0 0; margin: 0; border: 0; }
+.app-site-search__types legend { font-size: 13px; color: var(--muted); font-weight: 750; padding-bottom: 8px; }
+.app-site-search__types label { display: inline-flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; background: var(--surface); cursor: pointer; }
+.app-site-search__types input { accent-color: var(--accent); }
+.app-site-search__total { margin: 12px 0 20px; color: var(--muted); }
+.app-site-search__groups { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.app-site-search__group { min-width: 0; padding: 20px; }
+.app-site-search__group-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.app-site-search__group-heading h2 { font-size: 18px; font-weight: 800; }
+.app-site-search__group-heading h2 span { color: var(--muted); font-size: 14px; font-weight: 600; }
+.app-site-search__group-heading a { color: var(--accent); font-size: 13px; font-weight: 750; }
+.app-site-search__results { display: grid; gap: 0; padding: 0; margin: 0; list-style: none; }
+.app-site-search__results li { border-top: 1px solid var(--line); padding: 12px 0; overflow-wrap: anywhere; }
+.app-site-search__results li a { color: var(--text); font-weight: 650; }
+.app-site-search__results li a:hover { color: var(--accent); }
+.app-site-search__results li small { color: var(--muted); margin-left: 6px; }
+.app-site-search__empty { padding: 30px; color: var(--muted); }
+@media(max-width:768px) {
+  .app-site-search { padding-top: 18px; }
+  .app-site-search__form { padding: 16px; }
+  .app-site-search__row { flex-direction: column; }
+  .app-site-search__groups { grid-template-columns: 1fr; }
+}
