@@ -650,7 +650,7 @@ test('venue popup retains minimal event list and opens full inline event details
     const tpl = readFileSync(
         new URL('../../resources/views/components/venue-play-funnel.blade.php', import.meta.url), 'utf8',
     );
-    assert.match(tpl, /На этой площадке пока нет предстоящих мероприятий\./);
+    assert.match(tpl, /Пока нет предстоящих игр\./);
     assert.match(tpl, /data-venue-play-step="list"/);
     assert.match(tpl, /data-venue-play-preview="{{ \$upcoming->id }}"/);
     assert.match(tpl, /data-venue-play-list-footer/);
