@@ -204,4 +204,20 @@ jobs:
             else
               echo 'SUDO_NONINTERACTIVE=NO'
             fi
+            echo '--- AUTHORIZED FILE ACCESS (NO WRITES) ---'
+            for path in /etc/nginx/sites-available/mskba-ui /var/www/mskba-ui/.env /var/www/mskba/.env; do
+              if [ -w "$path" ]; then
+                echo "WRITABLE_$path=YES"
+              else
+                echo "WRITABLE_$path=NO"
+              fi
+              if [ -e "$path" ]; then
+                echo "OWNER_MODE_$path=$(stat -c '%U:%G:%a' "$path")"
+              fi
+            done
+            if sudo -n nginx -t >/dev/null 2>&1; then
+              echo 'SUDO_NGINX_TEST=ALLOWED'
+            else
+              echo 'SUDO_NGINX_TEST=NOT_ALLOWED'
+            fi
             echo 'UI_STUDIO_PREFLIGHT=FINISHED'
