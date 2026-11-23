@@ -4,6 +4,7 @@ namespace App\Filament\Backoffice\Resources\Venues;
 
 use App\Filament\Backoffice\Resources\Venues\Pages\CreateVenue;
 use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
+use App\Filament\Backoffice\Resources\Venues\Pages\EditVenueTariffs;
 use App\Filament\Backoffice\Resources\Venues\Pages\ListVenues;
 use App\Filament\Backoffice\Resources\Venues\Support\VenueRentalPolicyEditor;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
@@ -353,7 +354,7 @@ final class VenueResource extends Resource
                                     ->label('Редактор стоимости по времени')
                                     ->state('Открыть тарифную сетку площадки и её залов')
                                     ->url(fn (?Venue $record): ?string => $record === null ? null
-                                        : route('account.venues.tariff-grid.edit', ['venue' => $record->id]))
+                                        : self::getUrl('tariffs', ['record' => $record]))
                                     ->openUrlInNewTab(),
                             ]),
                         Section::make('Время и ограничения')
@@ -762,6 +763,7 @@ final class VenueResource extends Resource
             'index' => ListVenues::route('/'),
             'create' => CreateVenue::route('/create'),
             'edit' => EditVenue::route('/{record}/edit'),
+            'tariffs' => EditVenueTariffs::route('/{record}/tariffs'),
         ];
     }
 }

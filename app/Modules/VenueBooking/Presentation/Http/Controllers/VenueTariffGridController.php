@@ -55,11 +55,11 @@ final class VenueTariffGridController extends Controller
             'court_id' => ['nullable', 'integer', 'min:1'],
             'mode' => ['required', Rule::in(['weekly', 'date'])],
             'date' => ['required_if:mode,date', 'nullable', 'date_format:Y-m-d'],
-            'days' => ['required_if:mode,weekly', 'array', 'max:7'],
+            'days' => ['nullable', 'array', 'max:7'],
             'days.*' => ['required', 'integer', 'between:1,7', 'distinct'],
-            'starts_at' => ['required', 'date_format:H:i'],
-            'ends_at' => ['required', 'date_format:H:i'],
-            'operation' => ['required', Rule::in(['set', 'clear'])],
+            'starts_at' => ['required_without:ranges', 'date_format:H:i'],
+            'ends_at' => ['required_without:ranges', 'date_format:H:i'],
+            'operation' => ['required_without:ranges', Rule::in(['set', 'clear'])],
             'whole_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
             'half_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
             'exceptions' => ['nullable', 'array', 'max:100'],
@@ -68,10 +68,31 @@ final class VenueTariffGridController extends Controller
             'exceptions.*.operation' => ['nullable', Rule::in(['set', 'clear'])],
             'exceptions.*.whole_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
             'exceptions.*.half_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
+
+            'ranges' => ['nullable', 'array', 'max:16'],
+            'ranges.*.days' => ['nullable', 'array', 'max:7'],
+            'ranges.*.days.*' => ['required', 'integer', 'between:1,7'],
+            'ranges.*.starts_at' => ['required', 'date_format:H:i'],
+            'ranges.*.ends_at' => ['required', 'date_format:H:i'],
+            'ranges.*.operation' => ['required', Rule::in(['set', 'clear'])],
+            'ranges.*.whole_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
+            'ranges.*.half_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
+            'ranges.*.exceptions' => ['nullable', 'array', 'max:100'],
+            'ranges.*.exceptions.*.starts_at' => ['required', 'date_format:H:i'],
+            'ranges.*.exceptions.*.day_of_week' => ['nullable', 'integer', 'between:1,7'],
+            'ranges.*.exceptions.*.operation' => ['required', Rule::in(['set', 'clear'])],
+            'ranges.*.exceptions.*.whole_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
+            'ranges.*.exceptions.*.half_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
         ]);
 
         [$policy, $court] = $this->context($request, $venue, $access, $input['court_id'] ?? null);
-        $count = $grid->apply($venue, $policy, $court, $input, $request->user()?->id);
+        $count = isset($input['ranges'])
+            ? $grid->applyMany(
+                $venue, $policy, $court,
+                $input['mode'], $input['date'] ?? now('Europe/Moscow')->toDateString(),
+                array_values($input['ranges']), $request->user()?->id,
+            )
+            : $grid->apply($venue, $policy, $court, $input, $request->user()?->id);
 
         return redirect()->route('account.venues.tariff-grid.edit', array_filter([
             'venue' => $venue->id,

@@ -31,6 +31,63 @@ final class VenueTariffGrid
     }
 
     /**
+     * Apply several named time ranges as one atomic operation. The same code
+     * path serves Filament and the public venue editor.
+     *
+     * @param list<array<string, mixed>> $ranges
+     */
+    public function applyMany(
+        Venue $venue, VenueBookingPolicy $policy, ?VenueCourt $court,
+        string $mode, string $date, array $ranges, ?int $userId
+    ): int {
+        if ($ranges === [] || count($ranges) > 16) {
+            throw ValidationException::withMessages(['ranges' => 'Укажите от 1 до 16 тарифных диапазонов.']);
+        }
+
+        $step = $this->step($policy, $court);
+        $seen = [];
+        foreach ($ranges as $position => $range) {
+            $from = self::minutes((string) ($range['starts_at'] ?? ''));
+            $to = self::minutes((string) ($range['ends_at'] ?? ''));
+            if ($to === 0) {
+                $to = 1440;
+            }
+            if ($from >= $to || $from % $step !== 0 || $to % $step !== 0) {
+                throw ValidationException::withMessages([
+                    'ranges.'.$position.'.starts_at' => 'Начало и конец должны соответствовать шагу '. $step.' минут.',
+                ]);
+            }
+            $days = $mode === 'date'
+                ? [(int) CarbonImmutable::parse($date)->dayOfWeekIso]
+                : array_values(array_unique(array_map('intval', $range['days'] ?? [])));
+            foreach ($days as $day) {
+                for ($minute = $from; $minute < $to; $minute += $step) {
+                    $key = $day.'|'.$minute;
+                    if (isset($seen[$key])) {
+                        throw ValidationException::withMessages([
+                            'ranges.'.$position.'.starts_at' => 'Тарифные диапазоны пересекаются. Настройте исключение внутри диапазона вместо наложения.',
+                        ]);
+                    }
+                    $seen[$key] = true;
+                }
+            }
+        }
+
+        return DB::transaction(function () use ($venue, $policy, $court, $mode, $date, $ranges, $userId): int {
+            $count = 0;
+            foreach ($ranges as $range) {
+                $count += $this->apply($venue, $policy, $court, [
+                    ...$range,
+                    'mode' => $mode,
+                    'date' => $date,
+                ], $userId);
+            }
+
+            return $count;
+        }, 3);
+    }
+
+    /**
      * @return array<int, array{day: int, label: string, ranges: array<int, array<string, mixed>>}>
      */
     public function read(Venue $venue, VenueBookingPolicy $policy, ?VenueCourt $court, string $mode, string $date): array

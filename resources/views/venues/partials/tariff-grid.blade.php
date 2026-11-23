@@ -98,67 +98,26 @@
     </div>
 
     <section class="venue-tariff-grid__panel" id="tariff-range-editor">
-        <h3>Назначить тариф диапазону</h3>
+        <h3>Назначить тарифные диапазоны</h3>
         <p class="venue-tariff-grid__help">
-            Временной диапазон будет разложен на шаги по {{ $step }} мин. Исключения имеют приоритет внутри диапазона.
-            Очистка возвращает цену к наследуемому тарифу или к цене интеграции.
+            Можно задать несколько диапазонов за один раз — например 07:00–16:00 и 16:00–23:30,
+            каждому назначить собственную цену и исключения. Все цены сохраняются атомарно по шагам {{ $step }} мин.
+            Очистка ручной корректировки возвращает наследуемый тариф или текущую цену интеграции.
         </p>
         <form method="POST" action="{{ route('account.venues.tariff-grid.store', $venue->id) }}" data-tariff-range-form>
             @csrf
             <input type="hidden" name="court_id" value="{{ $court?->id }}">
             <input type="hidden" name="mode" value="{{ $mode }}">
             <input type="hidden" name="date" value="{{ $date }}">
-            @if($mode === 'weekly')
-                <fieldset>
-                    <legend>Дни действия тарифа</legend>
-                    <div class="venue-tariff-grid__days">
-                        @foreach([1=>'Пн',2=>'Вт',3=>'Ср',4=>'Чт',5=>'Пт',6=>'Сб',7=>'Вс'] as $number=>$name)
-                            <label><input type="checkbox" name="days[]" value="{{ $number }}" @checked($number <= 5)>{{ $name }}</label>
-                        @endforeach
-                    </div>
-                </fieldset>
-            @endif
-            <div class="venue-tariff-grid__fields">
-                <label>Начало диапазона<input type="time" name="starts_at" value="{{ sprintf('%02d:%02d', intdiv(intdiv(480, $step) * $step, 60), (intdiv(480, $step) * $step) % 60) }}" required step="{{ $step * 60 }}"></label>
-                <label>Конец диапазона<input type="time" name="ends_at" value="{{ sprintf('%02d:%02d', intdiv((intdiv(480, $step) + 2) * $step, 60), ((intdiv(480, $step) + 2) * $step) % 60) }}" required step="{{ $step * 60 }}"></label>
-                <label>Весь зал, ₽ / шаг<input name="whole_price_per_step" inputmode="decimal" placeholder="Наследовать"></label>
-                <label>Половина зала, ₽ / шаг<input name="half_price_per_step" inputmode="decimal" placeholder="Наследовать"></label>
-                <label>Действие
-                    <select name="operation" data-tariff-operation>
-                        <option value="set">Установить цену</option>
-                        <option value="clear">Очистить ручные значения</option>
-                    </select>
-                </label>
+            <div data-tariff-ranges>
+                @include('venues.partials.tariff-grid-range', ['index' => 0])
             </div>
-            <h4>Исключения внутри диапазона</h4>
-            <div class="venue-tariff-grid__exceptions" data-tariff-exceptions></div>
-            <button class="button secondary" type="button" data-tariff-add-exception>Добавить исключение</button>
-            <template data-tariff-exception-template>
-                <div class="venue-tariff-grid__exception" data-tariff-exception>
-                    <label>Начало шага<input name="exceptions[__INDEX__][starts_at]" type="time" step="{{ $step * 60 }}"></label>
-                    @if($mode === 'weekly')
-                        <label>День
-                            <select name="exceptions[__INDEX__][day_of_week]">
-                                <option value="">Все выбранные дни</option>
-                                @foreach([1=>'Пн',2=>'Вт',3=>'Ср',4=>'Чт',5=>'Пт',6=>'Сб',7=>'Вс'] as $number=>$name)
-                                    <option value="{{ $number }}">{{ $name }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                    @endif
-                    <label>Весь зал, ₽<input name="exceptions[__INDEX__][whole_price_per_step]" inputmode="decimal"></label>
-                    <label>Половина, ₽<input name="exceptions[__INDEX__][half_price_per_step]" inputmode="decimal"></label>
-                    <label>Действие
-                        <select name="exceptions[__INDEX__][operation]">
-                            <option value="set">Изменить</option>
-                            <option value="clear">Сбросить к источнику</option>
-                        </select>
-                    </label>
-                    <button class="button secondary" type="button" data-tariff-remove-exception>Убрать</button>
-                </div>
+            <template data-tariff-range-template>
+                @include('venues.partials.tariff-grid-range', ['index' => '__RANGE__'])
             </template>
             <div class="venue-tariff-grid__actions">
-                <button class="button primary" type="submit">Применить диапазон</button>
+                <button class="button secondary" type="button" data-tariff-add-range>Добавить диапазон</button>
+                <button class="button primary" type="submit">Сохранить все диапазоны</button>
                 <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">К условиям аренды</a>
             </div>
         </form>
@@ -201,17 +160,44 @@
             syncFilter();
 
             const rangeForm = root.querySelector('[data-tariff-range-form]');
-            const exceptions = root.querySelector('[data-tariff-exceptions]');
-            const template = root.querySelector('[data-tariff-exception-template]');
-            let nextIndex = 0;
-            root.querySelector('[data-tariff-add-exception]').addEventListener('click', () => {
+            const ranges = rangeForm.querySelector('[data-tariff-ranges]');
+            const rangeTemplate = rangeForm.querySelector('[data-tariff-range-template]');
+            let nextRangeIndex = 1;
+            root.querySelector('[data-tariff-add-range]').addEventListener('click', () => {
+                if (ranges.querySelectorAll('[data-tariff-range-item]').length >= 16) {
+                    alert('Не более 16 диапазонов за одну операцию.');
+                    return;
+                }
                 const holder = document.createElement('div');
-                holder.innerHTML = template.innerHTML.replaceAll('__INDEX__', String(nextIndex++));
-                exceptions.append(holder.firstElementChild);
+                holder.innerHTML = rangeTemplate.innerHTML
+                    .replaceAll('__RANGE__', String(nextRangeIndex))
+                    .replaceAll('__NUMBER__', String(nextRangeIndex + 1));
+                nextRangeIndex++;
+                ranges.append(holder.firstElementChild);
             });
-            exceptions.addEventListener('click', e => {
-                const button = e.target.closest('[data-tariff-remove-exception]');
-                if (button) button.closest('[data-tariff-exception]').remove();
+            ranges.addEventListener('click', e => {
+                const remove = e.target.closest('[data-tariff-remove-range]');
+                if (remove) {
+                    if (ranges.querySelectorAll('[data-tariff-range-item]').length > 1) {
+                        remove.closest('[data-tariff-range-item]').remove();
+                    }
+                    return;
+                }
+                const addException = e.target.closest('[data-tariff-add-exception]');
+                if (addException) {
+                    const item = addException.closest('[data-tariff-range-item]');
+                    const collection = item.querySelector('[data-tariff-exceptions]');
+                    if (collection.querySelectorAll('[data-tariff-exception]').length >= 100) return;
+                    const index = Number(item.dataset.nextException || 0);
+                    item.dataset.nextException = String(index + 1);
+                    const template = item.querySelector('[data-tariff-exception-template]');
+                    const holder = document.createElement('div');
+                    holder.innerHTML = template.innerHTML.replaceAll('__EXCEPTION__', String(index));
+                    collection.append(holder.firstElementChild);
+                    return;
+                }
+                const removeException = e.target.closest('[data-tariff-remove-exception]');
+                if (removeException) removeException.closest('[data-tariff-exception]').remove();
             });
 
             const dialog = root.querySelector('[data-tariff-slot-dialog]');
@@ -234,10 +220,13 @@
             root.querySelector('[data-tariff-close-slot]').addEventListener('click', () => dialog.close());
 
             rangeForm.addEventListener('submit', event => {
-                const chosenDays = rangeForm.querySelectorAll('[name="days[]"]:checked');
-                if (rangeForm.querySelector('[name="mode"]').value === 'weekly' && chosenDays.length === 0) {
-                    event.preventDefault();
-                    alert('Выберите хотя бы один день недели.');
+                if (rangeForm.querySelector('[name="mode"]').value !== 'weekly') return;
+                for (const item of ranges.querySelectorAll('[data-tariff-range-item]')) {
+                    if (!item.querySelector('input[type="checkbox"]:checked')) {
+                        event.preventDefault();
+                        alert('Выберите дни недели для каждого диапазона.');
+                        return;
+                    }
                 }
             });
         })();
