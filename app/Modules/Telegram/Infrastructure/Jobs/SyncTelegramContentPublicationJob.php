@@ -69,6 +69,12 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
             && $content->publish_in_telegram
             && $publication->chat?->is_active;
 
+        // A previous send with no provider receipt may already exist remotely.
+        // Only the explicit, validated recovery endpoint may reset failed to pending.
+        if ($shouldPublish && $publication->status === 'failed' && $publication->message_id === null) {
+            return;
+        }
+
         try {
             if (! $shouldPublish) {
                 if ($publication->message_id !== null) {
