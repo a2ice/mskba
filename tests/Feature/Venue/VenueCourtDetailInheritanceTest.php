@@ -205,6 +205,32 @@ final class VenueCourtDetailInheritanceTest extends TestCase
             checkBookings: false, court: $court);
     }
 
+    public function test_venue_full_description_renders_safe_html_on_overview_and_court_pages(): void
+    {
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'full_description' => '<h4>Удобное расположение</h4><p>Крытый <strong>зал</strong></p>'
+                .'<ul><li>Мячи</li><li>Раздевалки</li></ul>'
+                .'<script>alert(1)</script><p onclick="alert(2)">Подробности</p>'
+                .'<a href="javascript:alert(3)">Ссылка</a>',
+        ]);
+
+        $court = $venue->primaryCourt()->firstOrFail();
+        foreach ([
+            route('venues.show', $venue->routeIdentifier()),
+            route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]),
+        ] as $url) {
+            $this->get($url)->assertOk()
+                ->assertSee('<h4>Удобное расположение</h4>', false)
+                ->assertSee('<strong>зал</strong>', false)
+                ->assertSee('<ul><li>Мячи</li><li>Раздевалки</li></ul>', false)
+                ->assertDontSee('&lt;h4&gt;', false)
+                ->assertDontSee('<script>alert(1)</script>', false)
+                ->assertDontSee('onclick="alert(2)"', false)
+                ->assertDontSee('javascript:alert', false);
+        }
+    }
+
     private function expectAvailabilityError(
         VenueEventAvailability $availability, Venue $venue, VenueCourt $court,
         string $starts, string $ends,
