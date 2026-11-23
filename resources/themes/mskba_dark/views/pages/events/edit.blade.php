@@ -97,6 +97,7 @@
         </div>
         @include('components.event-time-comment-fields', ['timeCommentEvent' => $event])
         @include('components.event-participation-pricing-fields', ['pricingEvent' => $event])
+        @include('components.event-social-publication-fields', ['socialEvent' => $event])
         <div class="form-group field mb-4">
             <label class="form-label" for="eventDescription">Описание</label>
             <textarea id="eventDescription" class="form-control @error('description') is-invalid @enderror" name="description" rows="7" maxlength="5000">{{ old('description', $event->description) }}</textarea>

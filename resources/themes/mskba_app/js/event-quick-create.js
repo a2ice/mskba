@@ -300,7 +300,10 @@
         if(step<2)goNext();else form.requestSubmit(submit);
     });
     function values(){
-        const data=Object.fromEntries(new FormData(form).entries());
+        const formData=new FormData(form);
+        const data=Object.fromEntries(formData.entries());
+        delete data['telegram_chat_ids[]'];
+        if(data.publish_to_telegram==='1') data.telegram_chat_ids=formData.getAll('telegram_chat_ids[]');
         delete data._token;
         for(const name of ['discussion_enabled','report_comments_enabled'])data[name]=form.querySelector('input[type="checkbox"][name="'+name+'"]')?.checked?'1':'0';
         delete data.venue_court_id;
@@ -322,13 +325,19 @@
     function restore(saved){
         if(!saved?.draft)return false;
         for(const [name,value] of Object.entries(saved.draft)){
-            if(name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role'||name==='organizer_participates')continue;
+            if(name==='telegram_chat_ids'||name==='publish_to_telegram'||name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role'||name==='organizer_participates')continue;
             if(['discussion_enabled','report_comments_enabled','save_time_comment_default'].includes(name)){
                 form.querySelector('input[type="checkbox"][name="'+name+'"]').checked=String(value)==='1';continue;
             }
             const control=form.elements.namedItem(name);
             if(control&&typeof value==='string'&&typeof control.value==='string')control.value=value;
         }
+        const publishTelegram=form.querySelector('input[type="checkbox"][name="publish_to_telegram"]');
+        if(publishTelegram) publishTelegram.checked=String(saved.draft.publish_to_telegram??'0')==='1';
+        for(const chat of form.querySelectorAll('input[name="telegram_chat_ids[]"]')){
+            chat.checked=(saved.draft.telegram_chat_ids??[]).map(String).includes(chat.value);
+        }
+        if(publishTelegram?.checked) for(const details of form.querySelectorAll('.event-social-publication details, .event-social-publication')) if(details.tagName==='DETAILS') details.open=true;
         form.dispatchEvent(new Event('mskba:event-pricing-restore'));
         editingTitle=true;
         if(venue.value)venue.dispatchEvent(new Event('change',{bubbles:true}));

@@ -94,6 +94,11 @@ final class EventFirstCreationController extends Controller
                     'send_pre_request' => false,
                 ];
                 $event = $events->handle($actor, $payload);
+                if (filter_var($input['publish_to_telegram'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    app(\App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler::class)
+                        ->handle($event, $input['telegram_chat_ids'] ?? []);
+                    DB::afterCommit(fn () => event(new EventChanged($event->id)));
+                }
                 if ($first !== null) {
                     $interests->createFor($event, $actor);
                 }
@@ -171,6 +176,15 @@ final class EventFirstCreationController extends Controller
             'discussion_enabled' => ['sometimes', 'boolean'],
             'report_comments_enabled' => ['sometimes', 'boolean'],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
+            'publish_to_telegram' => ['sometimes', 'boolean'],
+            'telegram_chat_ids' => [
+                Rule::requiredIf($request->boolean('publish_to_telegram')),
+                'array', 'min:1',
+            ],
+            'telegram_chat_ids.*' => [
+                'integer', 'distinct',
+                Rule::exists('telegram_chats', 'id')->where('is_active', true)->where('publishes_events', true),
+            ],
             'max_participants' => ['nullable', 'integer', 'between:2,500'],
             ...\App\Modules\Event\Application\Services\EventParticipationPricing::rules(),
             ...\App\Modules\Event\Application\Services\EventTimeComment::rules(),

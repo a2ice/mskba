@@ -69,6 +69,9 @@ final class SyncTelegramEventPublicationJob implements ShouldQueue, ShouldBeUniq
         $event = Event::query()
             ->with([
                 'venue.schedule',
+                'court',
+                'sourceBooking',
+                'booking',
                 'participants.user.profile',
                 'primaryGame' => fn ($query) => $query->with([
                     'sides.team',

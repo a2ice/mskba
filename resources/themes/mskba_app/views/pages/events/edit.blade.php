@@ -110,6 +110,7 @@
             </div>
             @include('components.event-time-comment-fields', ['timeCommentEvent' => $event])
             @include('components.event-participation-pricing-fields', ['pricingEvent' => $event])
+            @include('components.event-social-publication-fields', ['socialEvent' => $event])
             <div class="field-group">
                 <label for="eventDescription">Описание</label>
                 <textarea id="eventDescription" name="description" rows="5" maxlength="5000">{{ old('description', $event->description) }}</textarea>
