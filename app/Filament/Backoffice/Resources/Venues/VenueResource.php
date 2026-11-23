@@ -40,6 +40,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -50,6 +51,7 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
@@ -71,6 +73,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 final class VenueResource extends Resource
 {
@@ -168,7 +173,107 @@ final class VenueResource extends Resource
                         Toggle::make('requires_booking_approval')->label('Нужна предварительная запись')
                             ->default(false)->columnSpanFull(),
                         Textarea::make('short_description')->label('Краткое описание')->maxLength(500)->columnSpanFull(),
-                        Textarea::make('full_description')->label('Полное описание')->maxLength(10000)->rows(6)->columnSpanFull(),
+                        Textarea::make('full_description')->label('Полное описание')->maxLength(10000)->rows(9)
+                            ->helperText('Поддерживается безопасный HTML, фото с лайтбоксом и сетки (content-gallery или d-flex flex-wrap gap-3). Кнопки ниже добавляют готовую разметку в поле. После добавления сохраните площадку.')
+                            ->columnSpanFull(),
+                        SchemaActions::make([
+                            Action::make('insertVenueDescriptionPhotos')
+                                ->label('Добавить фото / галерею')->icon('heroicon-o-photo')
+                                ->modalHeading('Фото для полного описания')
+                                ->modalDescription('Загрузите от 1 до 8 фото. Для нескольких снимков будет создана адаптивная сетка. Клик по превью откроет лайтбокс.')
+                                ->schema([
+                                    FileUpload::make('images')->label('Фотографии')
+                                        ->required()->image()->multiple()->maxFiles(8)
+                                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                        ->maxSize(10240)->storeFiles(false),
+                                    TextInput::make('alt_text')->label('Подпись к фото (alt)')
+                                        ->default('Фото площадки')->maxLength(180),
+                                ])
+                                ->action(function (array $data, Get $schemaGet, Set $schemaSet): void {
+                                    abort_unless(self::authorized(), 403);
+                                    $files = $data['images'] ?? [];
+                                    if (! is_array($files) || $files === [] || count($files) > 8) {
+                                        throw ValidationException::withMessages(['images' => 'Выберите от 1 до 8 изображений.']);
+                                    }
+                                    foreach ($files as $file) {
+                                        if (! $file instanceof UploadedFile) {
+                                            throw ValidationException::withMessages(['images' => 'Файл изображения не получен.']);
+                                        }
+                                    }
+
+                                    $label = trim((string) ($data['alt_text'] ?? '')) ?: 'Фото площадки';
+                                    $paths = [];
+                                    $items = [];
+                                    foreach (array_values($files) as $index => $file) {
+                                        $path = $file->storePublicly('venues/descriptions', 'public');
+                                        if (! is_string($path) || $path === '') {
+                                            foreach ($paths as $stored) Storage::disk('public')->delete($stored);
+                                            throw ValidationException::withMessages(['images' => 'Не удалось сохранить изображение.']);
+                                        }
+                                        $paths[] = $path;
+                                        $url = e(Storage::disk('public')->url($path));
+                                        $alt = e($label.(count($files) > 1 ? ' '.($index + 1) : ''));
+                                        $items[] = '<a href="'.$url.'" class="content-lightbox" data-venue-lightbox="venue-photos">'
+                                            .'<img src="'.$url.'" alt="'.$alt.'"></a>';
+                                    }
+                                    $snippet = count($items) > 1
+                                        ? '<div class="content-gallery d-flex flex-wrap gap-3">'."\n".implode("\n", $items)."\n</div>"
+                                        : $items[0];
+                                    $existing = trim((string) $schemaGet('full_description'));
+                                    $combined = $existing === '' ? $snippet : $existing."\n".$snippet;
+                                    if (mb_strlen($combined) > 10000) {
+                                        foreach ($paths as $stored) Storage::disk('public')->delete($stored);
+                                        throw ValidationException::withMessages(['full_description' => 'Полное описание превышает 10 000 символов.']);
+                                    }
+                                    $schemaSet('full_description', $combined);
+                                    Notification::make()->success()->title('Фото вставлены в описание')
+                                        ->body('Сохраните площадку, чтобы опубликовать изменения.')->send();
+                                }),
+                            Action::make('insertVenueDescriptionAction')
+                                ->label('Добавить ссылку / действие')->icon('heroicon-o-link')
+                                ->modalHeading('Ссылка в описании')
+                                ->schema([
+                                    Select::make('kind')->label('Действие')->required()->default('rental')
+                                        ->options([
+                                            'rental' => 'Открыть аренду площадки',
+                                            'play' => 'Открыть «Хочу здесь играть»',
+                                            'link' => 'Обычная ссылка',
+                                        ])->live(),
+                                    TextInput::make('text')->label('Текст ссылки')->required()->maxLength(120),
+                                    TextInput::make('url')->label('Адрес ссылки (https:// или /путь)')
+                                        ->visible(fn (Get $get): bool => $get('kind') === 'link')
+                                        ->required(fn (Get $get): bool => $get('kind') === 'link')->maxLength(2048),
+                                ])
+                                ->action(function (array $data, Get $schemaGet, Set $schemaSet): void {
+                                    abort_unless(self::authorized(), 403);
+                                    $text = trim((string) ($data['text'] ?? ''));
+                                    if ($text === '') {
+                                        throw ValidationException::withMessages(['text' => 'Укажите текст ссылки.']);
+                                    }
+                                    $kind = $data['kind'] ?? '';
+                                    if ($kind === 'rental') {
+                                        $snippet = '<a href="#app-venue-schedule" data-venue-rental-open="1">'.e($text).'</a>';
+                                    } elseif ($kind === 'play') {
+                                        $snippet = '<a href="#app-venue-about" data-venue-play-open="1">'.e($text).'</a>';
+                                    } elseif ($kind === 'link') {
+                                        $url = trim((string) ($data['url'] ?? ''));
+                                        if (! preg_match('~^(?:https?://|/(?!/))~i', $url)) {
+                                            throw ValidationException::withMessages(['url' => 'Используйте адрес https:// или путь с /.']);
+                                        }
+                                        $snippet = '<a href="'.e($url).'">'.e($text).'</a>';
+                                    } else {
+                                        throw ValidationException::withMessages(['kind' => 'Выберите действие.']);
+                                    }
+                                    $existing = trim((string) $schemaGet('full_description'));
+                                    $combined = $existing === '' ? $snippet : $existing."\n".$snippet;
+                                    if (mb_strlen($combined) > 10000) {
+                                        throw ValidationException::withMessages(['full_description' => 'Полное описание превышает 10 000 символов.']);
+                                    }
+                                    $schemaSet('full_description', $combined);
+                                    Notification::make()->success()->title('Ссылка добавлена в описание')
+                                        ->body('Сохраните площадку, чтобы опубликовать изменения.')->send();
+                                }),
+                        ])->columnSpanFull(),
                         TextInput::make('tags_text')->label('Теги')->maxLength(1000)->columnSpanFull()
                             ->helperText('Через запятую. Связанные теги сохраняются в стандартной таблице площадки.'),
                         Select::make('banner_display_mode')
