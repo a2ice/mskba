@@ -44,15 +44,16 @@
                     <small data-venue-play-card-count>{{ $upcoming->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)->count() }} пойдут · Подробнее</small>
                 </button>
             @empty
-                <p class="venue-play-dialog__empty">На этой площадке пока нет предстоящих мероприятий. Вы можете создать своё мероприятие, пригласить игроков или открыть его для всех, чтобы желающие могли присоединиться самостоятельно.@if($isAppTheme) А пока можно посмотреть, когда площадка свободна.@endif</p>
+                <p class="venue-play-dialog__empty">Пока нет предстоящих игр. Вы можете организовать свою или посмотреть, когда площадка свободна.</p>
             @endforelse
         </div>
+        @include('components.venue-favorite-follow', ['buttonClass' => $primaryButton])
     </div>
     <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer @if($isAppTheme && $upcomingVenueEvents->isEmpty()) data-venue-play-empty-footer @endif>
         @if($isAppTheme && $upcomingVenueEvents->isEmpty())
             <button type="button" class="{{ $secondaryButton }}" data-venue-availability-open>Посмотреть занятость</button>
         @endif
-        <button type="button" class="{{ $primaryButton }}" data-quick-event-open
+        <button type="button" class="{{ $upcomingVenueEvents->isEmpty() ? $secondaryButton : $primaryButton }}" data-quick-event-open
             data-quick-event-venue-id="{{ $venue->id }}" data-venue-play-create>Создать мероприятие</button>
     </footer>
     <div class="mskba-modal__body venue-play-dialog__body mskba-scroll" data-venue-play-step="detail" hidden>

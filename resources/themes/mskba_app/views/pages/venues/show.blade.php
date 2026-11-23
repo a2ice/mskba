@@ -497,7 +497,7 @@
         <span class="app-venue-interests-dialog__total-word">{{ $venuePlayerWord }}</span>
     </div>
     @include('theme::pages.venues.partials.interest-users-list', ['venueAudience' => $venueAudience])
-    <button type="button" class="button primary" data-venue-play-open>Тоже хочу здесь играть</button>
+    @include('components.venue-favorite-follow', ['buttonClass' => 'button primary'])
 </dialog>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">
