@@ -1,0 +1,117 @@
+name: Enable UI Studio bridge in production (guarded)
+
+on:
+  push:
+    branches: [ops/ui-studio-995-preflight]
+    paths: [.github/workflows/ui-studio-enable-issuer.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Guarded production UI Studio issuer activation
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -Eeuo pipefail
+            umask 077
+
+            cd /var/www/mskba
+            PORTAL_ENV=/var/www/mskba/.env
+            UI_ENV=/var/www/mskba-ui/.env
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            test -f "$PORTAL_ENV" && test -w "$PORTAL_ENV" && test -r "$UI_ENV"
+            grep -Fxq 'APP_ENV=production' "$PORTAL_ENV"
+            grep -Fxq 'APP_ENV=ui-studio' "$UI_ENV"
+            grep -Fxq 'UI_STUDIO_ENABLED=true' "$UI_ENV"
+            grep -Fxq 'UI_STUDIO_BRIDGE_ENABLED=false' "$PORTAL_ENV"
+            grep -Fxq 'SESSION_DRIVER=file' "$UI_ENV"
+            grep -Fxq 'CACHE_STORE=file' "$UI_ENV"
+            grep -Fxq 'SESSION_COOKIE=mskba_ui_session' "$UI_ENV"
+            grep -Fxq 'APP_DEBUG=false' "$UI_ENV"
+
+            UI_SECRET="$(grep -m1 '^UI_STUDIO_BRIDGE_SECRET=' "$UI_ENV" | cut -d= -f2- || true)"
+            PORTAL_SECRET="$(grep -m1 '^UI_STUDIO_BRIDGE_SECRET=' "$PORTAL_ENV" | cut -d= -f2- || true)"
+            if [ "${#UI_SECRET}" -lt 32 ] || [ "$UI_SECRET" != "$PORTAL_SECRET" ]; then
+              echo 'UI_STUDIO_ISSUER=BLOCKED_SECRET_MISMATCH'
+              exit 1
+            fi
+            unset UI_SECRET PORTAL_SECRET
+
+            expect_status() {
+              path="$1"
+              method="$2"
+              code="$3"
+              if [ "$method" = POST ]; then
+                actual="$(curl --silent --show-error --connect-timeout 6 --max-time 12 --request POST -H 'Accept: application/json' --data '{}' -o /dev/null -w '%{http_code}' "https://ui.mskba.ru$path")"
+              else
+                actual="$(curl --silent --show-error --connect-timeout 6 --max-time 12 -o /dev/null -w '%{http_code}' "https://ui.mskba.ru$path")"
+              fi
+              echo "UI_STUDIO_PRECHECK_${method}_$path=$actual"
+              test "$actual" = "$code"
+            }
+
+            expect_status /uikit/bridge GET 200
+            expect_status /uikit GET 401
+            expect_status /uikit/session POST 419
+            expect_status /uikit/reviews POST 419
+
+            if ! curl --silent --show-error --max-time 12 -D - -o /dev/null https://ui.mskba.ru/uikit/bridge               | grep -i 'content-security-policy:' | grep -Fq 'frame-ancestors'; then
+              echo 'UI_STUDIO_ISSUER=BLOCKED_MISSING_FRAME_CSP'
+              exit 1
+            fi
+
+            BACKUPS=/var/www/mskba-ui-runtime/issuer-backups
+            mkdir -p "$BACKUPS"
+            chmod 700 "$BACKUPS"
+            BACKUP="$BACKUPS/portal-env-before-ui-studio-$(date -u +%Y%m%dT%H%M%SZ)"
+            cp -p "$PORTAL_ENV" "$BACKUP"
+            chmod 600 "$BACKUP"
+
+            rollback() {
+              echo 'UI_STUDIO_ISSUER=ROLLBACK'
+              cp "$BACKUP" "$PORTAL_ENV"
+              $COMPOSE exec -T phpfpm php artisan config:clear >/dev/null 2>&1 || true
+              $COMPOSE exec -T phpfpm php artisan config:cache >/dev/null 2>&1 || true
+            }
+            trap rollback ERR
+
+            sed -i 's/^UI_STUDIO_BRIDGE_ENABLED=false$/UI_STUDIO_BRIDGE_ENABLED=true/' "$PORTAL_ENV"
+            grep -Fxq 'UI_STUDIO_BRIDGE_ENABLED=true' "$PORTAL_ENV"
+
+            $COMPOSE exec -T phpfpm php artisan config:clear >/dev/null
+            $COMPOSE exec -T phpfpm php artisan config:cache >/dev/null
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              if (config("ui-studio.issuer_enabled") !== true ||
+                  strlen((string)config("ui-studio.bridge_secret")) < 32) {
+                  throw new RuntimeException("UI Studio issuer config failed");
+              }
+              echo "UI_STUDIO_ISSUER_CONFIG=ACTIVE\n";
+            '
+
+            # No user session or personal data: unauthorized requests must not mint tickets.
+            public_code="$(curl --silent --show-error --connect-timeout 6 --max-time 12               -H 'Accept: application/json' -X POST --data '' -o /dev/null -w '%{http_code}'               https://mskba.ru/backoffice/ui-studio/ticket)"
+            echo "UI_STUDIO_UNAUTHENTICATED_TICKET_HTTP=$public_code"
+            case "$public_code" in
+              401|403|419) ;;
+              *) echo 'UI_STUDIO_ISSUER=FAIL_UNAUTHENTICATED_TICKET_NOT_GUARDED'; exit 1 ;;
+            esac
+
+            trap - ERR
+            echo 'UI_STUDIO_ISSUER=ENABLED'
+            echo 'UI_STUDIO_NEXT_STEP=FILAMENT_BROWSER_SMOKE'
