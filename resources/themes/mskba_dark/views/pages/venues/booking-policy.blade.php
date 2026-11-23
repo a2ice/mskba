@@ -30,6 +30,7 @@
 @endsection
 
 @section('section-content')
+    @if($policy)<p><a href="{{ route('account.venues.tariff-grid.edit', $venue->id) }}">Тарифная сетка по времени — все залы, диапазоны и исключения</a></p>@endif
     @if(app(\App\Modules\VenueBooking\Application\Services\VenueSpecialTermsManager::class)->canManage(auth()->user(), $venue))
         <p><a href="{{ route('account.venues.special-terms.index', $venue->id) }}">Специальные условия</a></p>
     @endif
