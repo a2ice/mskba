@@ -45,6 +45,7 @@
             </div>
         </form>
 
+        <p class="muted" data-context-results-count role="status">Найдено команд: {{ $teams->total() }}</p>
         <div class="app-team-grid" aria-label="Результаты поиска команд">
             @forelse ($teams as $team)
                 <article class="panel app-team-card">
