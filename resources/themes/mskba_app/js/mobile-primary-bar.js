@@ -97,9 +97,9 @@ if (dock) {
         const source = countSource();
         const explicit = source?.getAttribute('data-context-result-total');
         const text = source?.textContent?.trim() || '';
-        const numeric = explicit !== null && explicit !== undefined && /^\\d+$/.test(explicit)
+        const numeric = explicit !== null && explicit !== undefined && /^\d+$/.test(explicit)
             ? explicit
-            : text.match(/(?:^|\\D)(\\d[\\d\\s]*)\\s*$/u)?.[1]?.replace(/\\s/g, '') ?? null;
+            : text.match(/(?:^|\D)(\d[\d\s]*)\s*$/u)?.[1]?.replace(/\s/g, '') ?? null;
         if (filterResultValue) filterResultValue.textContent = numeric ?? '—';
     };
 
