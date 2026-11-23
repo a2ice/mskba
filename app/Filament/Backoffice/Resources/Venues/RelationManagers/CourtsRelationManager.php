@@ -311,8 +311,8 @@ final class CourtsRelationManager extends RelationManager
         ])->recordActions([
             Action::make('unifiedTariffGrid')->label('Тарифная сетка')
                 ->icon('heroicon-o-table-cells')
-                ->url(fn (VenueCourt $record): string => route('account.venues.tariff-grid.edit', [
-                    'venue' => $this->getOwnerRecord()->id,
+                ->url(fn (VenueCourt $record): string => VenueResource::getUrl('tariffs', [
+                    'record' => $this->getOwnerRecord()->getKey(),
                     'court' => $record->id,
                 ]))
                 ->openUrlInNewTab()
