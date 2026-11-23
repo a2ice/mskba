@@ -36,7 +36,7 @@ test('venue description lightbox centers its photo card independently of dialog 
     // A full-viewport overlay MUST explicitly reset it, or its whole panel
     // shifts half the viewport offscreen despite correct grid centering.
     const baseDialogCss = source('resources/themes/mskba_app/css/design-system.css');
-    assert.match(baseDialogCss, /transform:translate\\(-50%,-50%\\)/);
+    assert.ok(baseDialogCss.includes('transform:translate(-50%,-50%)'));
     assert.ok(overlay?.includes('transform:none;translate:none'));
     assert.ok(overlay?.includes('min-width:0;min-height:0'));
     assert.ok(css.includes('dialog.venue-description-lightbox[open]{display:grid;place-items:center}'));
