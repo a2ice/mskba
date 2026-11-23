@@ -49,3 +49,13 @@ php artisan ui-studio:export-themes > themes.json
 ### Автоматическая доставка preview
 
 Ветка `ui-preview` — отдельная публикационная ветка без PR в main/dev. Workflow `.github/workflows/ui-preview.yml` срабатывает на push только в неё (не добавлять [skip ci] к preview-коммитам: это отключит и публикацию). Использует существующий SSH-доступ GitHub Actions, работает только в /var/www/mskba-ui и с mskba-ui-php, блокирует параллельные публикации и проверяет network=none. При изменениях frontend-ассетов выполняет локальную сборку, при Blade-only — только обновление файлов и кеша. Composer, маршруты и прочую конфигурацию runtime не изменяет автоматически. После публикации проверяет маршруты и отсутствие публичного доступа; визуальная приёмка в браузере остаётся обязательной. На первом этапе доступ SSH общий с обычным deploy; выделенный ключ с ограниченной серверной командой — последующее усиление изоляции. Не открывать PR из ui-preview в product-ветку: переносить только принятые изменения из локального кандидата в целевой PR.
+
+### Consolidated Studio/Kit — compatibility update, 23.11.2026
+
+The already deployed isolated `ui-preview` worktree contains four UI screens and newer local revisions, notably `event-detail` r10 and `unified-chat` r6. These are preserved. Do not replace the complete `ui-preview` branch with `main` or the obsolete unified-chat r3 fixture.
+
+The new code from #934 is integrated as shared studio infrastructure (iframe bridge, single-use HMAC tickets, review manifests and acceptance UI). `ui-preview.yml` allows only the audited `routes/ui-studio.php` and `config/ui-studio.php` runtime diffs; other routing/config/dependency modifications still fail closed.
+
+The isolated Studio `.env` must use `SESSION_DRIVER=file` and `CACHE_STORE=file` before accepting tickets, with a new shared secret used only by the bridge and Studio. Never copy APP_KEY or Laravel sessions from production. Production `UI_STUDIO_BRIDGE_ENABLED` remains false until the isolated route, proxy POST allowlist and secure session are verified. Review storage stays inside the Studio checkout.
+
+Cases describe the exact source files used to calculate a SHA-256 fingerprint. Proposed reusable kit changes are manually classified, not machine-discovered; only the chat case currently contains explicit suggestions. Accepted decisions are local reviews, not automatic CSS/JS promotion to production.

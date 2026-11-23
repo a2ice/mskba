@@ -63,7 +63,7 @@ jobs:
               echo "Do not commit compiled assets to ui-preview; build from source"
               exit 1
             fi
-            if printf '%s\n' "$changes" | grep -v '^config/ui-studio\.php$' | grep -Eq '^(composer\.(json|lock)|bootstrap/app\.php|routes/|config/)'; then
+            if printf '%s\n' "$changes" | grep -Ev '^(config/ui-studio\.php|routes/ui-studio\.php)$' | grep -Eq '^(composer\.(json|lock)|bootstrap/app\.php|routes/|config/)'; then
               echo "Runtime/dependency changes require explicit infrastructure review"
               exit 1
             fi
