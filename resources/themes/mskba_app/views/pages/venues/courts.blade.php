@@ -31,6 +31,7 @@
         @if($policy)
             <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">Условия площадки</a>
             <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
+            <a class="button secondary" href="{{ route('account.venues.tariff-grid.edit', $venue->id) }}">Единая тарифная сетка</a>
         @endif
     </div>
 
