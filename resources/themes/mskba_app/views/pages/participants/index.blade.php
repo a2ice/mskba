@@ -9,6 +9,7 @@
     $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
     $categorySidebarLabel = 'Навигация и фильтры участников';
     $categoryToolbarCount = 'Найдено участников: '.$participants->total();
+    $categoryResultTotal = $participants->total();
 @endphp
 @extends('theme::layouts.category')
 
