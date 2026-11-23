@@ -64,6 +64,7 @@ final class VenueTariffGridController extends Controller
             'half_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
             'exceptions' => ['nullable', 'array', 'max:100'],
             'exceptions.*.starts_at' => ['nullable', 'date_format:H:i'],
+            'exceptions.*.day_of_week' => ['nullable', 'integer', 'between:1,7'],
             'exceptions.*.operation' => ['nullable', Rule::in(['set', 'clear'])],
             'exceptions.*.whole_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
             'exceptions.*.half_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
