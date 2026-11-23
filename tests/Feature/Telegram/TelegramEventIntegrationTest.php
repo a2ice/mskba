@@ -20,6 +20,8 @@ use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramMessageJob;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramEventPublicationJob;
+use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -146,6 +148,45 @@ final class TelegramEventIntegrationTest extends TestCase
         $event->unsetRelation('venue')->setRelation('booking', null)->setRelation('sourceBooking', null);
         $builder = app(\App\Modules\Telegram\Application\Services\TelegramEventMessageBuilder::class);
         $this->assertStringContainsString('Аренда не требуется', $builder->text($event));
+    }
+
+
+    public function test_inherited_court_booking_requirement_uses_active_paid_policy(): void
+    {
+        $event = Event::factory()->create(['venue_court_id' => null]);
+        $venue = $event->venue;
+        $venue->forceFill([
+            'requires_booking' => null,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ])->save();
+        $court = VenueCourt::query()->create([
+            'venue_id' => $venue->id,
+            'name' => 'Основной зал', 'alias' => 'main-court',
+            'sort_order' => 20, 'is_primary' => true,
+            'supports_halves' => false, 'allows_whole' => true, 'allows_halves' => false,
+        ]);
+        $court->forceFill(['requires_booking' => null, 'requires_payment' => null])->save();
+        $event->forceFill(['venue_court_id' => $court->id])->save();
+
+        VenueBookingPolicy::query()->create([
+            'venue_id' => $venue->id,
+            'version' => 1, 'active_marker' => true, 'is_enabled' => true,
+            'allows_whole' => true, 'allows_halves' => false,
+            'minimum_duration_minutes' => 60, 'maximum_duration_minutes' => 240,
+            'time_step_minutes' => 30, 'minimum_lead_time_minutes' => 0,
+            'maximum_advance_days' => 90, 'currency' => 'RUB',
+            'whole_price_per_step_minor' => 500, 'half_price_per_step_minor' => 300,
+            'hold_duration_minutes' => 30, 'requires_payment' => true,
+            'payment_window_minutes' => 30, 'quote_validity_minutes' => 15,
+            'published_at' => now(),
+        ]);
+
+        $event->unsetRelation('court')->unsetRelation('venue')
+            ->setRelation('booking', null)->setRelation('sourceBooking', null);
+        $text = app(\App\Modules\Telegram\Application\Services\TelegramEventMessageBuilder::class)->text($event);
+        $this->assertStringContainsString('Аренда не подтверждена', $text);
+        $this->assertStringNotContainsString('Аренда не требуется', $text);
     }
 
     public function test_event_publications_are_prepared_for_each_selected_chat(): void
