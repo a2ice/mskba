@@ -1,0 +1,78 @@
+name: UI Studio infrastructure preflight (read only)
+
+on:
+  push:
+    branches:
+      - ops/ui-studio-995-preflight
+    paths:
+      - '.github/workflows/ui-studio-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify SSH reachability and UI Studio readiness without changing production
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            echo 'UI_STUDIO_PREFLIGHT=STARTED'
+            echo '--- DNS ---'
+            if getent ahostsv4 ui.mskba.ru >/dev/null 2>&1; then
+              echo 'UI_DNS_IPV4=FOUND'
+            else
+              echo 'UI_DNS_IPV4=NOT_FOUND'
+            fi
+
+            echo '--- HTTPS ---'
+            STATUS="$(curl --silent --show-error --max-time 8 --output /dev/null --write-out '%{http_code}' https://ui.mskba.ru/uikit 2>/dev/null || true)"
+            case "$STATUS" in
+              200|301|302|303|307|308|401|403|404) echo "UI_HTTPS=RESPONDING_HTTP_${STATUS}" ;;
+              000|'') echo 'UI_HTTPS=UNREACHABLE_OR_TLS_ERROR' ;;
+              *) echo "UI_HTTPS=HTTP_${STATUS}" ;;
+            esac
+
+            echo '--- RESOURCES ---'
+            free -m | awk '/^Mem:/ { print "RAM_TOTAL_MB=" $2; print "RAM_AVAILABLE_MB=" $7 }'
+            df -Pm /var/www | awk 'NR==2 {print "DISK_AVAILABLE_MB=" $4}'
+            if command -v docker >/dev/null 2>&1; then
+              RUNNING="$(docker ps --format '{{.Names}}' 2>/dev/null | wc -l || true)"
+              echo "DOCKER_RUNNING_CONTAINERS=${RUNNING}"
+            else
+              echo 'DOCKER=UNAVAILABLE'
+            fi
+
+            echo '--- READ ONLY HOST CHECKS ---'
+            for directory in /var/www/mskba /var/www/mskba-dev-next /var/www/mskba-ui /var/www/ui.mskba.ru; do
+              if [ -d "$directory" ]; then
+                echo "DIRECTORY_${directory}=EXISTS"
+              else
+                echo "DIRECTORY_${directory}=ABSENT"
+              fi
+            done
+            for path in /etc/letsencrypt/live/ui.mskba.ru/fullchain.pem /etc/nginx/sites-enabled/ui.mskba.ru.conf; do
+              if [ -e "$path" ]; then
+                echo "FILE_${path}=EXISTS"
+              else
+                echo "FILE_${path}=ABSENT_OR_UNREADABLE"
+              fi
+            done
+            if [ -d /etc/nginx/sites-enabled ]; then
+              if grep -Rql --include='*.conf' -F 'ui.mskba.ru' /etc/nginx/sites-enabled 2>/dev/null; then
+                echo 'NGINX_UI_VHOST=CONFIG_PRESENT'
+              else
+                echo 'NGINX_UI_VHOST=NOT_FOUND_OR_UNREADABLE'
+              fi
+            else
+              echo 'NGINX_UI_VHOST=HOST_CONFIGURATION_UNAVAILABLE'
+            fi
+            echo 'UI_STUDIO_PREFLIGHT=FINISHED'
