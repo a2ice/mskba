@@ -248,7 +248,7 @@ final class EditVenueTariffs extends Page
             'date' => ['required', 'date_format:Y-m-d'],
             'ranges' => ['required', 'array', 'min:1', 'max:16'],
             'ranges.*.days' => ['required_if:mode,weekly', 'array', 'max:7'],
-            'ranges.*.days.*' => ['integer', 'between:1,7', 'distinct'],
+            'ranges.*.days.*' => ['integer', 'between:1,7'],
             'ranges.*.starts_at' => ['required', 'date_format:H:i'],
             'ranges.*.ends_at' => ['required', 'date_format:H:i'],
             'ranges.*.operation' => ['required', Rule::in(['set', 'clear'])],
