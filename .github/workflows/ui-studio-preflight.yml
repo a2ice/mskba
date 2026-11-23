@@ -191,4 +191,17 @@ jobs:
                 done
               fi
             fi
+            echo '--- UI VHOST CONFIG SAFE REVIEW ---'
+            if [ -r /etc/nginx/sites-enabled/mskba-ui ]; then
+              sed -n '14,100p' /etc/nginx/sites-enabled/mskba-ui \
+                | sed -E 's@([[:space:]]*(ssl_certificate|ssl_certificate_key|auth_basic_user_file)[[:space:]]+).*@\1[REDACTED];@' \
+                | head -n 85
+            else
+              echo 'VHOST_UNREADABLE'
+            fi
+            if sudo -n true >/dev/null 2>&1; then
+              echo 'SUDO_NONINTERACTIVE=YES'
+            else
+              echo 'SUDO_NONINTERACTIVE=NO'
+            fi
             echo 'UI_STUDIO_PREFLIGHT=FINISHED'
