@@ -52,6 +52,7 @@
 @import './my-games.css';
 @import './public-content.css';
 @import './mobile-primary-bar.css';
+@import './mobile-context-filters.css';
 
 .app-shell { min-height: 100dvh; }
 
