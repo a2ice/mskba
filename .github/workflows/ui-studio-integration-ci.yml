@@ -39,4 +39,4 @@ jobs:
         run: php artisan test tests/Feature/UiStudioAccessTest.php tests/Feature/UiStudioBridgeTicketTest.php tests/Feature/UiStudioReviewStoreTest.php
       - name: Validate retained UI preview cases
         run: |
-          php -r '$c=require "config/ui-studio.php"; foreach(["event-detail"=>10,"event-feedback-settings"=>1,"venue-map"=>1,"unified-chat"=>6] as $id=>$version) { if(($c["cases"][$id]["revision"]??null)!==$version) exit(1); foreach($c["cases"][$id]["sources"] as $p) if(!is_file($p)) { fwrite(STDERR, "$p missing\n"); exit(1); }} echo "All four preview cases preserved\n";'
+          php -r 'function env($key, $default=null) { return $default; } $c=require "config/ui-studio.php"; foreach(["event-detail"=>10,"event-feedback-settings"=>1,"venue-map"=>1,"unified-chat"=>6] as $id=>$version) { if(($c["cases"][$id]["revision"]??null)!==$version) exit(1); foreach($c["cases"][$id]["sources"] as $p) if(!is_file($p)) { fwrite(STDERR, "$p missing\n"); exit(1); }} echo "All four preview cases preserved\n";'
