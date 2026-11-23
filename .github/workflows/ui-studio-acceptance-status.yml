@@ -70,4 +70,16 @@ jobs:
               echo 'SSO_SHARED_HMAC_SECRET=NOT_READY'
             fi
             unset ui_secret prod_secret
+            echo '--- NGINX VHOST FILE IDENTITY ---'
+            for p in /etc/nginx/sites-enabled/mskba-ui /etc/nginx/sites-available/mskba-ui; do
+              if [ -e "$p" ]; then
+                echo "VHOST_PATH=$p"
+                stat -c 'VHOST_TYPE=%F OWNER=%U MODE=%a INODE=%i' "$p" || true
+                echo "VHOST_REALPATH=$(readlink -f "$p" || true)"
+                sha256sum "$p" | sed 's@ .*$@ [PATH HIDDEN]@'
+                grep -E -n 'MSKBA_UI_STUDIO_SSO_V1|auth_basic off|HTTP_COOKIE|location .*uikit' "$p" | cut -c1-180 || true
+              else
+                echo "VHOST_PATH_NOT_FOUND=$p"
+              fi
+            done
             echo 'UI_STUDIO_LIVE_STATUS_END'
