@@ -1,0 +1,111 @@
+name: Prepare isolated UI Studio file sessions (no public SSO)
+
+on:
+  push:
+    branches: [ops/ui-studio-995-preflight]
+    paths:
+      - '.github/workflows/ui-studio-session-setup.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-ui-preview-publish
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Configure isolated Studio session store and shared HMAC secret, with backups
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: \${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: \${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -Eeuo pipefail
+            umask 077
+            UI_ENV=/var/www/mskba-ui/.env
+            PORTAL_ENV=/var/www/mskba/.env
+            test -f "$UI_ENV" && test -f "$PORTAL_ENV"
+            test -w "$UI_ENV" && test -w "$PORTAL_ENV"
+            grep -Fxq 'APP_ENV=ui-studio' "$UI_ENV"
+            grep -Fxq 'UI_STUDIO_ENABLED=true' "$UI_ENV"
+            grep -Fxq 'APP_ENV=production' "$PORTAL_ENV"
+            if grep -Fxq 'UI_STUDIO_BRIDGE_ENABLED=true' "$PORTAL_ENV"; then
+              echo 'Refusing to change already enabled bridge'
+              exit 1
+            fi
+            existing_ui="$(grep -m1 '^UI_STUDIO_BRIDGE_SECRET=' "$UI_ENV" | cut -d= -f2- || true)"
+            existing_portal="$(grep -m1 '^UI_STUDIO_BRIDGE_SECRET=' "$PORTAL_ENV" | cut -d= -f2- || true)"
+            if [ -n "$existing_ui" ] || [ -n "$existing_portal" ]; then
+              echo 'Shared secret already configured; refusing to replace it'
+              exit 1
+            fi
+            ui_key="$(grep -m1 '^APP_KEY=' "$UI_ENV" | cut -d= -f2- || true)"
+            portal_key="$(grep -m1 '^APP_KEY=' "$PORTAL_ENV" | cut -d= -f2- || true)"
+            test -n "$ui_key" && test -n "$portal_key" && test "$ui_key" != "$portal_key"
+            unset ui_key portal_key
+            exec 9>/var/www/mskba-ui-runtime/publish.lock
+            flock -w 60 9
+
+            stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+            ui_backup="$UI_ENV.ui-studio-995-backup-$stamp"
+            portal_backup="$PORTAL_ENV.ui-studio-995-backup-$stamp"
+            cp -p "$UI_ENV" "$ui_backup"
+            cp -p "$PORTAL_ENV" "$portal_backup"
+            chmod 600 "$ui_backup" "$portal_backup"
+            rollback() {
+              echo 'Setup failed; restoring original environment configuration'
+              cp "$ui_backup" "$UI_ENV"
+              cp "$portal_backup" "$PORTAL_ENV"
+              docker exec mskba-ui-php php artisan config:clear >/dev/null 2>&1 || true
+            }
+            trap rollback ERR
+
+            update_env() {
+              file="$1"
+              key="$2"
+              value="$3"
+              if grep -q "^$key=" "$file"; then
+                sed -i "s|^$key=.*|$key=$value|" "$file"
+              else
+                printf '%s=%s\n' "$key" "$value" >> "$file"
+              fi
+            }
+
+            shared_secret="$(openssl rand -hex 32)"
+            update_env "$UI_ENV" UI_STUDIO_BRIDGE_SECRET "$shared_secret"
+            update_env "$PORTAL_ENV" UI_STUDIO_BRIDGE_SECRET "$shared_secret"
+            unset shared_secret
+            update_env "$PORTAL_ENV" UI_STUDIO_BRIDGE_ENABLED false
+            update_env "$UI_ENV" SESSION_DRIVER file
+            update_env "$UI_ENV" CACHE_STORE file
+            update_env "$UI_ENV" SESSION_COOKIE mskba_ui_session
+            update_env "$UI_ENV" SESSION_DOMAIN null
+            update_env "$UI_ENV" SESSION_SECURE_COOKIE true
+            update_env "$UI_ENV" SESSION_SAME_SITE lax
+            update_env "$UI_ENV" SESSION_LIFETIME 120
+            chmod 600 "$UI_ENV" "$PORTAL_ENV"
+
+            docker exec mskba-ui-php php artisan config:clear >/dev/null
+            docker exec mskba-ui-php php artisan tinker --execute='
+              if (config("session.driver") !== "file" || config("cache.default") !== "file") {
+                throw new RuntimeException("UI Studio persistent store is not ready");
+              }
+              if (config("session.cookie") !== "mskba_ui_session") {
+                throw new RuntimeException("UI Studio session cookie mismatch");
+              }
+              if (strlen((string) config("ui-studio.bridge_secret")) < 32) {
+                throw new RuntimeException("UI Studio signing secret is not configured");
+              }
+              echo "UI_STUDIO_PERSISTENT_SESSION=OK\n";
+              echo "UI_STUDIO_BRIDGE_SECRET=CONFIGURED_NOT_DISCLOSED\n";
+            '
+            test "$(curl --max-time 10 -sS -o /dev/null -w '%{http_code}' https://ui.mskba.ru/uikit)" = 401
+            trap - ERR
+            echo 'UI_STUDIO_SESSION_SETUP=SUCCESS'
+            echo 'PORTAL_BRIDGE=STILL_DISABLED'
