@@ -97,7 +97,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-play-step="list"', false)
             ->assertSee('data-venue-play-step="detail"', false)
             ->assertSee('data-venue-play-list-footer', false)
-            ->assertSee('На этой площадке пока нет предстоящих мероприятий.')
+            ->assertSee('Пока нет предстоящих игр.')
             ->assertDontSee('data-venue-favorite-cancel', false)
             ->assertDontSee('venue-play-dialog__eyebrow', false)
             ->assertDontSee('MSKBA · играем вместе')
@@ -105,7 +105,10 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('data-venue-favorite-close>Отмена', false)
             ->assertSee('Площадка добавлена в избранное.')
             ->assertSee('Арендовать площадку')
-            ->assertSee('В избранное');
+            ->assertSee('В избранное')
+            ->assertSee('data-venue-favorite-follow', false)
+            ->assertSee('data-venue-favorite-follow-action', false)
+            ->assertDontSee('Тоже хочу здесь играть');
 
         $this->actingAs(User::factory()->create())
             ->get(route('play-intents.mine'))
