@@ -7,6 +7,7 @@ use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
+use App\Modules\VenueIntegration\Domain\Models\ExternalAvailabilitySlot;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -71,6 +72,12 @@ final class VenueTariffGrid
         $fromImport = $mode === 'date' && $import !== null
             && $date >= $import->first_date->format('Y-m-d')
             && $date <= $import->last_date->format('Y-m-d');
+        $availability = $fromImport
+            ? ExternalAvailabilitySlot::query()
+                ->where('external_availability_snapshot_id', $import->external_availability_snapshot_id)
+                ->whereDate('local_date', $date)->get()
+                ->keyBy(fn ($slot) => $slot->starts_at->setTimezone('Europe/Moscow')->format('H:i'))
+            : collect();
 
         $days = $mode === 'date'
             ? [(int) CarbonImmutable::parse($date)->dayOfWeekIso => CarbonImmutable::parse($date)->format('d.m.Y')]
@@ -128,7 +135,16 @@ final class VenueTariffGrid
 
                 $signature = implode('|', [$prices['whole'], $prices['half'], $source]);
                 $end = self::clock(($minute + $step) % 1440);
-                $cell = ['time' => $time, 'whole' => $prices['whole'], 'half' => $prices['half'], 'source' => $source];
+                $externalStatus = $availability->get($time)?->status;
+                $cell = [
+                    'time' => $time, 'whole' => $prices['whole'], 'half' => $prices['half'],
+                    'source' => $source,
+                    'availability' => match ($externalStatus) {
+                        'available' => 'Свободно', 'booked' => 'Занято',
+                        'unavailable' => 'Недоступно', 'unknown' => 'Неизвестно',
+                        default => null,
+                    },
+                ];
                 $last = array_key_last($ranges);
                 if ($last !== null && $ranges[$last]['signature'] === $signature) {
                     $ranges[$last]['end'] = $end;
