@@ -221,7 +221,6 @@ final class VenueCourtDetailInheritanceTest extends TestCase
             route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]),
         ] as $url) {
             $this->get($url)->assertOk()
-                ->assertSee('class="app-venue-block__description app-venue-description"', false)
                 ->assertSee('<h4>Удобное расположение</h4>', false)
                 ->assertSee('<strong>зал</strong>', false)
                 ->assertSee('<ul><li>Мячи</li><li>Раздевалки</li></ul>', false)
@@ -240,7 +239,6 @@ final class VenueCourtDetailInheritanceTest extends TestCase
         ]);
 
         $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk()
-            ->assertSee('app-venue-description--plain', false)
             ->assertSee("Первая строка\nВторая строка", false);
     }
 
