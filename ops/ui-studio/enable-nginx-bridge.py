@@ -43,8 +43,10 @@ def patch(source: str) -> tuple[str, bool]:
     if MARKER in source:
         return source, False
 
+    if "server_name ui.mskba.ru;" not in source:
+        raise RuntimeError("This is not the UI Studio vhost")
+
     required = (
-        "server_name ui.mskba.ru;",
         'auth_basic "MSKBA UI Studio";',
         "    location ^~ /build/ {\n",
         "    location ~ ^/uikit(/|$) {\n",
