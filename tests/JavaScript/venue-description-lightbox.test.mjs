@@ -27,11 +27,14 @@ test('lightbox requires image anchor, safe URL, and supports accessible controls
 
 test('venue description lightbox centers its photo card independently of dialog placement', () => {
     const css = source('resources/themes/mskba_app/css/venue-description-rich.css');
-    assert.match(css, /dialog\\.venue-description-lightbox\\[open\\]\\s*\\{display:grid;place-items:center\\}/);
-    assert.match(css, /dialog\\.venue-description-lightbox\\s*\\{[\\s\\S]*?width:100vw;max-width:none/);
-    assert.match(css, /dialog\\.venue-description-lightbox\\s*\\{[\\s\\S]*?height:100dvh;max-height:none/);
-    assert.match(css, /\\.venue-description-lightbox__frame\\s*\\{[\\s\\S]*?width:min\\(1100px,calc\\(100vw - 24px\\)\\)/);
-    assert.match(css, /\\.venue-description-lightbox__image\\s*\\{[\\s\\S]*?max-height:calc\\(92dvh - 88px\\)/);
+    const overlay = css.split('dialog.venue-description-lightbox{')[1]?.split('}')[0];
+    const frame = css.split('.venue-description-lightbox__frame{')[1]?.split('}')[0];
+    const image = css.split('.venue-description-lightbox__image{')[1]?.split('}')[0];
+    assert.ok(overlay?.includes('width:100vw;max-width:none'));
+    assert.ok(overlay?.includes('height:100dvh;max-height:none'));
+    assert.ok(css.includes('dialog.venue-description-lightbox[open]{display:grid;place-items:center}'));
+    assert.ok(frame?.includes('width:min(1100px,calc(100vw - 24px))'));
+    assert.ok(image?.includes('max-height:calc(92dvh - 88px)'));
 });
 
 test('backoffice editor embeds safe gallery and venue action markup', () => {
