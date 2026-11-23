@@ -7,7 +7,8 @@
 @endpush
 
 @section('content')
-<section class="container app-site-search" aria-labelledby="app-site-search-heading">
+<section class="container app-site-search" aria-labelledby="app-site-search-heading"
+         data-context-result-total="{{ $search !== '' ? array_sum(array_column($groups, 'count')) : '' }}">
     <header class="app-site-search__header">
         <h1 id="app-site-search-heading">Поиск по MSKBA</h1>
         <p class="muted">Найдите площадки, мероприятия, команды, людей, новости и товары.</p>
