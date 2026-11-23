@@ -779,7 +779,7 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 
 /* Full venue descriptions accept sanitized HTML while preserving plain-text line breaks. */
 .app-venue-block__description.app-venue-description{width:100%;min-width:0;line-height:1.6;white-space:normal;overflow-wrap:anywhere}
-.app-venue-block__description.app-venue-description--plain{white-space:pre-line}
+.app-venue-block__description.app-venue-description:not(:has(:is(p,div,h2,h3,h4,ul,ol,li,blockquote,pre,figure,table))){white-space:pre-line}
 .app-venue-description :is(p,h2,h3,h4,ul,ol,blockquote){margin:0 0 .85em;white-space:normal}
 .app-venue-description :is(p,h2,h3,h4,ul,ol,blockquote):last-child{margin-bottom:0}
 .app-venue-description :is(h2,h3,h4){color:var(--text);line-height:1.35}
