@@ -231,6 +231,17 @@ final class VenueCourtDetailInheritanceTest extends TestCase
         }
     }
 
+    public function test_plain_venue_description_keeps_line_breaks(): void
+    {
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'full_description' => "Первая строка\nВторая строка",
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk()
+            ->assertSee("Первая строка\nВторая строка", false);
+    }
+
     private function expectAvailabilityError(
         VenueEventAvailability $availability, Venue $venue, VenueCourt $court,
         string $starts, string $ends,
