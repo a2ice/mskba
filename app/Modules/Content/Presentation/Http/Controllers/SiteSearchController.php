@@ -36,13 +36,14 @@ final class SiteSearchController extends Controller
         'sections' => 'Секции',
         'news' => 'Новости',
         'shop' => 'Магазин',
+        'faq' => 'Помощь и FAQ',
     ];
 
     public function __invoke(Request $request, PublicUserProfileService $profiles, ShopCatalogService $shop): Response
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
-            'types' => ['nullable', 'array', 'max:9'],
+            'types' => ['nullable', 'array', 'max:10'],
             'types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(self::TYPES))],
         ]);
         $search = trim((string) ($validated['q'] ?? ''));
@@ -142,6 +143,15 @@ final class SiteSearchController extends Controller
                         ->where(fn (Builder $q) => $q->whereLike('title', $like)
                             ->orWhereLike('short_description', $like)),
                     fn (ContentItem $item): array => ['title' => $item->title, 'url' => route('news.show', $item->alias)]
+                );
+            }
+            if (in_array('faq', $types, true)) {
+                $groups['faq'] = $this->group(
+                    'Помощь и FAQ', route('faq.index'),
+                    ContentItem::query()->published()->where('type', 'faq')
+                        ->where(fn (Builder $q) => $q->whereLike('title', $like)
+                            ->orWhereLike('short_description', $like)),
+                    fn (ContentItem $item): array => ['title' => $item->title, 'url' => $item->publicUrl()]
                 );
             }
             if (in_array('shop', $types, true)) {
