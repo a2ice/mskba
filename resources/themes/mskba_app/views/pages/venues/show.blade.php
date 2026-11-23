@@ -366,8 +366,12 @@
                     <p class="app-venue-court-overview"><strong>Залов и кортов:</strong> {{ count($venue->courts) }}</p>
                 @endif
                 @if(trim((string) $venue->fullDescription) !== '')
-                    <div class="app-venue-block__description app-venue-description">
-                        {!! app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription) !!}
+                    @php
+                        $venueDescriptionHtml = app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription);
+                        $venueDescriptionHasBlocks = preg_match('~<(?:p|div|h[2-4]|ul|ol|li|blockquote|pre|figure|figcaption|table|thead|tbody|tr|td|th|hr)\b~i', $venueDescriptionHtml) === 1;
+                    @endphp
+                    <div class="app-venue-block__description app-venue-description{{ $venueDescriptionHasBlocks ? '' : ' app-venue-description--plain' }}">
+                        {!! $venueDescriptionHtml !!}
                     </div>
                 @endif
                 @if($venueAboutPromotions->isNotEmpty())
