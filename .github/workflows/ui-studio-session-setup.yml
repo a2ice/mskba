@@ -92,7 +92,10 @@ jobs:
             chmod 600 "$UI_ENV" "$PORTAL_ENV"
 
             docker exec mskba-ui-php php artisan config:clear >/dev/null
-            docker exec mskba-ui-php php artisan tinker --execute='
+            docker exec mskba-ui-php php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
               if (config("session.driver") !== "file" || config("cache.default") !== "file") {
                 throw new RuntimeException("UI Studio persistent store is not ready");
               }
