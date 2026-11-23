@@ -22,7 +22,7 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        max-height: min(70dvh, calc(100dvh - 108px - env(safe-area-inset-bottom, 0px)));
+        max-height: min(70dvh, calc(var(--app-mobile-visual-height, 100dvh) - 104px - env(safe-area-inset-bottom, 0px)));
         min-height: 0;
         padding: 0;
     }
