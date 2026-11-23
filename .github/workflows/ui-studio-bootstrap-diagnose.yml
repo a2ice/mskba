@@ -36,11 +36,13 @@ jobs:
               $app = require "bootstrap/app.php";
               try {
                 $kernel = $app->make(\Illuminate\Contracts\Http\Kernel::class);
-                $request = \Illuminate\Http\Request::create("https://ui.mskba.ru/uikit/bridge", "GET");
-                $response = $kernel->handle($request);
-                echo "LOCAL_BRIDGE_RESPONSE=".$response->getStatusCode()."\n";
-                echo "LOCAL_BRIDGE_CLASS=".get_class($response)."\n";
-                $kernel->terminate($request, $response);
+                foreach (["bridge" => "/uikit/bridge", "anonymous_catalog" => "/uikit"] as $label => $path) {
+                  $request = \Illuminate\Http\Request::create("https://ui.mskba.ru".$path, "GET");
+                  $response = $kernel->handle($request);
+                  echo "LOCAL_".strtoupper($label)."_RESPONSE=".$response->getStatusCode()."\n";
+                  $kernel->terminate($request, $response);
+                }
+                echo "BASIC_FALLBACK_CONFIG=".(filled(config("ui-studio.user")) && filled(config("ui-studio.password_hash")) ? "PRESENT" : "ABSENT")."\n";
               } catch (\Throwable $e) {
                 echo "LOCAL_BRIDGE_ERROR_CLASS=".get_class($e)."\n";
                 echo "LOCAL_BRIDGE_ERROR_CODE=".$e->getCode()."\n";
