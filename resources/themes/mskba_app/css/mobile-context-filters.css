@@ -1,0 +1,228 @@
+/* Mobile dock contexts: shared search/filter surface; domain fields retain their own CSS. */
+@media (max-width: 768px) {
+    .app-mobile-primary__action[aria-expanded="true"] { color: var(--accent); }
+    .app-mobile-primary__action--filter { position: relative; }
+    .app-mobile-primary__filter-badge {
+        position: absolute;
+        top: 1px;
+        right: 13px;
+        min-width: 16px;
+        height: 16px;
+        padding: 1px 4px;
+        border-radius: 99px;
+        color: var(--on-accent);
+        background: var(--accent);
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 14px;
+        text-align: center;
+    }
+    .app-mobile-primary__panel--links { padding-bottom: 12px; }
+    .app-mobile-primary__panel--filters {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        max-height: min(70dvh, calc(var(--app-mobile-visual-height, 100dvh) - 104px - env(safe-area-inset-bottom, 0px)));
+        min-height: 0;
+        padding: 0;
+    }
+    .app-mobile-primary__panel--filters .app-mobile-primary__panel-header {
+        flex: 0 0 auto;
+        padding: 8px 14px;
+        margin: 0 12px;
+    }
+    .app-mobile-primary__filter-status {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 42px;
+        gap: 8px;
+        padding: 6px 20px 4px;
+        color: var(--muted);
+        font-size: 12px;
+    }
+    .app-mobile-primary__filter-expand {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 32px;
+        flex: 0 0 36px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface-raised);
+        color: var(--text);
+        cursor: pointer;
+    }
+    .app-mobile-primary__filter-expand svg {
+        width: 17px;
+        height: 17px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        transition: transform .18s;
+    }
+    .app-mobile-primary__panel--filters.is-expanded .app-mobile-primary__filter-expand svg {
+        transform: rotate(180deg);
+    }
+    .app-mobile-primary__filter-preview {
+        flex: 0 0 auto;
+        padding: 4px 18px 14px;
+    }
+    .app-mobile-primary__filter-preview-label {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 12px;
+        font-weight: 750;
+        color: var(--muted);
+    }
+    .app-mobile-primary__panel--filters :is(input[type="search"],input[type="date"],input[type="text"],select) {
+        max-width: 100%;
+        min-height: 44px;
+    }
+    .app-mobile-primary__filter-preview input,
+    .app-mobile-primary__panel--filters [data-context-global-search] input[type="search"] {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid var(--control-line);
+        border-radius: var(--radius-control);
+        padding: 10px 12px;
+        color: var(--text);
+        background: var(--field);
+        font: inherit;
+        font-size: 14px;
+    }
+    .app-mobile-primary__filter-scroll {
+        display: none;
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow: auto;
+        overscroll-behavior: contain;
+        padding: 8px 18px 15px;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+    }
+    .app-mobile-primary__panel--filters.is-expanded .app-mobile-primary__filter-scroll {
+        display: block;
+    }
+    .app-mobile-primary__panel--filters.is-expanded .app-mobile-primary__filter-preview {
+        display: none;
+    }
+    .app-mobile-primary__filter-footer {
+        display: grid;
+        flex: 0 0 auto;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+        gap: 10px;
+        padding: 12px 18px 15px;
+        border-top: 1px solid var(--line);
+        background: var(--surface);
+    }
+    .app-mobile-primary__filter-footer .button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-width: 0;
+        min-height: 46px;
+        padding: 9px 7px;
+        font-size: 13px;
+    }
+    .app-mobile-primary__origin-hidden { display: none !important; }
+    .app-mobile-primary__filter-scroll :is(
+        .app-category__filter-actions,.app-shop__filter-actions,
+        .app-venues-catalog__filter-actions,.app-team-filter-actions,
+        .account-collection__reset
+    ) { display: none !important; }
+    .app-mobile-primary__filter-scroll :is(.app-category__filters,.app-shop__filters,.app-venues-catalog__filters) {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    .app-mobile-primary__filter-scroll .app-category__mobile-filters-body :is(nav,h2),
+    .app-mobile-primary__filter-scroll .app-shop__mobile-filters-body :is(nav,h2) {
+        margin-bottom: 12px;
+    }
+    .app-mobile-primary__filter-scroll .app-category__mobile-filters-body h2 {
+        color: var(--accent);
+        font-size: 14px;
+    }
+    .app-mobile-primary__filter-scroll :is(
+        .app-category__filters input,.app-category__filters select,
+        .app-shop__filters input,.app-shop__filters select,
+        .app-venues-catalog__filters input,.app-venues-catalog__filters select,
+        .app-team-filters input,.app-team-filters select
+    ) { max-width: 100%; }
+    .app-mobile-primary__filter-scroll .app-team-filters {
+        display: grid;
+        gap: 14px;
+        padding: 0;
+        box-shadow: none;
+    }
+    .app-mobile-primary__filter-scroll :is(.app-favorites__filter-form,.app-play-interests__filters) {
+        display: grid;
+        padding: 0;
+        gap: 15px;
+        box-shadow: none;
+        background: transparent;
+    }
+    .app-mobile-primary__filter-scroll .app-my-games__filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .app-mobile-primary__panel--filters [data-context-global-search] {
+        display: grid;
+        gap: 15px;
+    }
+    .app-mobile-primary__panel--filters [data-context-global-search] > label,
+    .app-mobile-primary__panel--filters [data-context-global-search] legend {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 750;
+    }
+    .app-mobile-primary__panel--filters [data-context-global-search] fieldset {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+        gap: 9px;
+        padding: 0;
+        border: 0;
+        margin: 0;
+        min-width: 0;
+    }
+    .app-mobile-primary__panel--filters [data-context-global-search] legend {
+        grid-column: 1/-1;
+        margin-bottom: 9px;
+    }
+    .app-mobile-primary__search-type {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 8px 9px;
+        background: var(--surface-raised);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 650;
+    }
+    .app-mobile-primary__search-type input {
+        width: 17px;
+        height: 17px;
+        min-height: 0;
+        margin: 0;
+        accent-color: var(--accent);
+        flex: 0 0 auto;
+    }
+}
+@media (max-width: 360px) {
+    .app-mobile-primary__filter-badge { right: 7px; }
+    .app-mobile-primary__search-type { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app-mobile-primary__filter-expand svg { transition: none; }
+}

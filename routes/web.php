@@ -191,6 +191,10 @@ Route::get('/home', function () use ($themeResolver) {
         ->header('Cache-Control', 'private, no-store');
 })->name('homepage.original');
 
+// Federated public discovery; every entity query applies its public visibility rules.
+Route::get('/search', \App\Modules\Content\Presentation\Http\Controllers\SiteSearchController::class)
+    ->middleware('throttle:60,1')->name('site.search');
+
 // Catalog-only storefront. Product route precedes category route.
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
 Route::get('/shop/p/{product:slug}', [ShopController::class, 'product'])->name('shop.product');

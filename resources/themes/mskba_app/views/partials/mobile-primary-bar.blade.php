@@ -9,6 +9,25 @@
 {{-- The production mobile dock belongs to the current theme, not the legacy skin. --}}
 <div class="app-mobile-primary-backdrop" data-app-mobile-primary-backdrop hidden></div>
 <div class="app-mobile-primary" data-app-mobile-primary>
+    <section class="app-mobile-primary__panel app-mobile-primary__panel--links" id="app-mobile-primary-play"
+             data-app-mobile-primary-play-panel role="dialog" aria-modal="true"
+             aria-labelledby="app-mobile-primary-play-title" hidden>
+        <header class="app-mobile-primary__panel-header">
+            <h2 id="app-mobile-primary-play-title">Играть</h2>
+            <button type="button" class="app-mobile-primary__close" data-app-mobile-primary-close aria-label="Закрыть">
+                <svg aria-hidden="true"><use href="#close"/></svg>
+            </button>
+        </header>
+        <nav class="app-mobile-primary__site-links" aria-label="Игры и соревнования">
+            <a class="app-mobile-primary__site-link" href="{{ route('events.index', ['type' => 'game']) }}">Игры</a>
+            <a class="app-mobile-primary__site-link" href="{{ route('tournaments.index') }}">Турниры</a>
+            <a class="app-mobile-primary__site-link" href="{{ route('leagues.index') }}">Лиги</a>
+            @if(config('features.sports_sections.enabled'))
+                <a class="app-mobile-primary__site-link" href="{{ route('sports-sections.index') }}">Секции</a>
+            @endif
+        </nav>
+    </section>
+
     <section class="app-mobile-primary__panel" id="app-mobile-primary-menu"
              data-app-mobile-primary-panel role="dialog" aria-modal="true"
              aria-labelledby="app-mobile-primary-title" hidden>
@@ -75,13 +94,68 @@
         </details>
     </section>
 
+    <section class="app-mobile-primary__panel app-mobile-primary__panel--filters" id="app-mobile-primary-filters"
+             data-app-mobile-primary-filter-panel role="dialog" aria-modal="true"
+             aria-labelledby="app-mobile-primary-filter-title" hidden>
+        <header class="app-mobile-primary__panel-header">
+            <h2 id="app-mobile-primary-filter-title" data-app-mobile-primary-filter-title>Поиск</h2>
+            <button type="button" class="app-mobile-primary__close" data-app-mobile-primary-close aria-label="Закрыть">
+                <svg aria-hidden="true"><use href="#close"/></svg>
+            </button>
+        </header>
+        <div class="app-mobile-primary__filter-status">
+            <span data-context-filter-count role="status" aria-live="polite"></span>
+            <button type="button" class="app-mobile-primary__filter-expand" data-context-filter-expand
+                    aria-expanded="false" aria-controls="app-mobile-primary-filter-scroll"
+                    aria-label="Развернуть фильтры">
+                <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+            </button>
+        </div>
+        <div class="app-mobile-primary__filter-preview" data-context-filter-preview>
+            <label class="app-mobile-primary__filter-preview-label" for="app-mobile-primary-quick-search">Поиск</label>
+            <input type="search" id="app-mobile-primary-quick-search" data-context-filter-quick-search
+                   autocomplete="off" placeholder="Что хотите найти?">
+        </div>
+        <div class="app-mobile-primary__filter-scroll" id="app-mobile-primary-filter-scroll"
+             data-context-filter-scroll>
+            <div data-context-filter-host></div>
+            <form method="GET" action="{{ url('/search') }}" data-context-global-search>
+                <label for="app-mobile-primary-global-query">Поиск по всему сайту</label>
+                <input id="app-mobile-primary-global-query" type="search" name="q" maxlength="100"
+                       value="{{ request()->routeIs('site.search') ? request('q', '') : '' }}"
+                       placeholder="Площадки, команды, турниры…">
+                <fieldset>
+                    <legend>Где искать</legend>
+                    @foreach ([
+                        'venues' => 'Площадки', 'events' => 'Мероприятия',
+                        'teams' => 'Команды', 'people' => 'Участники',
+                        'tournaments' => 'Турниры', 'leagues' => 'Лиги',
+                        'sections' => 'Секции', 'news' => 'Новости', 'shop' => 'Магазин',
+                        'faq' => 'Помощь и FAQ',
+                    ] as $searchType => $searchLabel)
+                        <label class="app-mobile-primary__search-type">
+                            <input type="checkbox" name="types[]" value="{{ $searchType }}"
+                                   @checked(! request()->routeIs('site.search') || ! request()->has('types') || in_array($searchType, (array) request('types', []), true))>
+                            <span>{{ $searchLabel }}</span>
+                        </label>
+                    @endforeach
+                </fieldset>
+            </form>
+        </div>
+        <footer class="app-mobile-primary__filter-footer">
+            <button type="button" class="button secondary" data-context-filter-reset>Сбросить</button>
+            <button type="button" class="button primary" data-context-filter-apply>Применить</button>
+        </footer>
+    </section>
+
     <nav class="app-mobile-primary__bar" aria-label="Основная мобильная навигация">
-        <a class="app-mobile-primary__action"
-           href="{{ route('events.index', ['type' => 'games']) }}"
-           @if (request()->routeIs('events.index') && request()->query('type') === 'games') aria-current="page" @endif>
+        <button class="app-mobile-primary__action app-mobile-primary__action--play"
+                type="button" data-app-mobile-primary-play-toggle
+                aria-controls="app-mobile-primary-play" aria-expanded="false"
+                aria-label="Открыть раздел Играть">
             <svg aria-hidden="true"><use href="#ball"/></svg>
             <span>Играть</span>
-        </a>
+        </button>
         <a class="app-mobile-primary__action"
            href="{{ route('venues') }}"
            @if (request()->routeIs('venues', 'venues.*')) aria-current="page" @endif>
@@ -93,12 +167,7 @@
            @if (request()->routeIs('welcome')) aria-current="page" @endif>
             <span class="app-mobile-primary__home-mark" aria-hidden="true"></span>
         </a>
-        <a class="app-mobile-primary__action"
-           href="{{ route('events.index', ['type' => 'training']) }}"
-           @if (request()->routeIs('events.index') && request()->query('type') === 'training') aria-current="page" @endif>
-            <svg aria-hidden="true"><use href="#barbell"/></svg>
-            <span>Тренировки</span>
-        </a>
+
         <button class="app-mobile-primary__action app-mobile-primary__action--menu"
                 type="button" data-app-mobile-primary-toggle
                 aria-controls="app-mobile-primary-menu" aria-expanded="false"
@@ -107,6 +176,16 @@
                 <path d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
             <span>Меню</span>
+        </button>
+        <button class="app-mobile-primary__action app-mobile-primary__action--filter"
+                type="button" data-app-mobile-primary-filter-toggle
+                aria-controls="app-mobile-primary-filters" aria-expanded="false"
+                aria-label="Открыть поиск">
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="app-mobile-primary__filter-icon">
+                <path d="M4 7h16M7 12h10M10 17h4"/>
+            </svg>
+            <span data-app-mobile-primary-filter-label>Поиск</span>
+            <span class="app-mobile-primary__filter-badge" data-app-mobile-primary-filter-badge hidden></span>
         </button>
     </nav>
 </div>
