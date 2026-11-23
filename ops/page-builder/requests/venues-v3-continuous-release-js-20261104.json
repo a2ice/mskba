@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "publish": true,
+  "field": "js",
+  "reason": "Task 302: seamless desktop release and consistent first-paint actor positions",
+  "expected_draft_sha256": "76760d24ad921918d67421582861f692b064f36e6dfbef91e7a2008594b23773",
+  "expected_published_sha256": "76760d24ad921918d67421582861f692b064f36e6dfbef91e7a2008594b23773",
+  "expected_result_sha256": "83769b5abbd5432bce5b04f673c3535f19fd25a559c28c0f7959e23299b910d6",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "    // Values are PERCENTAGES of each picture's own height.",
+      "to": "    // Smooth speed handoff, centered on the last panel reaching the top.\n    releaseEasePx: 250,\n\n    // Values are PERCENTAGES of each picture's own height."
+    },
+    {
+      "type": "replace_once",
+      "from": "    const storyDistance = Math.max(1, rect.height - viewport + stickyTop);",
+      "to": "    // Finish local actor travel BEFORE the common release begins.\n    // Use the actual final panel offset (including its CSS translateY).\n    const releaseHalf = noMotion ? 0 : SETTINGS.releaseEasePx / 2;\n    const storyDistance = Math.max(1, lastTop - rect.top + stickyTop - releaseHalf);"
+    },
+    {
+      "type": "replace_once",
+      "from": "    // Release only after the final section has arrived at the top edge.\n    // Match scroll 1:1 instead of abruptly switching sticky -> relative.\n    \n    // Smooth the transition from sticky (stationary) to document scrolling.\n    // The first 180px accelerate progressively instead of switching to 1:1\n    // movement in a single frame. Above the threshold, motion is exactly 1:1.\n    const rawExitPx = wide.matches ? Math.max(0, -lastTop) : 0;\n    const releaseEasePx = 250; // EDIT: 120 = shorter, 240 = softer/longer\n    const exitProgress = clamp01(rawExitPx / Math.max(1, releaseEasePx));\n    const exitPx = rawExitPx * smooth(exitProgress);\n    \n",
+      "to": "    // Integral of smoothstep SPEED, not displacement * smoothstep.\n    // Across [-width/2, width/2], speed rises from 0 to 1 and never\n    // exceeds page speed. Both position and speed meet natural scroll.\n    const rawExitPx = wide.matches ? -lastTop : 0;\n    const releaseWidth = Math.max(1, SETTINGS.releaseEasePx);\n    const exitProgress = clamp01((rawExitPx + releaseHalf) / releaseWidth);\n    const exitPx = !wide.matches ? 0 : noMotion ? Math.max(0, rawExitPx)\n      : rawExitPx >= releaseHalf ? rawExitPx\n      : releaseWidth * (exitProgress ** 3 - 0.5 * exitProgress ** 4);\n\n"
+    },
+    {
+      "type": "replace_once",
+      "from": "    const entranceStart = viewport * SETTINGS.entrance.startAtViewport;",
+      "to": "    // At document scroll=0 CSS and JS both use startY. A short hero must\n    // not make the entrance partly complete as soon as deferred JS loads.\n    const sceneDocumentTop = rect.top + window.scrollY;\n    const entranceStart = Math.min(viewport * SETTINGS.entrance.startAtViewport, sceneDocumentTop);"
+    }
+  ]
+}
