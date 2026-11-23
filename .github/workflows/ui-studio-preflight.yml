@@ -75,4 +75,58 @@ jobs:
             else
               echo 'NGINX_UI_VHOST=HOST_CONFIGURATION_UNAVAILABLE'
             fi
+            echo '--- EXISTING UI STUDIO CHECKOUT ---'
+            STUDIO_ROOT=/var/www/mskba-ui
+            if [ -d "$STUDIO_ROOT" ]; then
+              for file in artisan composer.json composer.lock package-lock.json .env; do
+                if [ -f "$STUDIO_ROOT/$file" ]; then
+                  echo "STUDIO_FILE_$file=PRESENT"
+                else
+                  echo "STUDIO_FILE_$file=ABSENT"
+                fi
+              done
+              for dir in vendor public/build storage bootstrap/cache .git; do
+                if [ -d "$STUDIO_ROOT/$dir" ]; then
+                  echo "STUDIO_DIRECTORY_$dir=PRESENT"
+                else
+                  echo "STUDIO_DIRECTORY_$dir=ABSENT"
+                fi
+              done
+              if [ -d "$STUDIO_ROOT/.git" ]; then
+                echo "STUDIO_GIT_HEAD=$(git -C "$STUDIO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unreadable)"
+                echo "STUDIO_GIT_BRANCH=$(git -C "$STUDIO_ROOT" branch --show-current 2>/dev/null || echo unreadable)"
+                if [ -z "$(git -C "$STUDIO_ROOT" status --porcelain 2>/dev/null)" ]; then
+                  echo 'STUDIO_WORKTREE=CLEAN'
+                else
+                  echo 'STUDIO_WORKTREE=DIRTY_OR_UNREADABLE'
+                fi
+              fi
+              if [ -f "$STUDIO_ROOT/.env" ]; then
+                for expected in 'APP_ENV=ui-studio' 'UI_STUDIO_ENABLED=true' 'UI_STUDIO_HOST=ui.mskba.ru' 'SESSION_DRIVER=file' 'CACHE_STORE=file' 'APP_DEBUG=false'; do
+                  key="$(printf '%s' "$expected" | cut -d= -f1)"
+                  if grep -Fqx "$expected" "$STUDIO_ROOT/.env" 2>/dev/null; then
+                    echo "STUDIO_ENV_$key=EXPECTED"
+                  else
+                    echo "STUDIO_ENV_$key=DIFFERENT_OR_ABSENT"
+                  fi
+                done
+                for key in APP_KEY UI_STUDIO_USER UI_STUDIO_PASSWORD_HASH UI_STUDIO_BRIDGE_SECRET; do
+                  if grep -Eq "^$key=.{12,}$" "$STUDIO_ROOT/.env" 2>/dev/null; then
+                    echo "STUDIO_SECRET_$key=PRESENT"
+                  else
+                    echo "STUDIO_SECRET_$key=ABSENT_OR_UNREADABLE"
+                  fi
+                done
+              fi
+              if [ -d "$STUDIO_ROOT/storage" ]; then
+                echo "STUDIO_STORAGE_OWNER=$(stat -c '%U:%G' "$STUDIO_ROOT/storage")"
+                echo "STUDIO_STORAGE_MODE=$(stat -c '%a' "$STUDIO_ROOT/storage")"
+              fi
+            fi
+            echo '--- HTTP HEADERS ---'
+            curl --silent --show-error --max-time 8 --head https://ui.mskba.ru/uikit 2>/dev/null \
+              | grep -Ei '^(HTTP/|www-authenticate:|x-frame-options:|content-security-policy:)' \
+              | cut -c1-190 || true
+            echo '--- STUDIO CONTAINERS ---'
+            docker ps --format '{{.Names}}' 2>/dev/null | grep -Ei 'ui|studio' || echo 'STUDIO_RUNNING_CONTAINERS=NONE_MATCHED'
             echo 'UI_STUDIO_PREFLIGHT=FINISHED'
