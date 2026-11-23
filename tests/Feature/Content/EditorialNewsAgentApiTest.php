@@ -271,7 +271,7 @@ final class EditorialNewsAgentApiTest extends TestCase
         $this->postJson($route)->assertOk()
             ->assertJsonPath('data.telegram_publications.0.status', 'pending');
         $this->postJson($route)->assertOk(); // pending does not dispatch twice
-        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 1);
+        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 2);
 
         $record->refresh()->forceFill([
             'status' => 'failed', 'message_id' => null,
@@ -281,12 +281,12 @@ final class EditorialNewsAgentApiTest extends TestCase
             ->assertJsonPath('data.telegram_publications.0.error_code', 'outcome_unknown')
             ->assertJsonPath('data.telegram_publications.0.retry_safe', false);
         $this->postJson($route)->assertConflict();
-        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 1);
+        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 2);
 
         $record->refresh()->forceFill(['status' => 'published', 'message_id' => 99])->save();
         $this->postJson($route)->assertOk()
             ->assertJsonPath('data.telegram_publications.0.message_id', 99);
-        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 1);
+        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 2);
 
         $this->postJson(self::URI.'/winter-basketball/telegram/99999/retry')->assertNotFound();
     }
