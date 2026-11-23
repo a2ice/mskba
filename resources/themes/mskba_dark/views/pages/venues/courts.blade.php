@@ -46,6 +46,8 @@
         </div>
     </div>
 
+    @if($policy)<p><a href="{{ route('account.venues.tariff-grid.edit', $venue->id) }}">Единая тарифная сетка: площадка и залы</a></p>@endif
+
     @foreach($courts as $court)
         <article class="card mb-3">
             <div class="card-body">
