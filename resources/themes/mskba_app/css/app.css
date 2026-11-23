@@ -53,6 +53,8 @@
 @import './public-content.css';
 @import './mobile-primary-bar.css';
 @import './mobile-context-filters.css';
+@import './site-search.css';
+@import './participants-catalog.css';
 
 .app-shell { min-height: 100dvh; }
 
