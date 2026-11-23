@@ -1536,3 +1536,12 @@
     .venue-catalog-card__edit { display: none; }
     .venues-catalog-map, .venues-catalog-map__canvas { min-height: 62vh; height: 62vh; }
 }
+
+/* Rich-text venue details are sanitized before being inserted into this container. */
+.venue-show-section__description{line-height:1.65;white-space:pre-line;overflow-wrap:anywhere}
+.venue-show-section__description :is(p,h2,h3,h4,ul,ol,blockquote){margin:0 0 .9em;white-space:normal}
+.venue-show-section__description :is(p,h2,h3,h4,ul,ol,blockquote):last-child{margin-bottom:0}
+.venue-show-section__description :is(ul,ol){padding-left:1.5em}
+.venue-show-section__description ul{list-style:disc}
+.venue-show-section__description ol{list-style:decimal}
+.venue-show-section__description li+li{margin-top:.3em}
