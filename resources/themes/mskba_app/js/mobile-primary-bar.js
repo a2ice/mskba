@@ -69,6 +69,13 @@ if (dock) {
             if (['longitude', 'radius_km'].includes(key) && url.searchParams.has('latitude')) continue;
             count++;
         }
+        if (definition?.ajax && original) {
+            for (const input of original.querySelectorAll('select')) {
+                const defaults = { type: 'all', state: 'active', status: 'active' };
+                const baseline = defaults[input.name] ?? input.querySelector('option')?.value ?? '';
+                if (input.value !== baseline && !url.searchParams.has(input.name)) count++;
+            }
+        }
         return count;
     };
 
@@ -151,7 +158,7 @@ if (dock) {
             });
         }
         updateCount();
-        setExpanded(Boolean(definition && activeCount > 0));
+        setExpanded(definition ? activeCount > 0 : Boolean(globalSearch?.value));
     };
 
     const unmountFilters = () => {
@@ -190,7 +197,7 @@ if (dock) {
         if (name === 'filter') {
             mountFilters();
             updateCount();
-            setExpanded(Boolean(definition && activeCount > 0));
+            setExpanded(definition ? activeCount > 0 : Boolean(globalSearch?.value));
         }
         const item = contexts[name];
         if (!item?.panel || !item?.toggle) return;
@@ -200,8 +207,8 @@ if (dock) {
         document.body.classList.add('app-mobile-primary-open');
         item.toggle.setAttribute('aria-expanded', 'true');
         item.toggle.setAttribute('aria-label', name === 'filter' ? 'Закрыть фильтры' : 'Закрыть меню');
-        if (name === 'filter' && activeSearch) quickSearch.focus({ preventScroll: true });
-        else item.panel.querySelector('[data-app-mobile-primary-close]')?.focus({ preventScroll: true });
+        // Opening filters should not summon the iOS keyboard unexpectedly.
+        item.panel.querySelector('[data-app-mobile-primary-close]')?.focus({ preventScroll: true });
     };
 
     for (const [name, item] of Object.entries(contexts)) {
@@ -319,6 +326,23 @@ if (dock) {
         window.location.assign(url);
     });
 
+    // VisualViewport reports the area left above Safari's software keyboard.
+    // Keep the dock and its fixed action row visible without scrolling the page.
+    const placeAboveKeyboard = () => {
+        const viewport = window.visualViewport;
+        if (!viewport || !mobile.matches) {
+            dock.style.removeProperty('--app-mobile-keyboard-offset');
+            dock.style.removeProperty('--app-mobile-visual-height');
+            return;
+        }
+        const keyboard = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+        dock.style.setProperty('--app-mobile-keyboard-offset', Math.round(keyboard) + 'px');
+        dock.style.setProperty('--app-mobile-visual-height', Math.round(viewport.height) + 'px');
+    };
+    window.visualViewport?.addEventListener('resize', placeAboveKeyboard);
+    window.visualViewport?.addEventListener('scroll', placeAboveKeyboard);
+    placeAboveKeyboard();
+
     mobile.addEventListener('change', () => {
         if (!mobile.matches) {
             close(false);
@@ -326,6 +350,7 @@ if (dock) {
         } else {
             mountFilters();
         }
+        placeAboveKeyboard();
     });
     if (mobile.matches) mountFilters();
 }
