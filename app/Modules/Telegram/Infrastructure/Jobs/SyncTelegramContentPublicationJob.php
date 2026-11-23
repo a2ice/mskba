@@ -156,6 +156,16 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
                 'synced_at' => now(),
             ])->save();
 
+            // A send with no recorded message_id may have reached Telegram even
+            // when its HTTP response is missing. Never let queue backoff blindly
+            // issue a second send: reconcile first and explicitly retry only a
+            // definitive provider rejection through the scoped editorial API.
+            // Bot API 4xx errors are also terminal until the underlying access
+            // or content problem is fixed.
+            if ($publication->message_id === null && $exception instanceof TelegramBotApiException) {
+                return;
+            }
+
             throw $exception;
         }
     }
