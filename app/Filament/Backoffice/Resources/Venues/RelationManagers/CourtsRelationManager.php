@@ -309,6 +309,14 @@ final class CourtsRelationManager extends RelationManager
                     $this->syncNotification($result);
                 }),
         ])->recordActions([
+            Action::make('unifiedTariffGrid')->label('Тарифная сетка')
+                ->icon('heroicon-o-table-cells')
+                ->url(fn (VenueCourt $record): string => route('account.venues.tariff-grid.edit', [
+                    'venue' => $this->getOwnerRecord()->id,
+                    'court' => $record->id,
+                ]))
+                ->openUrlInNewTab()
+                ->visible(fn (): bool => VenueResource::authorized()),
             EditAction::make()
                 ->label('Редактировать')
                 ->modalHeading(fn (VenueCourt $record): string => 'Редактировать: '.$record->name)
