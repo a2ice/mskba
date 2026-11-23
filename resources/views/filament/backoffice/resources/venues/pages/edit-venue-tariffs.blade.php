@@ -1,6 +1,7 @@
 <x-filament-panels::page>
     @php
         $policy = $this->policy();
+        $amounts = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
         $step = $this->step();
         $weekdays = [1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб', 7 => 'Вс'];
     @endphp
@@ -196,7 +197,7 @@
                                 <summary class="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-3">
                                     <span class="font-medium">{{ $range['start'] }}–{{ $range['end'] }}</span>
                                     <span class="text-sm">
-                                        Весь: {{ $this->formatPrice($range['whole']) }} · Половина: {{ $this->formatPrice($range['half']) }}
+                                        Весь: {{ $amounts->format((int) $range['whole'], $policy->currency) }} · Половина: {{ $amounts->format((int) $range['half'], $policy->currency) }}
                                         {{ $policy->currency }} / {{ $step }} мин
                                     </span>
                                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ $range['source'] }}</span>
@@ -206,7 +207,7 @@
                                         <div class="space-y-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                                             <div class="font-medium">{{ $cell['time'] }}</div>
                                             <div class="text-sm">
-                                                {{ $this->formatPrice($cell['whole']) }} / {{ $this->formatPrice($cell['half']) }} {{ $policy->currency }}
+                                                {{ $amounts->format((int) $cell['whole'], $policy->currency) }} / {{ $amounts->format((int) $cell['half'], $policy->currency) }} {{ $policy->currency }}
                                             </div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400">
                                                 {{ $cell['source'] }} @if($cell['availability']) · {{ $cell['availability'] }} @endif
