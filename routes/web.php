@@ -1569,3 +1569,7 @@ Route::post('/backoffice/social-integrations/vk/authorize', [\App\Http\Controlle
     ->middleware(['auth:web', 'throttle:5,1'])->name('backoffice.vk-publisher.authorize');
 Route::post('/backoffice/social-integrations/vk/complete', [\App\Http\Controllers\Backoffice\VkPublisherOAuthController::class, 'complete'])
     ->middleware(['auth:web', 'throttle:10,1'])->name('backoffice.vk-publisher.complete');
+
+// UI Studio: short-lived Filament access tickets, never anonymous.
+Route::post('/backoffice/ui-studio/ticket', \App\Presentation\UiStudio\UiStudioTicketController::class)
+    ->middleware(['auth', 'throttle:10,1'])->name('backoffice.ui-studio.ticket');
