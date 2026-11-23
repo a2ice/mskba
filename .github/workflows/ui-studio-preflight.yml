@@ -129,4 +129,28 @@ jobs:
               | cut -c1-190 || true
             echo '--- STUDIO CONTAINERS ---'
             docker ps --format '{{.Names}}' 2>/dev/null | grep -Ei 'ui|studio' || echo 'STUDIO_RUNNING_CONTAINERS=NONE_MATCHED'
+            echo '--- UI PREVIEW DEPLOY SAFETY ---'
+            STUDIO_ROOT=/var/www/mskba-ui
+            if [ -d "$STUDIO_ROOT/.git" ]; then
+              echo "STUDIO_GIT_REMOTE_MAIN_AHEAD=$(git -C "$STUDIO_ROOT" rev-list --count HEAD..origin/main 2>/dev/null || echo unavailable)"
+              echo "STUDIO_GIT_SOURCE_STATUS_BEGIN"
+              git -C "$STUDIO_ROOT" status --short --untracked-files=no -- . ':(exclude)public/build/**' \
+                | head -n 25 || true
+              echo "STUDIO_GIT_SOURCE_STATUS_END"
+            fi
+            for value in 'SESSION_DRIVER=array' 'SESSION_DRIVER=file' 'CACHE_STORE=array' 'CACHE_STORE=file'; do
+              name="$(printf '%s' "$value" | tr '= ' '__')"
+              if grep -Fqx "$value" "$STUDIO_ROOT/.env" 2>/dev/null; then
+                echo "STUDIO_SETTING_$name=YES"
+              else
+                echo "STUDIO_SETTING_$name=NO"
+              fi
+            done
+            if docker inspect mskba-ui-php >/dev/null 2>&1; then
+              echo "STUDIO_CONTAINER_NETWORK=$(docker inspect --format '{{.HostConfig.NetworkMode}}' mskba-ui-php)"
+              echo "STUDIO_CONTAINER_STATUS=$(docker inspect --format '{{.State.Status}}' mskba-ui-php)"
+              docker exec mskba-ui-php php artisan route:list --path=uikit 2>&1 | tail -n 12 || true
+            else
+              echo 'STUDIO_CONTAINER=NOT_FOUND'
+            fi
             echo 'UI_STUDIO_PREFLIGHT=FINISHED'
