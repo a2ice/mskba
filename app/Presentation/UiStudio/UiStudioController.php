@@ -76,6 +76,12 @@ final class UiStudioController
     {
         $this->guard($request);
         $cases = config('ui-studio.cases');
+        $acceptedCases = [];
+        if ($ui_name === null) {
+            foreach ($cases as $slug => $candidate) {
+                $acceptedCases[$slug] = $this->reviews->accepted($slug, $candidate);
+            }
+        }
         $case = $ui_name === null ? null : ($cases[$ui_name] ?? null);
         abort_if($ui_name !== null && $case === null, 404);
 
@@ -102,7 +108,7 @@ final class UiStudioController
         $acceptedReview = $case !== null ? $this->reviews->accepted($ui_name, $case) : null;
 
         return $this->headers(response()->view($embed ? 'ui-studio.frame' : 'ui-studio.index',
-            compact('cases', 'case', 'ui_name', 'snapshot', 'themes', 'theme', 'compare', 'template', 'templates', 'state', 'width', 'supported', 'fingerprint', 'acceptedReview')), $embed);
+            compact('cases', 'case', 'ui_name', 'snapshot', 'themes', 'theme', 'compare', 'template', 'templates', 'state', 'width', 'supported', 'fingerprint', 'acceptedReview', 'acceptedCases')), $embed);
     }
 
     public function accept(Request $request): JsonResponse
