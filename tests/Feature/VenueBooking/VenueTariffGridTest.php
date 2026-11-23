@@ -31,6 +31,71 @@ final class VenueTariffGridTest extends TestCase
         config()->set('features.venue_rental.rental_flow', true);
     }
 
+    public function test_two_non_overlapping_ranges_save_together_with_a_day_specific_exception(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+
+        $this->actingAs($owner)->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly',
+            'ranges' => [
+                [
+                    'days' => [1, 2], 'starts_at' => '07:00', 'ends_at' => '16:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+                [
+                    'days' => [1, 2], 'starts_at' => '16:00', 'ends_at' => '23:30',
+                    'operation' => 'set', 'whole_price_per_step' => '1500',
+                    'exceptions' => [
+                        [
+                            'starts_at' => '18:00', 'day_of_week' => 2,
+                            'operation' => 'set', 'whole_price_per_step' => '2200',
+                        ],
+                    ],
+                ],
+            ],
+        ])->assertRedirect()->assertSessionHas('status');
+
+        // (18 + 15) steps per day, on two days.
+        $this->assertSame(66, DB::table('venue_court_manual_slot_prices')->count());
+        $this->assertDatabaseHas('venue_court_manual_slot_prices', [
+            'venue_court_id' => $court->id, 'day_of_week' => 1,
+            'starts_at' => '15:30:00', 'whole_price_per_step_minor' => 100000,
+        ]);
+        $this->assertDatabaseHas('venue_court_manual_slot_prices', [
+            'venue_court_id' => $court->id, 'day_of_week' => 1,
+            'starts_at' => '16:00:00', 'whole_price_per_step_minor' => 150000,
+        ]);
+        $this->assertDatabaseHas('venue_court_manual_slot_prices', [
+            'venue_court_id' => $court->id, 'day_of_week' => 2,
+            'starts_at' => '18:00:00', 'whole_price_per_step_minor' => 220000,
+        ]);
+    }
+
+    public function test_overlapping_bulk_ranges_are_rejected_without_partial_saves(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+
+        $this->actingAs($owner)->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly',
+            'ranges' => [
+                [
+                    'days' => [1], 'starts_at' => '07:00', 'ends_at' => '16:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+                [
+                    'days' => [1], 'starts_at' => '15:30', 'ends_at' => '23:30',
+                    'operation' => 'set', 'whole_price_per_step' => '1500',
+                ],
+            ],
+        ])->assertSessionHasErrors('ranges.1.starts_at');
+
+        $this->assertSame(0, DB::table('venue_court_manual_slot_prices')->count());
+    }
+
     public function test_weekly_range_is_expanded_into_steps_with_an_exception(): void
     {
         [$owner, $venue] = $this->ownedVenue();
