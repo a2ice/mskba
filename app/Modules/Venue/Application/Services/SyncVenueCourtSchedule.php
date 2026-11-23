@@ -6,6 +6,8 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationCourtMapping;
+use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +22,18 @@ use Illuminate\Validation\ValidationException;
  */
 final class SyncVenueCourtSchedule
 {
+    /** @param array<int, int> $courtIds @return array<int, int> */
+    public function protectedCourtIds(array $courtIds): array
+    {
+        return VenueIntegrationCourtMapping::query()
+            ->whereIn('venue_court_id', $courtIds)
+            ->whereHas('source', fn ($query) => $query->whereIn('adapter_key', ['api', 'browser']))
+            ->pluck('venue_court_id')
+            ->merge(VenueCourtExternalScheduleImport::query()
+                ->whereIn('venue_court_id', $courtIds)->pluck('venue_court_id'))
+            ->map(fn ($id): int => (int) $id)->unique()->values()->all();
+    }
+
     /**
      * @param array<int, int> $courtIds
      * @return array{courts: int, days: int, prices: int}
@@ -91,6 +105,12 @@ final class SyncVenueCourtSchedule
                 ->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
             if ($courts->count() !== count($ids)) {
                 throw ValidationException::withMessages(['mode' => 'Один из выбранных залов не принадлежит площадке.']);
+            }
+
+            if ($this->protectedCourtIds($ids) !== []) {
+                throw ValidationException::withMessages([
+                    'mode' => 'Залы с внешними источниками защищены от копирования расписания площадки.',
+                ]);
             }
 
             $days = $mode === 'full' ? 0 : (int) $first->diffInDays($last) + 1;
