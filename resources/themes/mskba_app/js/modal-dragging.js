@@ -147,6 +147,51 @@ export function initModalDragging(doc = document, win = window) {
         setOffset(surface, old.x + delta.dx, old.y + delta.dy);
         tracked.add(surface);
     };
+    // A click is a deliberate backdrop dismissal only when both ends of the
+    // pointer gesture land on the same backdrop. Browsers can retarget a click
+    // to <dialog> (or the legacy shell) after a text-selection drag starts
+    // inside the modal and ends outside it.
+    const modalRoots = NATIVE + ', dialog, .modal';
+    const isDialog = root => isNative(root) || root?.matches?.('dialog');
+    const candidateBackdrop = event => {
+        const target = event.target;
+        const root = target?.closest?.(modalRoots);
+        if (!root) return null;
+        if (isDialog(root)) return target === root ? root : null;
+        return root.matches?.('.modal') && root.classList.contains('is-open') &&
+            !root.classList.contains('is-minimized') &&
+            !target.closest?.('.modal__dialog') ? root : null;
+    };
+    const outsideBackdrop = event => {
+        const root = candidateBackdrop(event);
+        if (!root) return null;
+        if (!isDialog(root)) return root;
+        const rect = root.getBoundingClientRect();
+        return event.clientX < rect.left || event.clientX > rect.right ||
+            event.clientY < rect.top || event.clientY > rect.bottom ? root : null;
+    };
+    let backdropPress = null;
+    const backdropDown = event => {
+        backdropPress = event.button === 0 && event.isPrimary !== false
+            ? { pointerId: event.pointerId, down: outsideBackdrop(event), up: null }
+            : null;
+    };
+    const backdropUp = event => {
+        if (backdropPress?.pointerId === event.pointerId) {
+            backdropPress.up = outsideBackdrop(event);
+        }
+    };
+    const backdropCancel = () => { backdropPress = null; };
+    const backdropClick = event => {
+        const candidate = candidateBackdrop(event);
+        if (!candidate) { backdropPress = null; return; }
+        const permitted = outsideBackdrop(event) === candidate &&
+            backdropPress?.down === candidate && backdropPress?.up === candidate;
+        backdropPress = null;
+        if (permitted) return;
+        event.preventDefault?.();
+        event.stopImmediatePropagation?.();
+    };
     const onClose = e => {
         if (isNative(e.target)) {
             if (attempt?.surface === e.target) finish();
@@ -196,6 +241,11 @@ export function initModalDragging(doc = document, win = window) {
         if (attempt?.dragging) finish(true);
         for (const surface of tracked) clampSurface(surface);
     };
+    // Capture before feature-level click handlers in both themes.
+    doc.addEventListener('pointerdown', backdropDown, true);
+    doc.addEventListener('pointerup', backdropUp, true);
+    doc.addEventListener('pointercancel', backdropCancel, true);
+    doc.addEventListener('click', backdropClick, true);
     doc.addEventListener('pointerdown', onDown);
     win.addEventListener('pointermove', onMove, {passive:false});
     win.addEventListener('pointerup', onUp);
@@ -210,6 +260,11 @@ export function initModalDragging(doc = document, win = window) {
     return { destroy() {
         finish();
         observer.disconnect();
+        doc.removeEventListener('pointerdown', backdropDown, true);
+        doc.removeEventListener('pointerup', backdropUp, true);
+        doc.removeEventListener('pointercancel', backdropCancel, true);
+        doc.removeEventListener('click', backdropClick, true);
+        backdropPress = null;
         doc.removeEventListener('pointerdown', onDown);
         win.removeEventListener('pointermove', onMove);
         win.removeEventListener('pointerup', onUp);
