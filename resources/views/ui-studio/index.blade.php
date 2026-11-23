@@ -9,8 +9,26 @@
 @if(!$case)
     <h2>Интерфейсы</h2>
     @foreach($cases as $slug => $item)
-        <div class="case"><a href="{{ route('ui-studio.show',['ui_name'=>$slug],false) }}">{{ $item['title'] }}</a><span>{{ $item['status'] }} · r{{ $item['revision'] }}</span><a href="https://github.com/a2ice/mskba/issues/{{ $item['issue'] }}">#{{ $item['issue'] }}</a></div>
+        <div class="case"><a href="{{ route('ui-studio.show',['ui_name'=>$slug],false) }}">{{ $item['title'] }}</a><span>{{ !empty($acceptedCases[$slug]) ? 'Принято к интеграции' : $item['status'] }} · r{{ $item['revision'] }}</span><a href="https://github.com/a2ice/mskba/issues/{{ $item['issue'] }}">#{{ $item['issue'] }}</a></div>
     @endforeach
+
+    <section class="case" style="display:block">
+        <h2>UI Kit · принятые кандидаты</h2>
+        <p class="muted">Выбранные общие изменения формируют план обновления действующего UI Kit. Их код и гайдлайн вступают в силу только после отдельного интеграционного PR.</p>
+        @php($kitCount = 0)
+        @foreach($acceptedCases as $slug => $review)
+            @if($review && count($review['kit_selected'] ?? []))
+                <h3><a href="{{ route('ui-studio.show', ['ui_name' => $slug], false) }}">{{ $cases[$slug]['title'] }}</a> · r{{ $review['revision'] }}</h3>
+                @foreach($review['kit_changes'] as $change)
+                    @if(in_array($change['id'], $review['kit_selected'], true))
+                        @php($kitCount++)
+                        <p><strong>{{ $change['title'] }}</strong><br><span class="muted">{{ $change['description'] }}</span></p>
+                    @endif
+                @endforeach
+            @endif
+        @endforeach
+        @if($kitCount === 0)<p class="muted">Пока нет согласованных новых общих компонентов.</p>@endif
+    </section>
     <p><a href="https://github.com/a2ice/mskba/blob/main/docs/specification/ui-design-system.md">Гайдлайн проекта</a> · <a href="https://github.com/a2ice/mskba/issues/933">Регламент и развитие UI Studio</a></p>
 @else
     <h2>{{ $case['title'] }}</h2><p>{{ $case['status'] }} · r{{ $case['revision'] }} · <a href="https://github.com/a2ice/mskba/issues/{{ $case['issue'] }}">#{{ $case['issue'] }}</a></p>
@@ -33,5 +51,68 @@
             @endforeach
         </div>
     @endif
+@endif
+
+@if($case && $supported)
+<section class="case" style="display:block" aria-labelledby="studio-review-heading">
+    <h3 id="studio-review-heading">Приёмка интерфейса · ревизия {{ $case['revision'] }}</h3>
+    <p class="muted">Проверены состояния, разрешения, темы, desktop и mobile? Принятие фиксирует именно эту ревизию и снимок темы, но не публикует изменения в production.</p>
+    @if($acceptedReview)
+        <p role="status"><strong>Принято к интеграции</strong> · {{ $acceptedReview['accepted_at'] }} · UI Kit: {{ count($acceptedReview['kit_selected']) }} согласовано, {{ count($acceptedReview['kit_declined']) }} оставлено локально.</p>
+    @else
+        <button id="studio-review-open" type="button">Принять интерфейс</button>
+    @endif
+</section>
+<dialog id="studio-review-dialog" aria-labelledby="studio-review-title" style="border:1px solid #ccc;border-radius:16px;padding:24px;max-width:min(600px,calc(100vw - 28px));width:100%;box-shadow:0 12px 40px #0003">
+    <h3 id="studio-review-title">Обновление UI Kit</h3>
+    <p class="muted">Интерфейс принят к интеграции после явного подтверждения. Выберите предложенные общие изменения. Отмеченные будут включены в план обновления UI Kit; неотмеченные останутся локальными. Сам код переносится только после проверки PR и CI.</p>
+    @if(count($case['kit_changes'] ?? []) > 0)
+        @foreach($case['kit_changes'] as $change)
+            <label style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid #ddd">
+                <input type="checkbox" name="kit-change" value="{{ $change['id'] }}" checked style="margin-top:5px">
+                <span><strong>{{ $change['title'] }}</strong><br><small class="muted">{{ $change['description'] }}</small></span>
+            </label>
+        @endforeach
+    @else
+        <p>Новых общих компонентов не обнаружено. Сохранится только принятая ревизия интерфейса.</p>
+    @endif
+    <p id="studio-review-error" role="alert" style="color:#a11" hidden></p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px">
+        <button id="studio-review-confirm" type="button">Принять и сохранить решение</button>
+        <button id="studio-review-cancel" type="button">Вернуться к проверке</button>
+    </div>
+</dialog>
+<script>
+(() => {
+    const open = document.getElementById('studio-review-open');
+    const dialog = document.getElementById('studio-review-dialog');
+    if (!open || !dialog) return;
+    const confirm = document.getElementById('studio-review-confirm');
+    const error = document.getElementById('studio-review-error');
+    open.addEventListener('click', () => dialog.showModal());
+    document.getElementById('studio-review-cancel').addEventListener('click', () => dialog.close());
+    confirm.addEventListener('click', async () => {
+        error.hidden = true;
+        confirm.disabled = true;
+        try {
+            const response = await fetch(@json(route('ui-studio.review', absolute:false)), {
+                method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':@json(csrf_token())},
+                body: JSON.stringify({
+                    case:@json($ui_name),revision:@json($case['revision']),
+                    fingerprint:@json($fingerprint),theme_hash:@json($themes[$theme]['hash']),
+                    selected:[...dialog.querySelectorAll('input[name="kit-change"]:checked')].map(el=>el.value)
+                })
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status + ' · перепроверьте страницу и авторизацию через Filament');
+            window.location.reload();
+        } catch(e) {
+            error.textContent = 'Не удалось сохранить решение: ' + e.message;
+            error.hidden = false;
+            confirm.disabled = false;
+        }
+    });
+})();
+</script>
 @endif
 </main></body></html>

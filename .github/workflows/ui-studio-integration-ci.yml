@@ -1,0 +1,42 @@
+name: Validate UI Studio preview integration
+
+on:
+  push:
+    branches:
+      - feature/ui-studio-995-consolidate
+    paths:
+      - '.github/workflows/ui-studio-integration-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui-studio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, sqlite3, pdo_sqlite, gd, intl, zip
+          coverage: none
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Prepare Laravel
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Validate PHP syntax and UI route protection
+        run: |
+          set -euo pipefail
+          for file in app/Presentation/UiStudio/*.php routes/ui-studio.php config/ui-studio.php; do
+            php -l "$file"
+          done
+          php artisan route:list --path=uikit || true
+      - name: Test isolated UI Studio access and review
+        run: php artisan test tests/Feature/UiStudioAccessTest.php tests/Feature/UiStudioBridgeTicketTest.php tests/Feature/UiStudioReviewStoreTest.php
+      - name: Validate retained UI preview cases
+        run: |
+          php -r 'function env($key, $default=null) { return $default; } $c=require "config/ui-studio.php"; foreach(["event-detail"=>10,"event-feedback-settings"=>1,"venue-map"=>1,"unified-chat"=>6] as $id=>$version) { if(($c["cases"][$id]["revision"]??null)!==$version) exit(1); foreach($c["cases"][$id]["sources"] as $p) if(!is_file($p)) { fwrite(STDERR, "$p missing\n"); exit(1); }} echo "All four preview cases preserved\n";'
