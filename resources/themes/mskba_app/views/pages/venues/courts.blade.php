@@ -219,65 +219,11 @@
                     </form>
                 </section>
 
-                <section class="panel app-rental-pricing__panel" aria-labelledby="court-{{ $court->id }}-weekly">
-                    <h2 id="court-{{ $court->id }}-weekly">Цены по дням недели</h2>
-                    @if($court->slotPrices()->exists())
-                        <div class="app-rental-pricing__table-wrap">
-                            <table class="app-rental-pricing__table">
-                                <thead><tr><th>День</th><th>Время</th><th>Весь зал</th><th>Половина</th><th><span class="sr-only">Действия</span></th></tr></thead>
-                                <tbody>
-                                    @foreach($court->slotPrices()->orderBy('day_of_week')->orderBy('starts_at')->get() as $weekPrice)
-                                        <tr>
-                                            <td>{{ ['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'][$weekPrice->day_of_week] ?? '—' }}</td>
-                                            <td>{{ substr((string) $weekPrice->starts_at, 0, 5) }}</td>
-                                            <td>{{ $weekPrice->whole_price_per_step_minor === null ? 'Наследуется' : $money->format((int) $weekPrice->whole_price_per_step_minor, $currency) }}</td>
-                                            <td>{{ $weekPrice->half_price_per_step_minor === null ? 'Наследуется' : $money->format((int) $weekPrice->half_price_per_step_minor, $currency) }}</td>
-                                            <td><form method="POST" action="{{ route('account.venues.courts.prices.destroy', [$venue->routeIdentifier(), $court->routeIdentifier(), $weekPrice->id]) }}">
-                                                @csrf @method('DELETE')<button type="submit" class="button secondary">Удалить</button>
-                                            </form></td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                    <form class="app-rental-pricing__form" method="POST" action="{{ route('account.venues.courts.prices.store', $courtRoute) }}">
-                        @csrf
-                        <div class="app-rental-pricing__grid">
-                            <label class="field-group" for="court-{{ $court->id }}-weekday">
-                                <span>День недели</span>
-                                <span class="select-control">
-                                    <select id="court-{{ $court->id }}-weekday" name="day_of_week" required>
-                                    @foreach(['Пн','Вт','Ср','Чт','Пт','Сб','Вс'] as $dayIndex => $day)
-                                        <option value="{{ $dayIndex+1 }}">{{ $day }}</option>
-                                    @endforeach
-                                </select>
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-                                </span>
-                            </label>
-                            <label class="field-group" for="court-{{ $court->id }}-weekly-time">
-                                <span>Время</span><input id="court-{{ $court->id }}-weekly-time" type="time" name="starts_at" required>
-                            </label>
-                            @foreach(['whole' => 'Весь зал', 'half' => 'Половина'] as $scope => $label)
-                                <label class="field-group" for="court-{{ $court->id }}-weekly-{{ $scope }}">
-                                    <span>{{ $label }}, {{ $currency }}</span>
-                                    <input id="court-{{ $court->id }}-weekly-{{ $scope }}" type="text"
-                                        inputmode="decimal" name="{{ $scope }}_price_per_step" placeholder="Наследовать">
-                                </label>
-                            @endforeach
-                        </div>
-                        <button class="button primary" type="submit">Сохранить недельную цену</button>
-                    </form>
+                <section class="panel app-rental-pricing__panel">
+                    <h3>Тарифная сетка зала</h3>
+                    <p>Недельные и календарные цены, исключения по шагам и данные интеграции редактируются в одном интерфейсе.</p>
+                    <a class="button secondary" href="{{ route('account.venues.tariff-grid.edit', ['venue' => $venue->id, 'court' => $court->id]) }}">Открыть тарифы зала</a>
                 </section>
-
-                @include('theme::pages.venues.partials.calendar-price-editor', [
-                    'calendarPrices' => $court->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
-                    'calendarStoreUrl' => route('account.venues.courts.calendar-prices.store', $courtRoute),
-                    'calendarDeleteUrl' => route('account.venues.courts.calendar-prices.destroy', [$venue->routeIdentifier(), $court->routeIdentifier(), '__PRICE__']),
-                    'calendarStep' => $court->time_step_minutes ?? $policy->time_step_minutes,
-                    'calendarCurrency' => $currency,
-                    'calendarId' => 'court-'.$court->id.'-calendar',
-                ])
             @endif
         </article>
     @endforeach
