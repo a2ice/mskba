@@ -1,0 +1,111 @@
+name: UI Studio end-to-end SSO and interface smoke
+
+on:
+  push:
+    branches: [ops/ui-studio-995-preflight]
+    paths: [.github/workflows/ui-studio-sso-functional-smoke.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Test isolated SSO with synthetic reviewer and no review writes
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -Eeuo pipefail
+            umask 077
+            ticket_file="$(mktemp)"
+            trap 'rm -f "$ticket_file"' EXIT
+            cd /var/www/mskba
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              if (config("ui-studio.issuer_enabled") !== true) exit(2);
+              echo $app->make(\App\Presentation\UiStudio\UiStudioBridgeTicket::class)
+                  ->issue(2147483600, "https://mskba.ru");
+            ' > "$ticket_file"
+            test "$(wc -c < "$ticket_file")" -gt 70
+
+            python3 - "$ticket_file" <<'PY'
+            import http.cookiejar
+            import json
+            import re
+            import sys
+            import urllib.error
+            import urllib.request
+
+            ticket = open(sys.argv[1], encoding="ascii").read().strip()
+            jar = http.cookiejar.CookieJar()
+            client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+            root = "https://ui.mskba.ru"
+
+            def request(path, body=None, csrf=None):
+                headers = {"Accept": "application/json" if body is not None else "text/html",
+                           "User-Agent": "MSKBA-UI-Studio-SSO-Smoke/1"}
+                data = None
+                if body is not None:
+                    data = json.dumps(body).encode()
+                    headers["Content-Type"] = "application/json"
+                    headers["X-CSRF-TOKEN"] = csrf
+                req = urllib.request.Request(root + path, data=data, headers=headers)
+                try:
+                    with client.open(req, timeout=12) as r:
+                        return r.status, r.read().decode("utf-8", errors="replace")
+                except urllib.error.HTTPError as e:
+                    return e.code, e.read().decode("utf-8", errors="replace")
+
+            def token(html):
+                match = re.search(r"""X-CSRF-TOKEN['"]\s*:\s*["']([^"']+)["']""", html)
+                if not match:
+                    raise AssertionError("Missing CSRF token in Studio HTML")
+                return match.group(1)
+
+            code, html = request("/uikit/bridge")
+            if code != 200:
+                raise AssertionError(f"STUDIO_BRIDGE_HTTP={code}")
+            csrf = token(html)
+            print("STUDIO_BRIDGE_CSRF=AVAILABLE")
+
+            code, response = request("/uikit/session", {"ticket": ticket}, csrf)
+            if code != 200 or json.loads(response).get("authorized") is not True:
+                raise AssertionError(f"STUDIO_TICKET_EXCHANGE_HTTP={code}")
+            print("STUDIO_TICKET_EXCHANGE=AUTHORIZED")
+
+            code, catalog = request("/uikit")
+            if code != 200:
+                raise AssertionError(f"STUDIO_AUTHENTICATED_CATALOG_HTTP={code}")
+            for slug in ["event-detail", "event-feedback-settings", "venue-map", "unified-chat"]:
+                if slug not in catalog:
+                    raise AssertionError(f"Missing studio case {slug}")
+                print(f"STUDIO_CATALOG_CASE={slug}:PRESENT")
+
+            review_csrf = None
+            for slug in ["event-detail", "event-feedback-settings", "venue-map", "unified-chat"]:
+                code, page = request("/uikit/" + slug)
+                if code != 200 or "Принять интерфейс" not in page:
+                    raise AssertionError(f"STUDIO_CASE_{slug}_HTTP={code} OR REVIEW_CONTROL_MISSING")
+                review_csrf = token(page)
+                print(f"STUDIO_CASE_{slug}=RENDERED_WITH_REVIEW")
+
+            # Invalid payload only: authenticated validation without recording a review.
+            code, _ = request("/uikit/reviews", {}, review_csrf)
+            if code != 422:
+                raise AssertionError(f"STUDIO_REVIEW_VALIDATION_HTTP={code}, expected 422")
+            print("STUDIO_REVIEW_GATE=AUTHENTICATED_AND_VALIDATING")
+            print("UI_STUDIO_SSO_FUNCTIONAL_SMOKE=SUCCESS")
+            PY
