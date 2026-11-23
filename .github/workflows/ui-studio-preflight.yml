@@ -178,9 +178,17 @@ jobs:
             done
             echo '--- HOST NGINX DIRECTIVES (NON-SECRET) ---'
             if [ -d /etc/nginx ]; then
-              grep -RilF --include='*.conf' 'ui.mskba.ru' /etc/nginx 2>/dev/null | head -n 10 | while IFS= read -r path; do
-                echo "MATCHED_NGINX_CONFIG=$path"
-                grep -nE 'server_name|auth_basic|limit_except|location|deny |allow ' "$path" 2>/dev/null | cut -c1-150 | head -n 45
-              done
+              echo 'NGINX_SITE_FILES_BEGIN'
+              find /etc/nginx/sites-enabled /etc/nginx/sites-available -maxdepth 1 \( -type f -o -type l \) 2>/dev/null | head -n 30 || true
+              echo 'NGINX_SITE_FILES_END'
+              found="$(grep -RilF 'ui.mskba.ru' /etc/nginx 2>/dev/null | head -n 10 || true)"
+              if [ -z "$found" ]; then
+                echo 'UI_NGINX_CONFIG=UNREADABLE_OR_UNMATCHED'
+              else
+                printf '%s\n' "$found" | while IFS= read -r path; do
+                  echo "MATCHED_NGINX_CONFIG=$path"
+                  grep -nE 'server_name|auth_basic|limit_except|location|deny |allow ' "$path" 2>/dev/null | cut -c1-150 | head -n 45 || true
+                done
+              fi
             fi
             echo 'UI_STUDIO_PREFLIGHT=FINISHED'
