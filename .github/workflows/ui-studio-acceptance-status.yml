@@ -58,4 +58,16 @@ jobs:
               echo "HTTP_$method$target=$code"
             done
             echo "STUDIO_HEAD=$(git -C /var/www/mskba-ui rev-parse --short HEAD)"
+            echo '--- SSO SECURITY PREFLIGHT ---'
+            if grep -Fq 'MSKBA_UI_STUDIO_SSO_V1' "$VHOST"; then echo 'SSO_NGINX_MARKER=OK'; else echo 'SSO_NGINX_MARKER=MISSING'; fi
+            if grep -Fq 'auth_basic off;' "$VHOST"; then echo 'SSO_NGINX_EXEMPTIONS=FOUND'; else echo 'SSO_NGINX_EXEMPTIONS=NONE'; fi
+            if grep -Fq 'mskba_ui_session=$cookie_mskba_ui_session' "$VHOST"; then echo 'SSO_NGINX_COOKIE_FORWARDING=FOUND'; else echo 'SSO_NGINX_COOKIE_FORWARDING=NONE'; fi
+            ui_secret="$(grep -m1 '^UI_STUDIO_BRIDGE_SECRET=' "$UI_ENV" | cut -d= -f2- || true)"
+            prod_secret="$(grep -m1 '^UI_STUDIO_BRIDGE_SECRET=' "$PORTAL_ENV" | cut -d= -f2- || true)"
+            if [ "${#ui_secret}" -ge 32 ] && [ "$ui_secret" = "$prod_secret" ]; then
+              echo 'SSO_SHARED_HMAC_SECRET=MATCHED'
+            else
+              echo 'SSO_SHARED_HMAC_SECRET=NOT_READY'
+            fi
+            unset ui_secret prod_secret
             echo 'UI_STUDIO_LIVE_STATUS_END'
