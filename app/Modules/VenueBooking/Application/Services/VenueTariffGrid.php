@@ -128,8 +128,10 @@ final class VenueTariffGrid
                             }
                         }
                     }
+                    // Match VenueSlotPricing: even historical low overrides are
+                    // displayed at the payable minimum, not their raw value.
                     $prices[$scope] = $court === null
-                        ? (int) $value
+                        ? max((int) $value, $floor)
                         : max((int) $value, $floor * $ratio);
                 }
 
