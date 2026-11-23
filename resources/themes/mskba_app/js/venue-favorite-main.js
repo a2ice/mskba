@@ -109,7 +109,7 @@ import { addFavorite } from './favorite-action.js';
     followSections.forEach(section=>section.querySelector('[data-venue-favorite-follow-action]')
         ?.addEventListener('click',async event=>{
             if(busy||state==='active')return;
-            if(state==='error'){
+            if(state==='error'&&isAuthenticated()){
                 try{await ensureStatus(true);}
                 catch(error){window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message:error.message,failed:true}}));}
                 return;
