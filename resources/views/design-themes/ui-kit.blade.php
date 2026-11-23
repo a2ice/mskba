@@ -63,6 +63,16 @@
             .ui-kit-field-row { grid-template-columns: 1fr; }
         }
         @media(prefers-reduced-motion:reduce) { .ui-kit-frame { transition: none; } }
+
+        .ui-kit-mobile-preview { width: min(100%, 440px); margin: 0 auto; display: grid; gap: 12px; }
+        .ui-kit-mobile-dock { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
+        .ui-kit-mobile-dock span { min-height: 52px; display: grid; place-items: center; text-align: center; font-size: 12px; font-weight: 750; color: var(--muted); }
+        .ui-kit-mobile-dock span.is-active { color: var(--accent); }
+        .ui-kit-context-preview { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: 16px; display: grid; gap: 12px; }
+        .ui-kit-context-preview > header,.ui-kit-context-preview > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .ui-kit-context-preview .ui-kit-context-search { width: 100%; min-height: 44px; border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: 10px 12px; background: var(--field); color: var(--text); }
+        .ui-kit-context-preview footer .button { flex: 1; }
+        .ui-kit-context-preview p { font-size: 12px; color: var(--muted); }
     </style>
 </head>
 <body class="ui-kit-body">
@@ -277,6 +287,43 @@
         </section>
         <p class="ui-kit-footer">Образцы MSKBA App · изолированный UI Kit · {{ $theme->slug }}</p>
     </div>
+
+    <section class="ui-kit-section" id="mobile-context">
+        <h2>Мобильная навигация · контекстный поиск</h2>
+        <p class="ui-kit-intro">Состояния общего Mobile Dock: Играть / Площадки / Главная / Меню / Фильтры или Поиск. Панель фильтров имеет компактный и развёрнутый режимы, прокручиваемый контент до 70dvh и фиксированные действия.</p>
+        <div class="ui-kit-grid">
+            <article class="panel ui-kit-panel">
+                <h3>Каталог: фильтры</h3>
+                <div class="ui-kit-mobile-preview">
+                    <div class="ui-kit-context-preview">
+                        <header><strong>Фильтры площадок</strong><span>⌄</span></header>
+                        <p>Найдено: 128 (пример)</p>
+                        <input class="ui-kit-context-search" aria-label="Поиск площадки" placeholder="Название, адрес или описание">
+                        <footer><button class="button secondary" type="button">Сбросить</button><button class="button primary" type="button">Применить</button></footer>
+                    </div>
+                    <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели">
+                        <span>Играть</span><span>Площадки</span><span>●</span><span>Меню</span><span class="is-active">Фильтры</span>
+                    </div>
+                </div>
+            </article>
+            <article class="panel ui-kit-panel">
+                <h3>Главная: сквозной поиск</h3>
+                <div class="ui-kit-mobile-preview">
+                    <div class="ui-kit-context-preview">
+                        <header><strong>Поиск по MSKBA</strong><span>⌃</span></header>
+                        <p>Поиск по всему сайту · категории и расширенные условия</p>
+                        <input class="ui-kit-context-search" aria-label="Поиск MSKBA" placeholder="Что хотите найти?">
+                        <footer><button class="button secondary" type="button">Сбросить</button><button class="button primary" type="button">Найти</button></footer>
+                    </div>
+                    <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели поиска">
+                        <span>Играть</span><span>Площадки</span><span class="is-active">●</span><span>Меню</span><span>Поиск</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+        <p class="ui-kit-hint">Живые формы используют источники доменных каталогов, а AJAX-фильтры синхронизируются при применении. В примерах показаны визуальные состояния, не связанный с данными поиск.</p>
+    </section>
+
 </main>
 
 <dialog id="kit-modal" class="mskba-modal ui-kit-sample-dialog" aria-labelledby="kit-modal-title" aria-describedby="kit-modal-desc">
