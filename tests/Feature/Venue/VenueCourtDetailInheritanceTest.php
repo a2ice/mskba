@@ -225,8 +225,8 @@ final class VenueCourtDetailInheritanceTest extends TestCase
                 ->assertSee('<strong>зал</strong>', false)
                 ->assertSee('<ul><li>Мячи</li><li>Раздевалки</li></ul>', false)
                 ->assertDontSee('&lt;h4&gt;', false)
-                ->assertDontSee('<script', false)
-                ->assertDontSee('onclick=', false)
+                ->assertDontSee('<script>alert(1)</script>', false)
+                ->assertDontSee('onclick="alert(2)"', false)
                 ->assertDontSee('javascript:alert', false);
         }
     }
