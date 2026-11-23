@@ -6,6 +6,8 @@
         : (in_array($courtCount % 10, [2, 3, 4], true) && ! in_array($courtCount % 100, [12, 13, 14], true) ? 'зала' : 'залов');
     $title = 'Залы · '.$venueDisplayName.' · '.$courtCount.' '.$courtCountLabel;
     $venueSidebarActive = 'courts';
+    $policy = $policy ?? \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+        ->where('venue_id', $venue->id)->where('active_marker', true)->first();
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
