@@ -38,6 +38,7 @@
     <div class="app-rental-pricing__actions">
         <a class="button secondary" href="{{ route('account.venues.courts.index', $venue->routeIdentifier()) }}">Залы</a>
         <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
+        @if($policy)<a class="button secondary" href="{{ route('account.venues.tariff-grid.edit', $venue->id) }}">Тарифная сетка по времени</a>@endif
     </div>
     @if(session('status'))<p class="app-rental-pricing__success" role="status">{{ session('status') }}</p>@endif
     @if(session('error'))<p class="app-rental-pricing__error" role="alert">{{ session('error') }}</p>@endif
