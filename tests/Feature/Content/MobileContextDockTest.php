@@ -89,4 +89,48 @@ final class MobileContextDockTest extends TestCase
             ->assertSee('FAQ контекстдок')
             ->assertDontSee('Системная новость контекстдок');
     }
+    public function test_fixed_mobile_sheet_has_search_before_expansion_and_result_counter_above_actions(): void
+    {
+        $response = $this->get(route('venues'))->assertOk()
+            ->assertSee('data-context-filter-expand-label>Расширенный поиск', false)
+            ->assertSee('Кол-во результатов:')
+            ->assertSee('data-context-filter-result-value', false)
+            ->assertSee('data-context-result-total="', false);
+
+        $html = $response->getContent();
+        $search = strpos($html, 'data-context-filter-quick-search');
+        $expand = strpos($html, 'data-context-filter-expand');
+        $scroll = strpos($html, 'data-context-filter-scroll');
+        $results = strpos($html, 'data-context-filter-result-value');
+        $actions = strpos($html, 'data-context-filter-apply');
+
+        $this->assertNotFalse($search);
+        $this->assertNotFalse($expand);
+        $this->assertNotFalse($scroll);
+        $this->assertNotFalse($results);
+        $this->assertNotFalse($actions);
+        $this->assertTrue($search < $expand && $expand < $scroll);
+        $this->assertTrue($scroll < $results && $results < $actions);
+    }
+
+    public function test_all_catalogs_expose_total_results_for_the_mobile_filter_footer(): void
+    {
+        foreach ([
+            route('venues'),
+            route('shop.index'),
+            route('news.index'),
+            route('events.index'),
+            route('tournaments.index'),
+            route('sports-sections.index'),
+            route('leagues.index'),
+            route('participants.index'),
+            route('teams.index'),
+            route('site.search'),
+        ] as $url) {
+            $this->get($url)->assertOk()
+                ->assertSee('data-context-result-total="', false);
+        }
+    }
+
+
 }

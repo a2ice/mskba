@@ -37,6 +37,7 @@
     $categoryEnableSorting = true;
     $categorySortValue = $filters['sort'];
     $categorySidebarLabel = 'Категории и фильтры товаров';
+    $categoryResultTotal = $products->total();
 @endphp
 @extends('theme::layouts.category')
 

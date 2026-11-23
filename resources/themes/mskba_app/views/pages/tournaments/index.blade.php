@@ -13,6 +13,7 @@
     $canonicalUrl = $tournaments->currentPage() > 1 ? route('tournaments.index', ['page' => $tournaments->currentPage()]) : route('tournaments.index');
     $paginationPrevUrl = $tournaments->previousPageUrl();
     $paginationNextUrl = $tournaments->nextPageUrl();
+    $categoryResultTotal = $tournaments->total();
 @endphp
 @extends('theme::layouts.category')
 

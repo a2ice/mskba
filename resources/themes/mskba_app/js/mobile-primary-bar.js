@@ -24,7 +24,8 @@ if (dock) {
     const filterTitle = dock.querySelector('[data-app-mobile-primary-filter-title]');
     const filterLabel = dock.querySelector('[data-app-mobile-primary-filter-label]');
     const filterBadge = dock.querySelector('[data-app-mobile-primary-filter-badge]');
-    const filterCount = dock.querySelector('[data-context-filter-count]');
+    const filterResultValue = dock.querySelector('[data-context-filter-result-value]');
+    const filterExpandLabel = dock.querySelector('[data-context-filter-expand-label]');
     const filterExpand = dock.querySelector('[data-context-filter-expand]');
     const filterPreview = dock.querySelector('[data-context-filter-preview]');
     const quickSearch = dock.querySelector('[data-context-filter-quick-search]');
@@ -79,31 +80,34 @@ if (dock) {
         return count;
     };
 
+    const countSource = () => document.querySelector(
+        '[data-context-result-total], [data-favorites-count], [data-subscriptions-count]'
+    );
+
     const updateCount = () => {
-        if (!definition) {
-            filterCount.textContent = 'Поиск по всем разделам MSKBA';
-            activeCount = 0;
-            return;
-        }
-        activeCount = selectedScope();
-        const result = document.querySelector(
-            '[data-default-category] .app-category__count, ' +
-            '[data-default-category] [data-venue-visible-count], ' +
-            '.app-shop__toolbar-count, [data-context-results-count], [data-favorites-count], [data-subscriptions-count]'
-        );
-        filterCount.textContent = result?.closest('[role="status"]')?.textContent?.trim()
-            || result?.textContent?.trim() || 'Поиск и фильтры раздела';
+        activeCount = definition ? selectedScope() : 0;
         if (filterBadge) {
             filterBadge.hidden = activeCount === 0;
             filterBadge.textContent = String(activeCount);
         }
+
+        // The result count is NOT the number of active filters, nor the number
+        // of cards loaded so far by infinite scroll. Use the server paginator
+        // total; for AJAX account lists read the live resolved result count.
+        const source = countSource();
+        const explicit = source?.getAttribute('data-context-result-total');
+        const text = source?.textContent?.trim() || '';
+        const numeric = source?.hasAttribute('data-context-result-total')
+            ? (/^\d+$/.test(explicit) ? explicit : null)
+            : (text.match(/(?:^|\D)(\d[\d\s]*)\s*$/u)?.[1]?.replace(/\s/g, '') ?? null);
+        if (filterResultValue) filterResultValue.textContent = numeric ?? '—';
     };
 
     const setExpanded = (value) => {
         expanded = Boolean(value);
         filterPanel?.classList.toggle('is-expanded', expanded);
         filterExpand?.setAttribute('aria-expanded', String(expanded));
-        filterExpand?.setAttribute('aria-label', expanded ? 'Свернуть фильтры' : 'Развернуть фильтры');
+        filterExpandLabel.textContent = expanded ? 'Свернуть фильтры' : 'Расширенный поиск';
         if (filterScroll) filterScroll.scrollTop = 0;
     };
 
@@ -343,6 +347,20 @@ if (dock) {
     window.visualViewport?.addEventListener('scroll', placeAboveKeyboard);
     placeAboveKeyboard();
 
+    // AJAX lists update their visible result counter without page navigation.
+    // Observe only the counter node (not the dock) to avoid feedback loops.
+    const liveCount = document.querySelector('[data-favorites-count], [data-subscriptions-count]');
+    if (liveCount) {
+        new MutationObserver(updateCount).observe(liveCount, {
+            childList: true, characterData: true, subtree: true,
+        });
+    }
+
+    const syncMobileContext = () => {
+        document.documentElement.classList.toggle('has-app-mobile-context', mobile.matches);
+    };
+    syncMobileContext();
+
     mobile.addEventListener('change', () => {
         if (!mobile.matches) {
             close(false);
@@ -351,6 +369,7 @@ if (dock) {
             mountFilters();
         }
         placeAboveKeyboard();
+        syncMobileContext();
     });
     if (mobile.matches) mountFilters();
 }
