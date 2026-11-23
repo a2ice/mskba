@@ -131,6 +131,7 @@
                         'teams' => 'Команды', 'people' => 'Участники',
                         'tournaments' => 'Турниры', 'leagues' => 'Лиги',
                         'sections' => 'Секции', 'news' => 'Новости', 'shop' => 'Магазин',
+                        'faq' => 'Помощь и FAQ',
                     ] as $searchType => $searchLabel)
                         <label class="app-mobile-primary__search-type">
                             <input type="checkbox" name="types[]" value="{{ $searchType }}"
