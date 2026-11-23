@@ -1,0 +1,61 @@
+name: UI Studio live acceptance status (read-only)
+
+on:
+  push:
+    branches: [ops/ui-studio-995-preflight]
+    paths: [.github/workflows/ui-studio-acceptance-status.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read live UI Studio vhost and feature-gate status
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -euo pipefail
+            VHOST=/etc/nginx/sites-enabled/mskba-ui
+            UI_ENV=/var/www/mskba-ui/.env
+            PORTAL_ENV=/var/www/mskba/.env
+            echo 'UI_STUDIO_LIVE_STATUS_BEGIN'
+            if grep -Fq '# MSKBA_UI_STUDIO_SSO_V1' "$VHOST"; then
+              echo 'NGINX_BRIDGE_PATCH=APPLIED'
+            else
+              echo 'NGINX_BRIDGE_PATCH=NOT_APPLIED'
+            fi
+            for expected in 'SESSION_DRIVER=file' 'CACHE_STORE=file' 'SESSION_COOKIE=mskba_ui_session'; do
+              if grep -Fxq "$expected" "$UI_ENV"; then
+                echo "STUDIO_ENV_$(printf '%s' "$expected" | cut -d= -f1)=EXPECTED"
+              else
+                echo "STUDIO_ENV_$(printf '%s' "$expected" | cut -d= -f1)=NOT_EXPECTED"
+              fi
+            done
+            if grep -Fxq 'UI_STUDIO_BRIDGE_ENABLED=true' "$PORTAL_ENV"; then
+              echo 'PORTAL_BRIDGE=ENABLED'
+            else
+              echo 'PORTAL_BRIDGE=DISABLED'
+            fi
+            for target in /uikit /uikit/bridge /uikit/session /uikit/reviews; do
+              case "$target" in
+                /uikit/session|/uikit/reviews)
+                  method=POST
+                  code="$(curl --silent --show-error --max-time 8 --output /dev/null --write-out '%{http_code}' --request POST -H 'Accept: application/json' --data '{}' "https://ui.mskba.ru$target" || true)"
+                  ;;
+                *)
+                  method=GET
+                  code="$(curl --silent --show-error --max-time 8 --output /dev/null --write-out '%{http_code}' "https://ui.mskba.ru$target" || true)"
+                  ;;
+              esac
+              echo "HTTP_$method$target=$code"
+            done
+            echo "STUDIO_HEAD=$(git -C /var/www/mskba-ui rev-parse --short HEAD)"
+            echo 'UI_STUDIO_LIVE_STATUS_END'
