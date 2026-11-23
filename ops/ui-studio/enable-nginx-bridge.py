@@ -17,6 +17,7 @@ import shutil
 import stat
 import subprocess
 import tempfile
+import time
 
 VHOST = Path("/etc/nginx/sites-available/mskba-ui")
 UI_ENV = Path("/var/www/mskba-ui/.env")
@@ -124,6 +125,29 @@ def status(url: str, method: str = "GET") -> str:
     return response.stdout
 
 
+def await_http(url: str, allowed: set[str], label: str, tries: int = 24) -> None:
+    """A systemd reload is asynchronous; give new Nginx workers time to serve."""
+    observed = "not attempted"
+    for attempt in range(1, tries + 1):
+        try:
+            observed = status(url, "POST" if label == "session" else "GET")
+        except subprocess.CalledProcessError:
+            observed = "curl failure"
+
+        if observed in allowed:
+            print(f"STUDIO_{label.upper()}_HTTP={observed} ATTEMPT={attempt}", flush=True)
+            return
+
+        if attempt in {1, 6, 12, tries}:
+            print(f"STUDIO_{label.upper()}_RETRY_HTTP={observed} ATTEMPT={attempt}/{tries}", flush=True)
+        if attempt < tries:
+            time.sleep(0.5)
+
+    raise RuntimeError(
+        f"Studio {label} HTTP smoke failed: expected {sorted(allowed)}, got {observed}"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true", help="Requires root; makes a backed-up vhost change")
@@ -165,12 +189,9 @@ def main() -> None:
         nginx("nginx", "-t")
         nginx("systemctl", "reload", "nginx")
 
-        if status("https://ui.mskba.ru/uikit/bridge") != "200":
-            raise RuntimeError("Studio bootstrap must return HTTP 200")
-        if status("https://ui.mskba.ru/uikit") != "401":
-            raise RuntimeError("Unidentified Studio requests must remain HTTP 401")
-        if status("https://ui.mskba.ru/uikit/session", "POST") not in {"419", "422"}:
-            raise RuntimeError("Session endpoint must reach Laravel with CSRF protection")
+        await_http("https://ui.mskba.ru/uikit/bridge", {"200"}, "bootstrap")
+        await_http("https://ui.mskba.ru/uikit", {"401"}, "anonymous_catalog")
+        await_http("https://ui.mskba.ru/uikit/session", {"419", "422"}, "session")
 
         print("UI_STUDIO_NGINX_BRIDGE=SUCCESS")
         print("Portal issuer intentionally remains disabled until end-to-end acceptance")
