@@ -45,13 +45,13 @@ final class VenueTariffGridTest extends TestCase
             'operation' => 'set',
             'whole_price_per_step' => '1200',
             'exceptions' => [
-                ['starts_at' => '19:00', 'operation' => 'set', 'whole_price_per_step' => '1500'],
+                ['starts_at' => '19:00', 'day_of_week' => 2, 'operation' => 'set', 'whole_price_per_step' => '1500'],
             ],
         ])->assertRedirect();
 
         $this->assertSame(8, DB::table('venue_court_manual_slot_prices')->count());
         $this->assertDatabaseHas('venue_court_manual_slot_prices', [
-            'venue_court_id' => $court->id, 'day_of_week' => 1,
+            'venue_court_id' => $court->id, 'day_of_week' => 2,
             'starts_at' => '19:00:00', 'whole_price_per_step_minor' => 150000,
         ]);
         $grid = app(VenueTariffGrid::class)->read($venue, $policy, $court, 'weekly', '2026-11-23');
@@ -60,7 +60,10 @@ final class VenueTariffGridTest extends TestCase
         $prices = collect($monday['ranges'])->flatMap(fn (array $r) => $r['cells'])
             ->keyBy('time');
         $this->assertSame(120000, $prices['18:00']['whole']);
-        $this->assertSame(150000, $prices['19:00']['whole']);
+        $this->assertSame(120000, $prices['19:00']['whole']);
+        $tuesday = collect($grid)->firstWhere('day', 2);
+        $tuesdayPrices = collect($tuesday['ranges'])->flatMap(fn (array $r) => $r['cells'])->keyBy('time');
+        $this->assertSame(150000, $tuesdayPrices['19:00']['whole']);
         $this->assertSame(120000, $prices['19:30']['whole']);
     }
 
