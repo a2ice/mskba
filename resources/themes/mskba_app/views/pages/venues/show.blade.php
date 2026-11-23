@@ -164,7 +164,7 @@
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-venue-play-open>Хочу здесь играть</button>
-                <button type="button" class="button secondary large" data-venue-favorite-main aria-pressed="false">В избранное</button>
+                <button type="button" class="button secondary large" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false">В избранное ({{ $favoritesCount }})</button>
             </div>
         </div>
     </div>
