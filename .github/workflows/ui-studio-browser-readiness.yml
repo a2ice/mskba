@@ -79,19 +79,17 @@ jobs:
               echo "PORTAL_STUDIO_ORIGIN=https://".config("ui-studio.host")."\n";
             '
             echo '--- FILAMENT STUDIO ROUTES ---'
-            $COMPOSE exec -T phpfpm php artisan route:list --path=ui-studio || true
-            $COMPOSE exec -T phpfpm php artisan route:list --path=backoffice || true
-            $COMPOSE exec -T phpfpm php -r '
-              require "vendor/autoload.php";
-              $app = require "bootstrap/app.php";
-              $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
-              $matches=[];
-              foreach (\\Illuminate\\Support\\Facades\\Route::getRoutes() as $r) {
-                if (str_contains($r->uri(), "ui-studio")) {
-                  $matches[]=$r->uri().":".$r->getName();
-                }
-              }
-              foreach ($matches as $match) echo "STUDIO_ROUTE_REGISTERED=".$match."\\n";
-              if (count($matches) < 2) exit(2);
-            '
+            routes="$($COMPOSE exec -T phpfpm php artisan route:list --path=backoffice/ui-studio)"
+            if printf '%s\n' "$routes" | grep -F 'backoffice/ui-studio' >/dev/null; then
+              echo 'PORTAL_UI_STUDIO_ROUTE=REGISTERED'
+            else
+              echo 'PORTAL_UI_STUDIO_ROUTE=MISSING'
+              exit 1
+            fi
+            if printf '%s\n' "$routes" | grep -F 'backoffice/ui-studio/ticket' >/dev/null; then
+              echo 'PORTAL_TICKET_ROUTE=REGISTERED'
+            else
+              echo 'PORTAL_TICKET_ROUTE=MISSING'
+              exit 1
+            fi
             echo 'UI_STUDIO_BROWSER_READINESS_SUCCESS'
