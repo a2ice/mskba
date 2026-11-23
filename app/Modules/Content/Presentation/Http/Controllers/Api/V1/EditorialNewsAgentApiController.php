@@ -291,6 +291,11 @@ final class EditorialNewsAgentApiController extends Controller
                 'alias' => $item->alias,
                 'status' => $item->status->value,
                 'title' => $item->title,
+                'seo' => [
+                    'meta_title' => $item->meta_title ?: $item->title,
+                    'meta_description' => $item->meta_description ?: $item->short_description,
+                    'meta_keywords' => $item->meta_keywords,
+                ],
                 'has_cover' => $item->cover()->exists(),
                 'telegram_publications' => $item->telegramPublications()->where('is_enabled', true)
                     ->orderBy('chat_id')->get(['chat_id', 'status', 'message_id', 'last_error'])
