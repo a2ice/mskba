@@ -89,6 +89,7 @@ use App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsControl
 use App\Modules\PlayInterest\Presentation\Http\Controllers\PlayIntentController;
 use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueGroupOfferController;
 use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueInterestGroupController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueAudienceController;
 use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController;
 use App\Modules\Portal\Presentation\Http\Controllers\OperatorActivityHeartbeatController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
@@ -1266,6 +1267,19 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/contracts/venues/{venue}', [AccountVenueContractCaseController::class, 'show'])
             ->whereNumber('venue')->name('account.venue-contracts.show')
             ->defaults('breadcrumb', 'Подтверждение полномочий');
+        Route::get('/contracts/venues/{venue}/audience', [VenueAudienceController::class, 'index'])
+            ->whereNumber('venue')->name('account.venue-audience.index')->defaults('breadcrumb', 'Интересуются');
+        Route::get('/contracts/venues/{venue}/audience/backoffice', [VenueAudienceController::class, 'index'])
+            ->whereNumber('venue')->name('account.venue-audience.backoffice')->defaults('backoffice', true)->defaults('breadcrumb', 'Интересуются');
+        Route::post('/contracts/venues/{venue}/audience/{user}/message', [VenueAudienceController::class, 'message'])
+            ->whereNumber('venue')->whereNumber('user')->middleware('throttle:direct-messages')->name('account.venue-audience.message');
+        Route::post('/contracts/venues/{venue}/audience/backoffice/{user}/message', [VenueAudienceController::class, 'message'])
+            ->whereNumber('venue')->whereNumber('user')->middleware('throttle:direct-messages')
+            ->name('account.venue-audience.backoffice.message')->defaults('backoffice', true);
+        Route::post('/contracts/venues/{venue}/audience/{user}/offer', [VenueAudienceController::class, 'notify'])
+            ->whereNumber('venue')->whereNumber('user')->middleware('throttle:5,1')->name('account.venue-audience.offer');
+        Route::post('/contracts/venues/{venue}/audience/backoffice/{user}/offer', [VenueAudienceController::class, 'notify'])
+            ->whereNumber('venue')->whereNumber('user')->middleware('throttle:5,1')->name('account.venue-audience.backoffice.offer')->defaults('backoffice', true);
         Route::post('/contracts/venues/{venue}/start', [AccountVenueContractCaseController::class, 'start'])
             ->whereNumber('venue')->middleware('throttle:5,1')->name('account.venue-contracts.start');
         Route::post('/contracts/{contract}/evidence', [ContractEvidenceController::class, 'store'])
