@@ -32,6 +32,13 @@ test('venue description lightbox centers its photo card independently of dialog 
     const image = css.split('.venue-description-lightbox__image{')[1]?.split('}')[0];
     assert.ok(overlay?.includes('width:100vw;max-width:none'));
     assert.ok(overlay?.includes('height:100dvh;max-height:none'));
+    // The global specimen centers all dialogs with translate(-50%,-50%).
+    // A full-viewport overlay MUST explicitly reset it, or its whole panel
+    // shifts half the viewport offscreen despite correct grid centering.
+    const baseDialogCss = source('resources/themes/mskba_app/css/design-system.css');
+    assert.ok(baseDialogCss.includes('transform:translate(-50%,-50%)'));
+    assert.ok(overlay?.includes('transform:none;translate:none'));
+    assert.ok(overlay?.includes('min-width:0;min-height:0'));
     assert.ok(css.includes('dialog.venue-description-lightbox[open]{display:grid;place-items:center}'));
     assert.ok(frame?.includes('width:min(1100px,calc(100vw - 24px))'));
     assert.ok(image?.includes('max-height:calc(92dvh - 88px)'));
