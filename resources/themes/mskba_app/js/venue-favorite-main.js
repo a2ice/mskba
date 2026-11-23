@@ -10,6 +10,15 @@ import { addFavorite } from './favorite-action.js';
     const error=modal.querySelector('[data-venue-favorite-error]');
     const submit=modal.querySelector('[data-venue-favorite-submit]');
     let state='unknown', mode='info', busy=false;
+    // Public venue total, not the current user's header favorites count.
+    let venueFavoriteCount=Math.max(0,Number(buttons[0].dataset.favoriteCount)||0);
+    const setVenueCount=value=>{
+        if(value===null||value===undefined||value==='')return;
+        const numeric=Number(value);
+        if(!Number.isSafeInteger(numeric)||numeric<0)return;
+        venueFavoriteCount=numeric;
+        paint();
+    };
     const request=async(url,method='GET',body=null)=>{
         const res=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:{
             'Accept':'application/json','Content-Type':'application/json',
@@ -23,7 +32,7 @@ import { addFavorite } from './favorite-action.js';
     const paint=()=>{
         buttons.forEach(button=>{
             const saved=state==='active';
-            button.textContent=saved?'В избранном':'В избранное';
+            button.textContent=(saved?'В избранном':'В избранное')+' ('+venueFavoriteCount+')';
             button.setAttribute('aria-pressed',String(saved));
             button.disabled=busy;
         });
@@ -43,7 +52,9 @@ import { addFavorite } from './favorite-action.js';
         try {
             if(state!=='active'){await addFavorite('venue',id);return;}
             const result=await request(modal.dataset.toggleUrl,'POST',{type:'venue',id,action:'remove'});
-            state=result.state;paint();
+            state=result.state;
+            setVenueCount(result.count);
+            paint();
             window.dispatchEvent(new CustomEvent('mskba:favorites:changed',{detail:{count:result.favorites_count}}));
             window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{
                 detail:{venueId:id,state:result.state,count:result.count},
@@ -63,7 +74,9 @@ import { addFavorite } from './favorite-action.js';
         const url=new URL(modal.dataset.statusUrl,location.href);
         url.searchParams.append('ids[]',String(id));
         const result=await request(url);
-        state=result.data?.[id]?.state||'none';paint();
+        state=result.data?.[id]?.state||'none';
+        setVenueCount(result.counts?.[id]);
+        paint();
     };
     buttons.forEach(button=>button.addEventListener('click',async()=>{
         if(busy)return;
@@ -80,7 +93,9 @@ import { addFavorite } from './favorite-action.js';
     modal.querySelector('[data-venue-favorite-close]').addEventListener('click',()=>modal.close());
     window.addEventListener('mskba:venue-favorite:updated',event=>{
         if(Number(event.detail?.venueId)!==id)return;
-        state=event.detail.state;paint();
+        state=event.detail.state;
+        setVenueCount(event.detail.count);
+        paint();
     });
     let downOutside=false;
     modal.addEventListener('pointerdown',event=>{downOutside=event.target===modal;});
