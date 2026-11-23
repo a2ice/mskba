@@ -30,7 +30,7 @@
 dialog.venue-description-lightbox{
     position:fixed;inset:0;margin:0;width:100vw;max-width:none;
     height:100dvh;max-height:none;box-sizing:border-box;
-    /* Override design-system.css dialog {transform:translate(-50%,-50%)}.
+    /* Override design-system.css global dialog transform:translate(-50%,-50%).
        Otherwise the full-viewport top layer shifts half a screen off-canvas. */
     transform:none;translate:none;min-width:0;min-height:0;
     padding:0;border:0;border-radius:0;background:transparent;
