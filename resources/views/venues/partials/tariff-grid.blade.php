@@ -16,7 +16,7 @@
         .venue-tariff-grid__slot{display:flex;flex-direction:column;gap:.3rem;padding:.55rem;border:1px solid var(--border-color,#ddd);border-radius:8px}
         .venue-tariff-grid__slot small,.venue-tariff-grid__help{font-size:.8rem;opacity:.8}
         .venue-tariff-grid__exceptions{display:grid;gap:.7rem;margin:.75rem 0}
-        .venue-tariff-grid__exception{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:.5rem;align-items:end}
+        .venue-tariff-grid__exception{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:.5rem;align-items:end}
         .venue-tariff-grid__actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
         .venue-tariff-grid__dialog{max-width:540px;width:min(94vw,540px);padding:1.25rem;border:1px solid var(--border-color,#ccc);border-radius:12px;background:var(--card-bg,#fff);color:var(--text-color,#222)}
         .venue-tariff-grid__dialog::backdrop{background:rgba(0,0,0,.55)}
@@ -136,6 +136,16 @@
             <template data-tariff-exception-template>
                 <div class="venue-tariff-grid__exception" data-tariff-exception>
                     <label>Начало шага<input name="exceptions[__INDEX__][starts_at]" type="time" step="{{ $step * 60 }}"></label>
+                    @if($mode === 'weekly')
+                        <label>День
+                            <select name="exceptions[__INDEX__][day_of_week]">
+                                <option value="">Все выбранные дни</option>
+                                @foreach([1=>'Пн',2=>'Вт',3=>'Ср',4=>'Чт',5=>'Пт',6=>'Сб',7=>'Вс'] as $number=>$name)
+                                    <option value="{{ $number }}">{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
                     <label>Весь зал, ₽<input name="exceptions[__INDEX__][whole_price_per_step]" inputmode="decimal"></label>
                     <label>Половина, ₽<input name="exceptions[__INDEX__][half_price_per_step]" inputmode="decimal"></label>
                     <label>Действие
