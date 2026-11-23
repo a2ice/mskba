@@ -199,10 +199,14 @@ final class VenueTariffGrid
                 continue;
             }
             $minute = self::minutes($exception['starts_at']);
-            if ($minute < $from || $minute >= $to || $minute % $step !== 0 || isset($exceptions[$minute])) {
-                throw ValidationException::withMessages(['exceptions' => 'Исключения должны относиться к уникальным шагам внутри диапазона.']);
+            $exceptDay = (int) ($exception['day_of_week'] ?? 0);
+            $key = $exceptDay.'|'.$minute;
+            if ($minute < $from || $minute >= $to || $minute % $step !== 0
+                || ($exceptDay > 0 && ! in_array($exceptDay, $days, true))
+                || array_key_exists($key, $exceptions)) {
+                throw ValidationException::withMessages(['exceptions' => 'Исключение должно относиться к уникальному шагу выбранного дня внутри диапазона.']);
             }
-            $exceptions[$minute] = ($exception['operation'] ?? 'set') === 'clear'
+            $exceptions[$key] = ($exception['operation'] ?? 'set') === 'clear'
                 ? null : $this->parsePrices($policy, $court, $exception);
         }
 
@@ -221,7 +225,11 @@ final class VenueTariffGrid
 
             foreach ($days as $day) {
                 for ($minute = $from; $minute < $to; $minute += $step) {
-                    $price = array_key_exists($minute, $exceptions) ? $exceptions[$minute] : $base;
+                    $specific = $day.'|'.$minute;
+                    $anyDay = '0|'.$minute;
+                    $price = array_key_exists($specific, $exceptions)
+                        ? $exceptions[$specific]
+                        : (array_key_exists($anyDay, $exceptions) ? $exceptions[$anyDay] : $base);
                     $this->writeStep(
                         $venue, $court, $isDate ? $data['date'] : null,
                         $isDate ? null : $day, self::clock($minute),
