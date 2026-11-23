@@ -1,0 +1,40 @@
+name: MSKBA offline unresolved user quarantine
+
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-identity-quarantine.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quarantine:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static syntax validation
+        run: |
+          set -euo pipefail
+          php -l scripts/data-merge/quarantine-unmatched-identities.php
+          bash -n scripts/data-merge/isolated-identity-quarantine.sh
+      - name: Stage isolated scripts
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/quarantine-unmatched-identities.php,scripts/data-merge/isolated-identity-quarantine.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Preserve pending accounts and actor links as blocked quarantine
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-identity-quarantine.sh ${{ github.run_id }} 44032940142 /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/quarantine-unmatched-identities.php
