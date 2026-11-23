@@ -345,6 +345,16 @@ final class VenueResource extends Resource
                                     ->numeric()->minValue(0)
                                     ->helperText('Тариф сохраняется и при временном отключении аренды половин.'),
                             ]),
+                        Section::make('Тарифная сетка')
+                            ->description('Единый редактор временных диапазонов, исключений и импортированных цен. Ручные изменения переживают повторную синхронизацию.')
+                            ->schema([
+                                TextEntry::make('unified_tariff_grid')
+                                    ->label('Редактор стоимости по времени')
+                                    ->state('Открыть тарифную сетку площадки и её залов')
+                                    ->url(fn (?Venue $record): ?string => $record === null ? null
+                                        : route('account.venues.tariff-grid.edit', ['venue' => $record->id]))
+                                    ->openUrlInNewTab(),
+                            ]),
                         Section::make('Время и ограничения')
                             ->columns(3)
                             ->schema([
