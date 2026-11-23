@@ -153,4 +153,19 @@ jobs:
             else
               echo 'STUDIO_CONTAINER=NOT_FOUND'
             fi
+            echo '--- NEW STUDIO ENDPOINTS AND WRITABILITY ---'
+            for method in GET POST; do
+              if [ "$method" = POST ]; then
+                status="$(curl --silent --show-error --max-time 8 --output /dev/null --write-out '%{http_code}' -X POST -H 'Accept: application/json' --data '{}' https://ui.mskba.ru/uikit/session 2>/dev/null || true)"
+                echo "STUDIO_SESSION_POST_STATUS=$status"
+              else
+                status="$(curl --silent --show-error --max-time 8 --output /dev/null --write-out '%{http_code}' https://ui.mskba.ru/uikit/bridge 2>/dev/null || true)"
+                echo "STUDIO_BRIDGE_GET_STATUS=$status"
+              fi
+            done
+            if docker inspect mskba-ui-php >/dev/null 2>&1; then
+              user="$(docker inspect --format '{{.Config.User}}' mskba-ui-php)"
+              echo "STUDIO_CONFIGURED_CONTAINER_USER=$(test -n "$user" && echo explicit || echo default)"
+              docker exec mskba-ui-php sh -lc 'for path in storage/framework/sessions storage/framework/cache storage/app/private; do if [ -d "$path" ]; then echo "CONTAINER_DIRECTORY_$path=EXISTS"; else echo "CONTAINER_DIRECTORY_$path=MISSING"; fi; if [ -w "$path" ]; then echo "CONTAINER_WRITABLE_$path=YES"; else echo "CONTAINER_WRITABLE_$path=NO"; fi; done' || true
+            fi
             echo 'UI_STUDIO_PREFLIGHT=FINISHED'
