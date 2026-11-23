@@ -150,8 +150,8 @@
     html.has-app-mobile-context .app-category__mobile-filters,
     html.has-app-mobile-context .app-shop__mobile-filters,
     html.has-app-mobile-context .app-venues-catalog__sidebar,
-    html.has-app-mobile-context .app-team-filters,
-    html.has-app-mobile-context .app-site-search__form {
+    html.has-app-mobile-context .app-team-section > .app-team-filters,
+    html.has-app-mobile-context .app-site-search > .app-site-search__form {
         display: none !important;
     }
 
