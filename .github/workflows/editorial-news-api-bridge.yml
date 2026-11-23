@@ -1,0 +1,62 @@
+name: Editorial news API bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ops/editorial-news/requests/*.json'
+  workflow_dispatch:
+    inputs:
+      request_file:
+        description: 'Reviewed JSON under ops/editorial-news/requests'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editorial-news-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: editorial-production
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Select exactly one reviewed request
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_PATH: ${{ inputs.request_file }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            file="$MANUAL_PATH"
+          else
+            mapfile -t changed < <(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" -- ops/editorial-news/requests/ | grep -E '^ops/editorial-news/requests/[a-z0-9][a-z0-9-]*\.json$' || true)
+            if [[ ${#changed[@]} != 1 ]]; then
+              echo "::error::Exactly one reviewed request must change."
+              exit 1
+            fi
+            file="${changed[0]}"
+          fi
+          [[ "$file" =~ ^ops/editorial-news/requests/[a-z0-9][a-z0-9-]*\.json$ && -f "$file" && ! -L "$file" ]]
+          printf 'REQUEST_PATH=%s\n' "$file" >> "$GITHUB_ENV"
+      - name: Validate client
+        run: node --test tests/JavaScript/editorial-news-agent-bridge.test.mjs
+      - name: Publish through scoped production API
+        env:
+          MSKBA_EDITORIAL_NEWS_TOKEN: ${{ secrets.MSKBA_EDITORIAL_NEWS_TOKEN }}
+        run: node scripts/editorial-news-agent-bridge.mjs "$REQUEST_PATH"

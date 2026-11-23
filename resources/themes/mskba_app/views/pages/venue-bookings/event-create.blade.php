@@ -69,6 +69,7 @@
                 <input id="bookingEventCapacity" type="number" name="max_participants" min="2" max="1000"
                     value="{{ old('max_participants') }}">
             </div>
+            @include('components.event-cost-inclusion-fields', ['pricingEvent' => null])
             <div class="field-group">
                 <label for="bookingEventDescription">Описание (необязательно)</label>
                 <textarea id="bookingEventDescription" name="description" maxlength="10000" rows="4">{{ old('description') }}</textarea>

@@ -25,6 +25,10 @@ final class EditorialNewsAgentAccess extends Page
     public string $password = '';
 
     public bool $allowPublish = false;
+
+    public bool $allowSocial = false;
+
+    public bool $bridgeToken = false;
     public ?string $plainTextToken = null;
     public ?string $expiresAt = null;
 
@@ -72,10 +76,25 @@ final class EditorialNewsAgentAccess extends Page
             return;
         }
 
-        $expiresAt = now()->addDay();
+        $bridge = $this->bridgeToken && $this->allowPublish && $this->allowSocial
+            && config('app.env') === 'production'
+            && parse_url((string) config('app.url'), PHP_URL_HOST) === 'mskba.ru';
+        if ($this->bridgeToken && ! $bridge) {
+            $this->password = '';
+            $this->addError('password', 'Токен GitHub Actions доступен только на production с обоими разрешениями публикации.');
+            return;
+        }
+        $expiresAt = $bridge ? now()->addDays(30) : now()->addDay();
+        $abilities = ['editorial-news:write'];
+        if ($this->allowPublish) {
+            $abilities[] = 'editorial-news:publish';
+            if ($this->allowSocial) {
+                $abilities[] = 'editorial-news:social';
+            }
+        }
         $token = $dev->createToken(
-            'mskba-editorial-news:filament-'.now()->format('YmdHis'),
-            $this->allowPublish ? ['editorial-news:write', 'editorial-news:publish'] : ['editorial-news:write'],
+            'mskba-editorial-news:'.($bridge ? 'bridge-' : 'filament-').now()->format('YmdHis'),
+            $abilities,
             $expiresAt,
         );
         $this->plainTextToken = $token->plainTextToken;

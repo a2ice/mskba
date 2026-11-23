@@ -1,0 +1,43 @@
+name: Editorial news destinations (read only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/editorial-news-destinations.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: editorial-production
+    timeout-minutes: 3
+    steps:
+      - name: Read configured publication destinations
+        env:
+          MSKBA_EDITORIAL_NEWS_TOKEN: ${{ secrets.MSKBA_EDITORIAL_NEWS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const token = process.env.MSKBA_EDITORIAL_NEWS_TOKEN;
+          if (!token) throw new Error('Editorial token not configured');
+          const response = await fetch('https://mskba.ru/api/v1/internal/editorial-news/destinations/list', {
+            headers: { Accept: 'application/json', Authorization: 'Bearer ' + token },
+            redirect: 'error',
+            signal: AbortSignal.timeout(25000),
+          });
+          if (!response.ok) throw new Error('Registry returned HTTP ' + response.status);
+          const { data } = await response.json();
+          if (!Array.isArray(data?.telegram)) throw new Error('Invalid registry response');
+          const { available, group_id, can_defer } = data.vk ?? {};
+          // JSON escapes control characters; never print credentials, raw responses or provider errors.
+          console.log(JSON.stringify({
+            telegram: data.telegram.map(({id, title, type}) => ({id, title, type})),
+            vk: { available, group_id, can_defer }
+          }));
+          NODE
