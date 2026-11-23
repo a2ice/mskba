@@ -746,7 +746,9 @@
                     <div class="venue-show-section__heading">
                         <h2 id="venue-full-description-title">О площадке</h2>
                     </div>
-                    <p>{{ $venue->fullDescription }}</p>
+                    <div class="venue-show-section__description">
+                        {!! app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription) !!}
+                    </div>
                 </section>
             @endif
         </div>
