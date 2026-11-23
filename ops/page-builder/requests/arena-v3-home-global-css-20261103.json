@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "css",
+  "reason": "Place Hero/Arena cross-breakpoint CSS in home page-level styles instead of desktop-scoped venue component CSS; fix mobile background, player placement and header stacking",
+  "publish": true,
+  "expected_draft_sha256": "ab6ce6df07a7d5fd390ebd7767a6326555a8f96665f5cf07ecc8721583cc7e7e",
+  "expected_published_sha256": "ab6ce6df07a7d5fd390ebd7767a6326555a8f96665f5cf07ecc8721583cc7e7e",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": ".mskba-rolling-ball__sprite {\n    position: absolute;\n    width: 1px;\n    height: 1px;\n    opacity: 0;\n    pointer-events: none;\n}",
+      "to": ".mskba-rolling-ball__sprite {\n    position: absolute;\n    width: 1px;\n    height: 1px;\n    opacity: 0;\n    pointer-events: none;\n}\n\n\n/* Hero/arena composition: CSS-first peak, independent mobile layout.\n   The existing ball motion and players' easing are intentionally untouched. */\n.site-header.app-site-header { z-index: 100 !important; }\n\n@media (min-width: 1100px) {\n  /* Max overlap at either jump peak: 18px relative to the Hero bottom. */\n  #venues-scene .mskba-v3-venues__defender {\n    top: calc(var(--v3-hero-bleed) + clamp(134px, 10.85vw, 185px) - 18px) !important;\n    bottom: auto !important;\n    width: clamp(375px, 30vw, 530px) !important;\n  }\n  #venues-scene .mskba-v3-venues__shooter-frame {\n    top: calc(var(--v3-hero-bleed) - 18px) !important;\n    bottom: auto !important;\n    width: clamp(415px, 32.4vw, 575px) !important;\n  }\n}\n\n@media (max-width: 759px) {\n  /* Extend the same Arena background from the start of the mobile Hero. */\n  #hero > .container.mt-3 { margin-top: 0 !important; }\n  #venues-scene { --v3-hero-bleed: clamp(470px, calc(365px + 21vw), 500px); }\n  #venues-scene .mskba-v3-venues__arena {\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n    object-position: center top;\n  }\n  /* Override legacy visual-space height so the player cutouts are not cropped. */\n  #venues-scene .mskba-v3-venues__foreground {\n    inset: 0;\n    height: auto;\n    overflow: hidden;\n  }\n  #venues-scene .mskba-v3-venues__defender {\n    top: 12px;\n    bottom: auto !important;\n    left: 2%;\n    width: clamp(168px, 44vw, 218px);\n  }\n  #venues-scene .mskba-v3-venues__shooter-frame > .mskba-v3-venues__shooter {\n    top: 6px;\n    bottom: auto !important;\n    left: auto;\n    right: 2%;\n    width: clamp(188px, 48vw, 242px);\n  }\n  #venues-scene .mskba-v3-venues__container {\n    padding-top: clamp(405px, 105vw, 500px);\n  }\n  .mskba-hero-scene .mskba-hero-slider {\n    background: transparent !important;\n    box-shadow: none !important;\n  }\n  .mskba-hero-scene .mskba-hero-slider__stage,\n  .mskba-hero-scene .mskba-hero-slide {\n    background: transparent !important;\n  }\n  .mskba-hero-scene .mskba-hero-slide__background {\n    display: none !important;\n  }\n  .mskba-hero-scene .mskba-hero-slide__layer-scrim--dark {\n    background: linear-gradient(180deg, rgba(4, 11, 22, .72), rgba(4, 11, 22, .24) 72%, rgba(4, 11, 22, .08)) !important;\n  }\n}\n\n@media (min-width: 700px) and (max-width: 759px) {\n  /* The Hero uses a fixed 400px height in this breakpoint. */\n  #venues-scene { --v3-hero-bleed: 400px; }\n}\n"
+    }
+  ]
+}
