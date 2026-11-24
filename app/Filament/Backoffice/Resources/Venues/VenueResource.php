@@ -588,7 +588,8 @@ final class VenueResource extends Resource
                             ->defaultItems(0)->addActionLabel('Добавить интервал')
                             ->columns(2)->schema([
                                 TimePicker::make('starts_at')->label('С')->seconds(false)->required(),
-                                TimePicker::make('ends_at')->label('До')->seconds(false)->required(),
+                                TimePicker::make('ends_at')->label('До')->seconds(false)->required()
+                                    ->helperText('00:00 — конец текущего дня (24:00).'),
                             ])->columnSpanFull(),
                     ]),
                     Section::make('Исключения по дням недели')->schema([
@@ -603,7 +604,8 @@ final class VenueResource extends Resource
                                     ->visible(fn (Get $get): bool => ! (bool) $get('is_closed'))
                                     ->columns(2)->schema([
                                         TimePicker::make('starts_at')->label('С')->seconds(false)->required(),
-                                        TimePicker::make('ends_at')->label('До')->seconds(false)->required(),
+                                        TimePicker::make('ends_at')->label('До')->seconds(false)->required()
+                                    ->helperText('00:00 — конец текущего дня (24:00).'),
                                     ])->columnSpanFull(),
                             ])->columnSpanFull(),
                     ]),
@@ -615,7 +617,8 @@ final class VenueResource extends Resource
                                 Repeater::make('intervals')->label('Часы работы в этот день')->defaultItems(0)->columns(2)
                                     ->schema([
                                         TimePicker::make('starts_at')->label('С')->seconds(false)->required(),
-                                        TimePicker::make('ends_at')->label('До')->seconds(false)->required(),
+                                        TimePicker::make('ends_at')->label('До')->seconds(false)->required()
+                                    ->helperText('00:00 — конец текущего дня (24:00).'),
                                     ]),
                             ]),
                     ]),
