@@ -451,7 +451,7 @@ async function save(payload){
         if(favoriteExtraVisible.value && favoriteSelected.value) {
             favoriteRetryNeeded.value=!await applyFavorite();
         }
-        window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id,venueId:result.data.venue_id}}));
+        window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id,venueId:result.data.venue_id,name:result.data.name}}));
     }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';toast(error.value,true);}
     finally{busy.value=false;}
 }
