@@ -17,6 +17,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -29,6 +30,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
     {
         parent::setUp();
         Carbon::setTestNow('2026-09-08 12:00:00');
+        config()->set('features.venue_rental.rental_flow', true);
     }
 
     protected function tearDown(): void
@@ -292,9 +294,30 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this->assertSame(route('events.join', $event->routeIdentifier()), $slot['eventJoinUrl']);
     }
 
+    public function test_disabled_online_booking_hides_all_occupancy_interactions_and_preserves_informational_hours(): void
+    {
+        [$venue] = $this->venueAndBooking(VenueBookingStatusEnum::CONFIRMED, false);
+
+        $response = $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('data-venue-occupancy-day', false)
+            ->assertDontSee('data-venue-occupancy-modal', false)
+            ->assertDontSee('venue-booking-action__icon', false)
+            ->assertDontSee('aria-label="Забронировать"', false)
+            ->assertSee('Онлайн-бронирование через портал недоступно')
+            ->assertSee('Режим работы не указан.');
+
+        // Internal occupancy DTO still represents actual reservations, but the
+        // public page never presents them as available online rental slots.
+        $days = app(ShowVenueHandler::class)->handle($venue->routeIdentifier(), null)->occupancyDays;
+        $this->assertCount(9, $days);
+        $this->assertNotEmpty($days[4]['slots']);
+    }
+
     /** @return array{0: Venue, 1: LegacyVenueBooking, 2: int} */
     private function venueAndBooking(
         VenueBookingStatusEnum $status = VenueBookingStatusEnum::CONFIRMED,
+        bool $onlineRentalEnabled = true,
     ): array {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $actor = app(CurrentActorResolver::class)->resolve($user, null);
@@ -303,6 +326,27 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             'name' => 'Кампус тест',
             'alias' => 'campus-test',
         ]);
+        if ($onlineRentalEnabled) {
+            VenueBookingPolicy::query()->create([
+                'venue_id' => $venue->id,
+                'version' => 1,
+                'active_marker' => true,
+                'is_enabled' => true,
+                'allows_whole' => true,
+                'allows_halves' => false,
+                'minimum_duration_minutes' => 60,
+                'maximum_duration_minutes' => 240,
+                'time_step_minutes' => 30,
+                'minimum_lead_time_minutes' => 0,
+                'maximum_advance_days' => 90,
+                'currency' => 'RUB',
+                'whole_price_per_step_minor' => 0,
+                'hold_duration_minutes' => 15,
+                'requires_payment' => false,
+                'published_at' => now(),
+                'published_by_user_id' => $user->id,
+            ]);
+        }
         $booking = LegacyVenueBooking::query()->create([
             'venue_id' => $venue->id,
             'created_by_actor_id' => $actor->id,
