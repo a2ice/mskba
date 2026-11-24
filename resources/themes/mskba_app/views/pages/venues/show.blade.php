@@ -260,7 +260,10 @@
             </section>
             @endif
             <section class="panel app-venue-block" id="app-venue-interest">
-                <header class="app-venue-block__header"><h2>Площадкой интересуются</h2></header>
+                <header class="app-venue-block__header"><h2>{{ $activeVenueInterestCount > 0 ? "Площадкой интересуются" : "Играй здесь" }}</h2></header>
+                @if($activeVenueInterestCount === 0)
+                    @include('components.venue-favorite-follow', ['buttonClass' => 'button primary'])
+                @else
                 <div class="app-venue-interest-summary" data-play-venue-interest-summary>
                     <div class="app-venue-interest-summary__profiles">
                         <div class="app-venue-interest-summary__avatars" aria-label="Игроки с подписками на площадку">
@@ -280,6 +283,7 @@
                         <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
                     </div>
                 </div>
+                @endif
             </section>
             @php
                 $bookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
