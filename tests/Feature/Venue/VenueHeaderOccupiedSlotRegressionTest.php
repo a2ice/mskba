@@ -305,7 +305,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             ->assertDontSee('venue-booking-action__icon', false)
             ->assertDontSee('aria-label="Забронировать"', false)
             ->assertSee('Онлайн-бронирование через портал недоступно')
-            ->assertSee('Режим работы не указан.');
+            ->assertSee('Режим работы не указан');
 
         // Internal occupancy DTO still represents actual reservations, but the
         // public page never presents them as available online rental slots.
