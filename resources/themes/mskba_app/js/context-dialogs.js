@@ -123,6 +123,7 @@ if (help) {
     function renderPageHelp() {
         if (!pageHelp) return;
         pagePanel.hidden = false;
+        pagePanel.querySelector('[data-help-page-tabs]')?.setAttribute('role', 'tablist');
         catalogPanel.hidden = true;
         pageTitle.textContent = pageHelp.title;
         pageContent.replaceChildren();
