@@ -1,4 +1,19 @@
-@php($embedded = (bool) ($embedded ?? false))
+@php
+    $embedded = (bool) ($embedded ?? false);
+    $tariffService = app(\App\Modules\VenueBooking\Application\Services\VenueTariffGrid::class);
+    $savedRanges = $tariffService->editableRanges($venue, $policy, $court, $mode, $date);
+    $previousRanges = old('ranges');
+    $previousCourtId = old('court_id', '');
+    $currentCourtId = (string) ($court?->id ?? '');
+    $usePreviousRanges = is_array($previousRanges)
+        && (! $embedded || (string) $previousCourtId === $currentCourtId);
+    $formRanges = $usePreviousRanges ? array_values($previousRanges) : $savedRanges;
+    $minorParser = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
+    $minimumWhole = $minorParser->format(
+        (int) ($policy->whole_price_per_step_minor ?? 0) * intdiv($step, (int) $policy->time_step_minutes),
+        $policy->currency,
+    );
+@endphp
 <div class="app-rental-pricing venue-tariff-grid {{ $embedded ? 'venue-tariff-grid--embedded' : '' }}" data-tariff-grid>
     <style>
         .venue-tariff-grid{max-width:1160px;margin:0 auto;padding:1.25rem 0 3rem}
@@ -110,6 +125,8 @@
     <section class="venue-tariff-grid__panel" id="tariff-range-editor-{{ $court?->id ?? 'venue' }}">
         <h3>{{ $court ? 'Диапазоны зала' : 'Диапазоны площадки' }}</h3>
         <p class="venue-tariff-grid__help">{{ $court ? 'Пусто — наследовать цену площадки. Сброс возвращает цену источника или наследование.' : 'Пусто — наследовать базовый тариф площадки. Установленные здесь цены наследуются залами без своих тарифов.' }}</p>
+        <p class="venue-tariff-grid__help">Сохранённые диапазоны и цены загружаются из базы данных. Их можно изменять, добавлять или удалять. Сохранение синхронизирует весь показанный список.</p>
+        <p class="venue-tariff-grid__help"><strong>Минимальная цена за шаг {{ $step }} мин — {{ $minimumWhole }} {{ $policy->currency }}.</strong> Тариф ниже минимума не сохранится. Минимум задаётся на вкладке «Аренда» площадки.</p>
         <p class="venue-tariff-grid__help">
             Можно задать несколько диапазонов за один раз — например 07:00–16:00 и 16:00–23:30,
             каждому назначить собственную цену и исключения. Все цены сохраняются атомарно по шагам {{ $step }} мин.
@@ -118,14 +135,20 @@
         <form method="POST" action="{{ route('account.venues.tariff-grid.store', $venue->id) }}" data-tariff-range-form>
             @csrf
             @if($embedded)<input type="hidden" name="return_to_schedule" value="1">@endif
+            <input type="hidden" name="replace_existing" value="1">
             <input type="hidden" name="court_id" value="{{ $court?->id }}">
             <input type="hidden" name="mode" value="{{ $mode }}">
             <input type="hidden" name="date" value="{{ $date }}">
             <div data-tariff-ranges>
-                @include('venues.partials.tariff-grid-range', ['index' => 0])
+                @foreach($formRanges as $index => $rangeData)
+                    @include('venues.partials.tariff-grid-range', ['index' => $index, 'rangeData' => $rangeData])
+                @endforeach
             </div>
+            @if($formRanges === [])
+                <p class="venue-tariff-grid__help">Переопределений пока нет: используются цены площадки или внешнего источника. Нажмите «Добавить диапазон».</p>
+            @endif
             <template data-tariff-range-template>
-                @include('venues.partials.tariff-grid-range', ['index' => '__RANGE__'])
+                @include('venues.partials.tariff-grid-range', ['index' => '__RANGE__', 'rangeData' => []])
             </template>
             <div class="venue-tariff-grid__actions">
                 <button class="button secondary" type="button" data-tariff-add-range>Добавить диапазон</button>
@@ -175,7 +198,7 @@
             const rangeForm = root.querySelector('[data-tariff-range-form]');
             const ranges = rangeForm.querySelector('[data-tariff-ranges]');
             const rangeTemplate = rangeForm.querySelector('[data-tariff-range-template]');
-            let nextRangeIndex = 1;
+            let nextRangeIndex = ranges.querySelectorAll('[data-tariff-range-item]').length;
             root.querySelector('[data-tariff-add-range]').addEventListener('click', () => {
                 if (ranges.querySelectorAll('[data-tariff-range-item]').length >= 16) {
                     alert('Не более 16 диапазонов за одну операцию.');
@@ -191,9 +214,7 @@
             ranges.addEventListener('click', e => {
                 const remove = e.target.closest('[data-tariff-remove-range]');
                 if (remove) {
-                    if (ranges.querySelectorAll('[data-tariff-range-item]').length > 1) {
-                        remove.closest('[data-tariff-range-item]').remove();
-                    }
+                    remove.closest('[data-tariff-range-item]').remove();
                     return;
                 }
                 const addException = e.target.closest('[data-tariff-add-exception]');
@@ -233,6 +254,17 @@
             root.querySelector('[data-tariff-close-slot]').addEventListener('click', () => dialog.close());
 
             rangeForm.addEventListener('submit', event => {
+                for (const item of ranges.querySelectorAll('[data-tariff-range-item]')) {
+                    const action = item.querySelector('select[name$="[operation]"]');
+                    const whole = item.querySelector('input[name$="[whole_price_per_step]"]');
+                    const half = item.querySelector('input[name$="[half_price_per_step]"]');
+                    if (action?.value === 'set' && !whole?.value.trim() && !half?.value.trim()) {
+                        event.preventDefault();
+                        alert('Для каждого назначаемого диапазона укажите хотя бы одну цену. Для наследования выберите действие «Наследовать».');
+                        whole?.focus();
+                        return;
+                    }
+                }
                 if (rangeForm.querySelector('[name="mode"]').value !== 'weekly') return;
                 for (const item of ranges.querySelectorAll('[data-tariff-range-item]')) {
                     if (!item.querySelector('input[type="checkbox"]:checked')) {

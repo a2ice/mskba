@@ -378,6 +378,17 @@ class Venue extends Model
             ->unique()->values()->all();
     }
 
+    /** Filter the public catalog without changing the venue's stored type. */
+    public function scopeWhereDiscoveryType(Builder $query, string $type): Builder
+    {
+        $environment = VenueTypeEnum::tryFrom($type)?->discoveryEnvironment();
+
+        return $environment === null
+            ? $query->where('type', $type)
+            : $query->whereHas('courts', fn (Builder $courts): Builder =>
+                $courts->where('environment', $environment->value));
+    }
+
     public function primaryCourt(): HasOne
     {
         return $this->hasOne(VenueCourt::class)->where('is_primary', true);
