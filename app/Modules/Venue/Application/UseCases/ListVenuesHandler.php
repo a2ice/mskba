@@ -6,6 +6,9 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\PlayInterest\Application\Services\RecommendVenuesForIntent;
+use App\Modules\PlayInterest\Domain\Models\PlayIntent;
+use Illuminate\Support\Collection;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
@@ -24,10 +27,12 @@ final class ListVenuesHandler
         private readonly AddressDisplayFormatter $addressFormatter,
         private readonly VenueCourtDiscoveryAccess $courtDiscovery,
         private readonly VenueProximityService $proximity,
+        private readonly RecommendVenuesForIntent $interestMatcher,
     ) {}
 
     /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
-    public function handle(?User $user, ?Actor $actor = null, array $filters = []): array
+    /** @param Collection<int, PlayIntent>|null $matchingInterests */
+    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -88,6 +93,14 @@ final class ListVenuesHandler
 
             $venues = $venues->filter(fn (Venue $venue): bool =>
                 ($this->proximity->distanceToCoordinates($venue, $latitude, $longitude) ?? INF) <= $radiusMeters);
+        }
+
+        // Apply the same subscription eligibility policy used by the existing
+        // matching service, before the catalog count, pagination and map mode.
+        if ($matchingInterests !== null) {
+            $venues = $venues->filter(fn (Venue $venue): bool =>
+                $matchingInterests->contains(fn (PlayIntent $intent): bool =>
+                    $this->interestMatcher->matchesVenue($intent, $venue)));
         }
 
         $policies = VenueBookingPolicy::query()
