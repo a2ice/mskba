@@ -36,6 +36,23 @@
     .app-mobile-primary [hidden],
     .app-mobile-primary-backdrop[hidden] { display: none !important; }
 
+    /* Keep the intentional clear gap below the floating bar, but gently
+       soften page content visible through it. The native Safari toolbar
+       remains outside this layer and the spacer never intercepts gestures. */
+    .app-mobile-primary::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        width: 100vw;
+        height: calc(6px + env(safe-area-inset-bottom, 0px));
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, .1);
+        -webkit-backdrop-filter: blur(5px);
+        backdrop-filter: blur(5px);
+        pointer-events: none;
+    }
+
     .app-mobile-primary__bar {
         position: relative;
         display: grid;
