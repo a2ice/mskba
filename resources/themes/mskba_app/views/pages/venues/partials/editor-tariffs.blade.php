@@ -6,7 +6,7 @@
     $tariffUser = auth()->user();
     $canEditVenueTariff = $tariffUser !== null && $tariffAccess->allows($tariffUser, $venue, $tariffPermission);
     $tariffGrid = app(\App\Modules\VenueBooking\Application\Services\VenueTariffGrid::class);
-    $chosenCourt = request()->integer('court');
+    $chosenCourt = request()->integer('court') ?: ((int) (old('return_to_schedule') ? old('court_id', 0) : 0));
     $chosenMode = in_array(request()->query('mode'), ['weekly', 'date'], true)
         ? request()->query('mode') : 'weekly';
     $candidateDate = request()->query('date');
