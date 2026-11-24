@@ -714,7 +714,7 @@
                         @if(isset($rentalUrl) && $legacyBookableCourtIds !== [])
                             <a href="{{ $rentalUrl }}" class="btn btn--primary btn--sm">Рассчитать аренду</a>
                         @endif
-                        <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
+                        <span class="venue-section-state">{{ $legacyShowOccupancy ? '14 дней' : 'Недельный график' }}</span>
                     </div>
                 </div>
 
@@ -820,12 +820,12 @@
                     <div class="venue-schedule-preview">
                         @for($day = 0; $day < 7; $day++)
                             @php($placeholderDate = now()->addDays($day))
-                            <div class="venue-schedule-preview__day is-closed">
+                            <div class="venue-schedule-preview__day">
                                 <div>
                                     <span>{{ $placeholderDateLabel($placeholderDate) }}</span>
                                     <small>{{ $placeholderWeekdayLabel($placeholderDate) }}</small>
                                 </div>
-                                <strong>Нет данных</strong>
+                                <strong>Режим работы не указан</strong>
                             </div>
                         @endfor
                     </div>
