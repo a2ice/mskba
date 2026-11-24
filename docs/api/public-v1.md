@@ -131,6 +131,8 @@ do {
 } while (cursor !== null);
 ```
 
+For discovery, `street_court` and `sports_hall` match the presence of an outdoor or indoor court respectively, irrespective of the venue passport type. Other values match the venue type. When combined with `access`, the same court must satisfy both conditions. The response `type` remains the venue passport type.
+
 ## Single venue: GET /api/v1/venues/{venue}
 
 To fetch one record, supply its numeric `id` (e.g. `1`) from the list response.
