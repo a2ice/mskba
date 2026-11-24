@@ -77,10 +77,12 @@ final class VenueTariffGridTest extends TestCase
             ]).'#venue-tariff-panel-court-'.$court->id,
         )->assertSessionHas('status');
 
-        $this->get($url.'&court='.$court->id)
-            ->assertOk()
-            ->assertSee('id="venue-tariff-panel-court-'.$court->id.'" open', false)
-            ->assertSee('Понедельник');
+        $reopened = $this->get($url.'&court='.$court->id)
+            ->assertOk()->assertSee('Понедельник');
+        $this->assertMatchesRegularExpression(
+            '/id="venue-tariff-panel-court-'.$court->id.'"\\s+open\\b/',
+            $reopened->getContent(),
+        );
     }
 
     public function test_two_non_overlapping_ranges_save_together_with_a_day_specific_exception(): void
