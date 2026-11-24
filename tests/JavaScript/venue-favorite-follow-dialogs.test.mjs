@@ -159,6 +159,6 @@ test('saved empty-state CTA creates an event without removing a favorite or affe
 
 test('favorites status changes do not replace favorite buttons via play-interest refresh',()=>{
     const summary=readFileSync(new URL('../../resources/themes/mskba_app/js/venue-interest-summary.js',import.meta.url),'utf8');
-    assert.doesNotMatch(summary,/addEventListener\\('mskba:venue-favorite:updated'/);
-    assert.match(summary,/addEventListener\\('mskba:play-intent:saved'/);
+    assert.doesNotMatch(summary,/addEventListener\('mskba:venue-favorite:updated'/);
+    assert.match(summary,/addEventListener\('mskba:play-intent:saved'/);
 });
