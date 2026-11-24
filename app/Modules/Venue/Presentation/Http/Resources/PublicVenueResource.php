@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Presentation\Http\Resources;
 
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -33,12 +34,20 @@ final class PublicVenueResource extends JsonResource
         $walkIn = collect($courtAccess['free'])->contains(fn (array $court): bool =>
             ! $court['requires_booking'] && ! $court['requires_booking_approval']
         );
-        $selected = match ($request->query('access')) {
-            'free' => $courtAccess['free'][0] ?? null,
-            'paid' => $courtAccess['paid'][0] ?? null,
-            'approval' => $courtAccess['approval'][0] ?? null,
-            default => null,
+        $environment = VenueTypeEnum::tryFrom((string) $request->query('type', ''))?->discoveryEnvironment();
+        $eligible = match ($request->query('access')) {
+            'free' => $courtAccess['free'],
+            'paid' => $courtAccess['paid'],
+            'approval' => $courtAccess['approval'],
+            default => [],
         };
+        if ($environment !== null) {
+            $ids = $venue->courts->filter(fn ($court): bool => $court->environment === $environment)
+                ->pluck('id')->map(fn ($id): int => (int) $id)->all();
+            $eligible = array_values(array_filter($eligible, fn (array $court): bool =>
+                in_array($court['court_id'], $ids, true)));
+        }
+        $selected = $eligible[0] ?? null;
 
         return [
             'id' => (int) $venue->id,

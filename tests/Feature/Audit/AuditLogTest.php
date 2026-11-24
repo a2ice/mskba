@@ -62,10 +62,10 @@ class AuditLogTest extends TestCase
         $this->assertArrayNotHasKey('created_at', $log->new_values);
         $this->assertSame(ActorTypeEnum::USER, $log->actor->type);
         $this->assertSame($user->id, $log->actor->user_id);
-        $this->assertNotNull($log->actor->user_fingerprint_id);
+        $this->assertNull($log->actor->user_fingerprint_id);
         $this->assertSame('POST', $log->metadata['method']);
         $this->assertSame('venues.store', $log->metadata['route']);
-        $this->assertNotNull($response->getCookie('mskba_browser_fp'));
+        $response->assertCookieMissing('mskba_browser_fp');
     }
 
     public function test_model_update_writes_only_changed_non_ignored_fields(): void

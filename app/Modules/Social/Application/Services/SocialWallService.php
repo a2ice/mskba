@@ -244,33 +244,58 @@ final class SocialWallService
 
         return [
             'likes' => (clone $query)->where('reaction', 'like')->count(),
+            'dislikes' => (clone $query)->where('reaction', 'dislike')->count(),
             'reaction' => $viewer ? (clone $query)->where('user_id', $viewer->id)->value('reaction') : null,
             'can_react' => $this->canReactToEvent($event, $viewer),
         ];
     }
 
-    public function setEventReaction(Event $event, User $user, ?string $reaction): array
+    public function setEventReaction(Event $event, User $user, ?string $reaction, ?string $body = null, ?string $requestId = null): array
     {
         abort_unless(in_array($reaction, [null, 'like', 'dislike'], true), 422);
+        $body = trim($body ?? '');
+        abort_if($body !== '' && ($reaction === null || mb_strlen($body) > 200 || ! Str::isUuid($requestId ?? '')), 422);
         $user = $user->canonical();
         abort_unless($this->canReactToEvent($event, $user), 403);
 
-        return $this->limiter->run($user, 'event_report', $event->id, 'reaction', function () use ($event, $user, $reaction): array {
+        return $this->limiter->run($user, 'event_report', $event->id, 'reaction', function () use ($event, $user, $reaction, $body, $requestId): array {
             $locked = Event::query()->lockForUpdate()->findOrFail($event->id);
             abort_unless($this->canReactToEvent($locked, $user), 403);
+            $entry = null;
+            if ($body !== '') {
+                abort_unless($this->canCommentOnEvent($locked, $user, true), 403);
+                $entry = SocialWallEntry::query()->where('scope_type', 'event_report')->where('scope_id', $locked->id)
+                    ->where('actor_user_id', $user->id)->where('client_request_id', $requestId)->first();
+                if ($entry !== null) {
+                    return ['changed' => false, 'value' => [...$this->reportFeedback($locked, $user), 'entry' => $entry->load(['actor', 'target'])]];
+                }
+            }
+
             $key = ['event_id' => $locked->id, 'user_id' => $user->id];
             $current = DB::table('event_report_reactions')->where($key)->value('reaction');
-            if ($current === $reaction) {
-                return ['changed' => false, 'value' => $this->reportFeedback($locked, $user)];
+            if ($current !== $reaction) {
+                if ($reaction === null) {
+                    DB::table('event_report_reactions')->where($key)->delete();
+                } else {
+                    DB::table('event_report_reactions')->updateOrInsert($key, ['reaction' => $reaction, 'updated_at' => now()]);
+                }
+                if ($body === '') {
+                    $this->appendSystem('event_report', $locked->id, $user, 'event_reaction_changed', ['to' => $reaction]);
+                }
             }
-            if ($reaction === null) {
-                DB::table('event_report_reactions')->where($key)->delete();
-            } else {
-                DB::table('event_report_reactions')->updateOrInsert($key, ['reaction' => $reaction, 'updated_at' => now()]);
+            if ($body !== '') {
+                $entry = SocialWallEntry::query()->create([
+                    'scope_type' => 'event_report', 'scope_id' => $locked->id,
+                    'actor_user_id' => $user->id, 'kind' => 'comment', 'body' => $body,
+                    'metadata' => ['report_reaction' => $reaction],
+                    'client_request_id' => $requestId,
+                ])->load(['actor', 'target']);
             }
-            $this->appendSystem('event_report', $locked->id, $user, 'event_reaction_changed', ['to' => $reaction]);
 
-            return ['changed' => true, 'value' => $this->reportFeedback($locked, $user)];
+            return [
+                'changed' => $current !== $reaction || $entry !== null,
+                'value' => [...$this->reportFeedback($locked, $user), 'entry' => $entry],
+            ];
         });
     }
 
@@ -325,9 +350,9 @@ final class SocialWallService
                 default => 'изменил ответ на участие.',
             },
             'event_reaction_changed' => match ($status) {
-                'like' => 'Пользователю '.$name.' нравится мероприятие.',
-                'dislike' => 'Пользователю '.$name.' не нравится мероприятие.',
-                default => 'Пользователь '.$name.' убрал оценку.',
+                'like' => $name.' — понравилось',
+                'dislike' => $name.' — не понравилось',
+                default => $name.' — оценка снята',
             },
             'group_admin_nominated' => $name.' подал заявку на администратора группы.',
             'group_admin_vote_cast' => $name.' подтвердил назначение '.$targetName.' администратором группы.',
@@ -347,6 +372,12 @@ final class SocialWallService
         $deleted = $entry->deleted_at !== null;
         $editedAt = $entry->kind === 'comment' && ! $hidden && ! $deleted
             ? ($entry->metadata['edited_at'] ?? null) : null;
+        $commentReaction = $entry->scope_type === 'event_report' && $entry->kind === 'comment'
+            ? ($entry->metadata['report_reaction'] ?? null) : null;
+        $commentReaction = in_array($commentReaction, ['like', 'dislike'], true) ? $commentReaction : null;
+        $commentText = $commentReaction !== null
+            ? $name.' — '.($commentReaction === 'like' ? 'понравилось' : 'не понравилось').': '.$entry->body
+            : $entry->body;
         $displayDate = $editedAt !== null
             ? \Illuminate\Support\Carbon::parse($editedAt)->setTimezone(config('app.timezone'))
             : $entry->created_at;
@@ -355,13 +386,14 @@ final class SocialWallService
             'kind' => $entry->kind,
             'actor' => $name,
             'text' => $entry->kind === 'comment'
-                ? ($deleted ? null : ($hidden ? 'Сообщение скрыто модератором.' : $entry->body))
+                ? ($deleted ? null : ($hidden ? 'Сообщение скрыто модератором.' : $commentText))
                 : $message,
             'deleted' => $entry->deleted_at !== null,
             'hidden' => $hidden,
             'system' => $entry->kind !== 'comment',
             'rsvp_status' => $entry->kind === 'event_rsvp_changed' ? $status : null,
-            'reaction' => $entry->kind === 'event_reaction_changed' && in_array($status, ['like','dislike'], true) ? $status : null,
+            'reaction' => $entry->kind === 'event_reaction_changed' && in_array($status, ['like','dislike'], true) ? $status : ($hidden || $deleted ? null : $commentReaction),
+            'comment_body' => $commentReaction !== null && ! $hidden && ! $deleted ? $entry->body : null,
             'version' => $entry->kind === 'comment' ? (int) ($entry->metadata['version'] ?? 1) : null,
             'date' => $displayDate?->format('d.m.Y H:i'),
             'edited' => $editedAt !== null,

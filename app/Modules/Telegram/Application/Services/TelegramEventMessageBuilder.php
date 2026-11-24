@@ -2,6 +2,7 @@
 
 namespace App\Modules\Telegram\Application\Services;
 
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -15,6 +16,7 @@ use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Illuminate\Support\Str;
 
 final class TelegramEventMessageBuilder
@@ -24,9 +26,8 @@ final class TelegramEventMessageBuilder
         $timezone = $event->venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
         $startsAt = $event->starts_at->setTimezone($timezone);
         $endsAt = $event->ends_at->setTimezone($timezone);
-        $participants = $event->participants()
-            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
-            ->count();
+        $counts = app(EventIdentityParticipationService::class)->publicStatusCounts($event);
+        $participants = $counts['confirmed'];
         $capacity = $event->max_participants === null
             ? (string) $participants
             : "{$participants}/{$event->max_participants}";
@@ -37,6 +38,10 @@ final class TelegramEventMessageBuilder
             '🏀 <b>'.$this->escape($this->title($event)).'</b>',
             'Тип активности: '.$this->escape($event->type->label()),
         ];
+
+        if ($this->title($event) !== $event->title) {
+            $lines[] = 'Название: '.$this->escape($event->title);
+        }
 
         if ($event->type === EventTypeEnum::GAME && $primaryGame !== null) {
             $lines[] = 'Формат: '.$this->escape($this->gameFormat($primaryGame));
@@ -65,11 +70,26 @@ final class TelegramEventMessageBuilder
             $description === '' ? '—' : Str::limit($description, 1000),
         );
         $lines[] = '';
-        $lines[] = '📍 '.$this->escape($event->venue->name);
-        $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone);
-        if ($event->type !== EventTypeEnum::GAME) {
-            $lines[] = '👥 Участники: '.$capacity;
-        }
+        $lines[] = '📍 Площадка: '.$this->escape($event->venue->name);
+        $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone).($event->time_confirmed ? '' : ' (предварительно)');
+        $booking = $event->sourceBooking ?? $event->booking;
+        // Apply the same active policy as the rental quote path: inherited court
+        // requirements must not be inferred from the venue flag alone.
+        $policy = VenueBookingPolicy::query()
+            ->where('venue_id', $event->venue->id)->where('active_marker', true)->first();
+        $freeAccess = $event->court === null
+            ? $event->venue->hasFreeAccess() && ! ($policy?->requires_payment ?? false)
+            : ! app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
+                ->resolve($event->venue, $event->court, $policy)['requires_booking'];
+        $rentalStatus = match (true) {
+            $booking?->status?->value === 'confirmed' => '✅ Аренда подтверждена',
+            $booking !== null => '⏳ Аренда не подтверждена',
+            $freeAccess => 'Аренда не требуется',
+            default => '⏳ Аренда не подтверждена',
+        };
+        $lines[] = $rentalStatus;
+        $lines[] = '✅ Пойду: '.$capacity;
+        $lines[] = '🤔 Подумаю: '.$counts['tentative'];
 
         $responsibles = $event->participants
             ->filter(fn ($participant) => $participant->status === EventParticipantStatusEnum::CONFIRMED
@@ -139,7 +159,7 @@ final class TelegramEventMessageBuilder
         // }
 
         $rows[] = [[
-            'text' => '🏀 Открыть мероприятие',
+            'text' => 'Подробнее',
             'url' => $this->eventUrl($event),
         ]];
 

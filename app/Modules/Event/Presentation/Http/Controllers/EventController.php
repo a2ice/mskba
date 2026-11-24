@@ -319,7 +319,7 @@ final class EventController extends Controller
         }
 
         $canReschedule = $item->starts_at !== null && (($item->booking_deferred && $item->booking_id === null)
-            || ($item->booking_id === null && $item->venue->hasFreeAccess()));
+            || ($item->booking_id === null && $item->venue->hasFreeAccess() && ! $item->booking()->exists()));
         $availableVenues = $venues->handle(freeOnly: ! $item->booking_deferred);
 
         if (! $availableVenues->contains('id', $item->venue_id)) {

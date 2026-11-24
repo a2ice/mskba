@@ -44,6 +44,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'starts_at',
     'ends_at',
     'max_participants',
+    'is_paid',
+    'total_cost_minor',
+    'participant_cost_minor',
+    'participant_cost_auto',
+    'cost_comment',
+    'cost_inclusions',
+    'time_comment',
+    'time_confirmed',
     'completed_at',
     'completed_by_actor_id',
     'cancelled_at',
@@ -59,6 +67,8 @@ class Event extends Model
 {
     /** @use HasFactory<EventFactory> */
     use Auditable, HasFactory, SoftDeletes;
+
+    protected $hidden = ['cost_inclusions'];
 
     protected static function newFactory(): EventFactory
     {
@@ -216,6 +226,12 @@ class Event extends Model
             'starts_at' => 'immutable_datetime',
             'ends_at' => 'immutable_datetime',
             'max_participants' => 'integer',
+            'is_paid' => 'boolean',
+            'total_cost_minor' => 'integer',
+            'participant_cost_minor' => 'integer',
+            'participant_cost_auto' => 'boolean',
+            'cost_inclusions' => 'array',
+            'time_confirmed' => 'boolean',
             'completed_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
             'participation_confirmation_version' => 'integer',

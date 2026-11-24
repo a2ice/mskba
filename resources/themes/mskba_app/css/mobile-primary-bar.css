@@ -26,15 +26,38 @@
 
     .app-mobile-primary {
         position: fixed;
-        bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(6px + env(safe-area-inset-bottom, 0px) + var(--app-mobile-keyboard-offset, 0px));
         left: 50%;
         z-index: 90;
         display: block;
         width: min(540px, calc(100vw - 16px));
+        padding-top: 5px;
         transform: translateX(-50%);
     }
     .app-mobile-primary [hidden],
     .app-mobile-primary-backdrop[hidden] { display: none !important; }
+
+    /* Full-width glass layer behind the white floating dock: 5px breathing
+       room above the bar, the existing clear gap below it and the iOS safe
+       area. Keep this BELOW the actual buttons and context sheets. */
+    .app-mobile-primary::before {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        top: 0;
+        bottom: calc(-6px - env(safe-area-inset-bottom, 0px));
+        left: 50%;
+        width: 100vw;
+        transform: translateX(-50%);
+        background: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, .1)
+        );
+        -webkit-backdrop-filter: blur(5px);
+        backdrop-filter: blur(5px);
+        pointer-events: none;
+    }
 
     .app-mobile-primary__bar {
         position: relative;

@@ -11,6 +11,13 @@
 @endphp
 @extends('theme::layouts.app', ['title' => $title, 'breadcrumbs' => $breadcrumbs])
 
+@if(\Illuminate\Support\Str::startsWith((string) $contentItem->system_key, 'faq.page.'))
+    {{-- Brief page-specific help is editorial UI copy, not an SEO landing page. --}}
+    @push('meta')
+        <meta name="robots" content="noindex,follow">
+    @endpush
+@endif
+
 @section('content')
 <section class="container app-content-page" aria-labelledby="faq-article-heading">
     <nav aria-label="Вернуться к инструкциям"><a href="{{ route('faq.index') }}">Все инструкции FAQ</a></nav>

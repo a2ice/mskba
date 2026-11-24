@@ -173,6 +173,38 @@ final class VenueCourtDetailInheritanceTest extends TestCase
         $this->assertSame('09:00', substr((string) $hours->intervals($venue, $court, $monday)->first()->starts_at, 0, 5));
     }
 
+    public function test_midnight_parent_hours_remain_available_through_last_slot_for_its_court(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $schedule = $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
+        $schedule->intervals()->create([
+            'day_of_week' => 1, 'starts_at' => '07:00', 'ends_at' => '00:00', 'sort_order' => 0,
+        ]);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $monday = CarbonImmutable::parse('2026-10-26 23:30:00', 'Europe/Moscow');
+
+        $hours = app(EffectiveVenueHours::class);
+        $this->assertSame('24:00', $hours->intervals($venue, $court, $monday)->last()->ends_at);
+
+        $court->schedule()->create([
+            'weekly_intervals' => [[
+                'day_of_week' => 1, 'starts_at' => '16:00', 'ends_at' => '00:00',
+            ]],
+        ]);
+        $court->unsetRelation('schedule');
+        $this->assertSame('24:00', $hours->intervals($venue, $court, $monday)->last()->ends_at);
+
+        $exception = $schedule->exceptions()->create(['date' => '2026-10-26', 'is_closed' => false]);
+        $exception->intervals()->create([
+            'starts_at' => '18:00', 'ends_at' => '00:00', 'sort_order' => 0,
+        ]);
+        $venue->unsetRelation('schedule');
+        $effective = $hours->intervals($venue, $court, $monday);
+        $this->assertCount(1, $effective);
+        $this->assertSame('18:00', $effective->first()->starts_at);
+        $this->assertSame('24:00', $effective->first()->ends_at);
+    }
+
     public function test_parent_shortened_hours_exception_limits_court_override(): void
     {
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
@@ -203,6 +235,50 @@ final class VenueCourtDetailInheritanceTest extends TestCase
             CarbonImmutable::parse('2026-10-26 13:00:00', 'Europe/Moscow'),
             CarbonImmutable::parse('2026-10-26 14:00:00', 'Europe/Moscow'),
             checkBookings: false, court: $court);
+    }
+
+    public function test_venue_full_description_renders_safe_html_on_overview_and_court_pages(): void
+    {
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'full_description' => '<h4>Удобное расположение</h4><p>Крытый <strong>зал</strong></p>'
+                .'<ul><li>Мячи</li><li>Раздевалки</li></ul>'
+                .'<script>alert(1)</script><p onclick="alert(2)">Подробности</p>'
+                .'<a href="javascript:alert(3)">Ссылка</a>'
+                .'<div class="d-flex flex-wrap gap-3 content-gallery"><a href="/storage/test.webp" class="content-lightbox" data-venue-lightbox="images"><img src="/storage/test.webp" alt="Зал"></a></div>'
+                .'<a href="#app-venue-schedule" data-venue-rental-open="1">Арендовать</a>'
+                .'<a href="#app-venue-about" data-venue-play-open="1">Хочу играть</a>',
+        ]);
+
+        $court = $venue->primaryCourt()->firstOrFail();
+        foreach ([
+            route('venues.show', $venue->routeIdentifier()),
+            route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]),
+        ] as $url) {
+            $this->get($url)->assertOk()
+                ->assertSee('<h4>Удобное расположение</h4>', false)
+                ->assertSee('<strong>зал</strong>', false)
+                ->assertSee('<ul><li>Мячи</li><li>Раздевалки</li></ul>', false)
+                ->assertSee('class="d-flex flex-wrap gap-3 content-gallery"', false)
+                ->assertSee('data-venue-lightbox="images"', false)
+                ->assertSee('data-venue-rental-open="1"', false)
+                ->assertSee('data-venue-play-open="1"', false)
+                ->assertDontSee('&lt;h4&gt;', false)
+                ->assertDontSee('<script>alert(1)</script>', false)
+                ->assertDontSee('onclick="alert(2)"', false)
+                ->assertDontSee('javascript:alert', false);
+        }
+    }
+
+    public function test_plain_venue_description_keeps_line_breaks(): void
+    {
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'full_description' => "Первая строка\nВторая строка",
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk()
+            ->assertSee("Первая строка\nВторая строка", false);
     }
 
     private function expectAvailabilityError(

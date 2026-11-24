@@ -1,39 +1,5 @@
 // Consent is saved by the server; the page no longer needs to reload after AJAX.
 // The non-JS POST/redirect flow stays available as progressive enhancement.
-function syncMetrikaConsent(banner, choice, doc, host) {
-    const id = Number(banner.dataset.metrikaCounterId);
-    if (!Number.isSafeInteger(id) || id <= 0) return;
-
-    // The official Yandex opt-out flag also works when a user changes
-    // a previously accepted setting in the footer without navigation.
-    host[`disableYaCounter${id}`] = choice !== 'accepted';
-    if (choice !== 'accepted') return;
-
-    const src = 'https://mc.yandex.ru/metrika/tag.js';
-    if (doc.querySelector(`script[src="${src}"]`)) return;
-
-    // On a first visit there is no server-rendered tag. Start it only
-    // AFTER the successful opt-in response; use the existing init options.
-    const ym = host.ym || function () {
-        (ym.a = ym.a || []).push(arguments);
-    };
-    host.ym = ym;
-    ym.l = Number(new Date());
-
-    const script = doc.createElement('script');
-    script.async = true;
-    script.src = src;
-    doc.head.append(script);
-    ym(id, 'init', {
-        referrer: doc.referrer,
-        url: host.location.href,
-        clickmap: true,
-        trackLinks: true,
-        accurateTrackBounce: true,
-        webvisor: true,
-    });
-}
-
 export function initCookieConsent(doc = document, host = window, fetchRequest = fetch) {
     const banner = doc.querySelector('[data-cookie-consent-banner]');
     const form = banner?.querySelector('[data-cookie-consent-form]');
@@ -78,13 +44,6 @@ export function initCookieConsent(doc = document, host = window, fetchRequest = 
 
             banner.dataset.cookieConsentState = choice;
             banner.hidden = true;
-            // Persistence succeeded. Analytics is best-effort; it must not turn a
-            // saved decision into a misleading "failed" toast if its script is blocked.
-            try {
-                syncMetrikaConsent(banner, choice, doc, host);
-            } catch {
-                // A later navigation will use the server-rendered consent state.
-            }
             notify(choice === 'accepted' ? 'Все cookie приняты' : 'Выбраны только необходимые cookie');
         } catch {
             // Keep the banner visible and the decision unchanged on ANY failure.

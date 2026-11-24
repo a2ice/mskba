@@ -3,13 +3,25 @@ import { addFavorite } from './favorite-action.js';
 (() => {
     const modal=document.querySelector('[data-venue-favorite-dialog]');
     const buttons=[...document.querySelectorAll('[data-venue-favorite-main]')];
+    const followSections=[...document.querySelectorAll('[data-venue-favorite-follow]')];
     if(!modal||!buttons.length)return;
     const id=Number(modal.dataset.venueId);
     const title=modal.querySelector('[data-venue-favorite-title]');
     const description=modal.querySelector('[data-venue-favorite-description]');
     const error=modal.querySelector('[data-venue-favorite-error]');
     const submit=modal.querySelector('[data-venue-favorite-submit]');
-    let state='unknown', mode='info', busy=false;
+    let state='unknown', mode='info', busy=false, statusGeneration=0;
+    const isAuthenticated=()=>document.querySelector('meta[name="mskba-authenticated"]')?.content==='1'
+        || document.querySelector('[data-venue-play-dialog]')?.dataset.authenticated==='1';
+    // Public venue total, not the current user's header favorites count.
+    let venueFavoriteCount=Math.max(0,Number(buttons[0].dataset.favoriteCount)||0);
+    const setVenueCount=value=>{
+        if(value===null||value===undefined||value==='')return;
+        const numeric=Number(value);
+        if(!Number.isSafeInteger(numeric)||numeric<0)return;
+        venueFavoriteCount=numeric;
+        paint();
+    };
     const request=async(url,method='GET',body=null)=>{
         const res=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:{
             'Accept':'application/json','Content-Type':'application/json',
@@ -21,12 +33,29 @@ import { addFavorite } from './favorite-action.js';
         return result;
     };
     const paint=()=>{
+        const saved=state==='active';
         buttons.forEach(button=>{
-            const saved=state==='active';
-            button.textContent=saved?'В избранном':'В избранное';
+            button.textContent=(saved?'В избранном':'В избранное')+' ('+venueFavoriteCount+')';
             button.setAttribute('aria-pressed',String(saved));
             button.disabled=busy;
         });
+        const loading=state==='unknown'&&isAuthenticated();
+        const failed=state==='error'&&isAuthenticated();
+        for(const section of followSections){
+            const message=section.querySelector('[data-venue-favorite-follow-message]');
+            const label=section.querySelector('[data-venue-favorite-follow-label]');
+            const action=section.querySelector('[data-venue-favorite-follow-action]');
+            section.dataset.state=saved?'active':loading?'loading':failed?'error':'none';
+            message.textContent=saved
+                ? 'Площадка в избранном — следите здесь за новыми играми.'
+                : loading?'Проверяем, сохранена ли площадка…'
+                : failed?'Не удалось проверить избранное. Попробуйте ещё раз.'
+                : 'Добавьте площадку в избранное, чтобы следить за новыми играми.';
+            label.textContent=saved?'В избранном':loading?'Проверяем избранное…'
+                : failed?'Повторить':'Добавить в избранное';
+            action.disabled=busy||saved||loading;
+            action.setAttribute('aria-pressed',String(saved));
+        }
     };
     const fail=message=>{error.textContent=message||'';error.hidden=!message;};
     const show=(nextMode)=>{
@@ -43,7 +72,9 @@ import { addFavorite } from './favorite-action.js';
         try {
             if(state!=='active'){await addFavorite('venue',id);return;}
             const result=await request(modal.dataset.toggleUrl,'POST',{type:'venue',id,action:'remove'});
-            state=result.state;paint();
+            state=result.state;
+            setVenueCount(result.count);
+            paint();
             window.dispatchEvent(new CustomEvent('mskba:favorites:changed',{detail:{count:result.favorites_count}}));
             window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{
                 detail:{venueId:id,state:result.state,count:result.count},
@@ -58,13 +89,44 @@ import { addFavorite } from './favorite-action.js';
             else window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message:e.message,failed:true}}));
         }finally{busy=false;submit.disabled=false;paint();}
     };
-    const ensureStatus=async()=>{
-        if(state!=='unknown')return;
-        const url=new URL(modal.dataset.statusUrl,location.href);
-        url.searchParams.append('ids[]',String(id));
-        const result=await request(url);
-        state=result.data?.[id]?.state||'none';paint();
+    const ensureStatus=async(force=false)=>{
+        if(!force&&state!=='unknown'&&state!=='error')return;
+        const generation=++statusGeneration;
+        state='unknown';paint();
+        try{
+            const url=new URL(modal.dataset.statusUrl,location.href);
+            url.searchParams.append('ids[]',String(id));
+            const result=await request(url);
+            if(generation!==statusGeneration)return;
+            state=result.data?.[id]?.state||'none';
+            setVenueCount(result.counts?.[id]);
+            paint();
+        }catch(error){
+            if(generation===statusGeneration){state='error';paint();}
+            throw error;
+        }
     };
+    followSections.forEach(section=>section.querySelector('[data-venue-favorite-follow-action]')
+        ?.addEventListener('click',async event=>{
+            if(busy||state==='active')return;
+            if(state==='error'&&isAuthenticated()){
+                try{await ensureStatus(true);}
+                catch(error){window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message:error.message,failed:true}}));}
+                return;
+            }
+            if(isAuthenticated()&&state==='unknown'){
+                try{await ensureStatus();}
+                catch(error){window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message:error.message,failed:true}}));return;}
+                if(state==='active')return;
+            }
+            // Close the source dialog before the shared favorite/auth/info dialog opens.
+            // This also prevents native dialog stacking and preserves the existing login-resume flow.
+            const source=event.currentTarget.closest('dialog');
+            if(source?.open)source.close();
+            busy=true;paint();
+            try{await addFavorite('venue',id);}
+            finally{busy=false;paint();}
+        }));
     buttons.forEach(button=>button.addEventListener('click',async()=>{
         if(busy)return;
         busy=true;paint();
@@ -80,11 +142,20 @@ import { addFavorite } from './favorite-action.js';
     modal.querySelector('[data-venue-favorite-close]').addEventListener('click',()=>modal.close());
     window.addEventListener('mskba:venue-favorite:updated',event=>{
         if(Number(event.detail?.venueId)!==id)return;
-        state=event.detail.state;paint();
+        statusGeneration++; // Ignore an in-flight status response predating this mutation.
+        state=event.detail.state;
+        setVenueCount(event.detail.count);
+        paint();
     });
     let downOutside=false;
     modal.addEventListener('pointerdown',event=>{downOutside=event.target===modal;});
     modal.addEventListener('pointerup',event=>{if(downOutside&&event.target===modal)modal.close();downOutside=false;});
     modal.addEventListener('pointercancel',()=>{downOutside=false;});
+    window.addEventListener('mskba:auth:success',()=>{
+        // Login can complete in-place without a full reload; the actual add event
+        // still wins over any earlier GET, via statusGeneration.
+        if(state!=='active')void ensureStatus(true).catch(()=>{});
+    });
+    paint();
     void ensureStatus().catch(()=>{});
 })();

@@ -7,12 +7,15 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function validatePlan(plan) {
     if (!plan || typeof plan !== 'object' || Array.isArray(plan)) throw new Error('Invalid request.');
-    const allowed = ['alias', 'title', 'summary', 'content', 'cover', 'telegram_chat_titles', 'vk_group_id', 'resume_existing_draft', 'allow_vk_wait'];
+    const allowed = ['alias', 'title', 'summary', 'content', 'cover', 'telegram_chat_titles', 'vk_group_id', 'resume_existing_draft', 'allow_vk_wait', 'meta_title', 'meta_description', 'meta_keywords'];
     if (Object.keys(plan).some(key => !allowed.includes(key))) throw new Error('Unexpected request field.');
     for (const [key, max] of [['alias', 230], ['title', 255], ['summary', 1000], ['content', 50000]]) {
         if (typeof plan[key] !== 'string' || !plan[key].trim() || plan[key].length > max) throw new Error('Invalid ' + key);
     }
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(plan.alias)) throw new Error('Invalid alias.');
+    for (const [key, max] of [['meta_title', 255], ['meta_description', 320], ['meta_keywords', 1000]]) {
+        if (plan[key] !== undefined && (typeof plan[key] !== 'string' || plan[key].length > max)) throw new Error('Invalid ' + key);
+    }
     if (typeof plan.cover !== 'string' || !/^ops\/editorial-news\/covers\/[a-z0-9][a-z0-9.-]*\.(?:jpg|jpeg|png|webp)$/.test(plan.cover)) throw new Error('Invalid cover path.');
     const names = plan.telegram_chat_titles;
     if (!Array.isArray(names) || names.length > 100 || names.some(n => typeof n !== 'string' || !n.trim() || n.length > 255)) throw new Error('Invalid Telegram targets.');
@@ -97,7 +100,9 @@ async function main(requestPath, token) {
     if (item && (item.status !== 'draft' || plan.resume_existing_draft !== true)) throw new Error('Existing draft: review in admin before explicitly resuming.');
     if (!item) {
         const form = new FormData();
-        for (const key of ['alias', 'title', 'summary', 'content']) form.set(key, plan[key]);
+        for (const key of ['alias', 'title', 'summary', 'content', 'meta_title', 'meta_description', 'meta_keywords']) {
+            if (plan[key] !== undefined) form.set(key, plan[key]);
+        }
         const ext = path.extname(plan.cover);
         const mime = ['.jpeg', '.jpg'].includes(ext) ? 'image/jpeg' : 'image/' + ext.slice(1);
         form.set('cover', new Blob([await readFile(coverReal)], { type: mime }), path.basename(plan.cover));

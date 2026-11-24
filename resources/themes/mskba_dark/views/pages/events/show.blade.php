@@ -235,7 +235,7 @@
                         @endif
                     </div>
                     <div class="event-hero__meta">
-                        <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $startsAt->format('d.m.Y') }}<b>·</b>{{ $startsAt->format('H:i') }}–{{ $endsAt->format('H:i') }}</span>
+                        <span style="position:relative"><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $startsAt->format('d.m.Y') }}<b>·</b>{{ $startsAt->format('H:i') }}–{{ $endsAt->format('H:i') }} @include('components.event-preliminary-time-comment', ['timeCommentEvent' => $event])</span>
                         @if($mapUrl)
                             <button
                                 type="button"
@@ -251,6 +251,7 @@
                             <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $locationName }}</span>
                         @endif
                     </div>
+                    @include('components.event-participation-price', ['pricingEvent' => $event])
                 </div>
             </section>
 

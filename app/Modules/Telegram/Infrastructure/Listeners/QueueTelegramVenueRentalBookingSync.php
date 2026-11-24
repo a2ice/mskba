@@ -20,6 +20,11 @@ final readonly class QueueTelegramVenueRentalBookingSync
     public function handle(
         VenueBookingRequested|VenueBookingHeld|VenueBookingConfirmed|VenueBookingRejected|VenueBookingCancelled|VenueBookingExpired $event,
     ): void {
+        $booking = \App\Modules\VenueBooking\Domain\Models\VenueBooking::query()->find($event->bookingId);
+        if ($booking?->event_id !== null) {
+            \App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramEventPublicationJob::dispatch((int) $booking->event_id)->afterCommit();
+        }
+
         if (! $this->features->enabled(VenueRentalFeature::COORDINATION)) {
             return;
         }

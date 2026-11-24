@@ -43,6 +43,69 @@ final class AppliedImportedCourtAvailability
             ->get();
     }
 
+    /**
+     * Imported court exceptions describe free runs, not opening hours.
+     * Diagnose blocked time only when the source covers the entire selection;
+     * otherwise the caller still decides whether it is outside working hours.
+     */
+    public function assertNotBlockedWithinCoverage(
+        VenueCourt $court,
+        CarbonImmutable $startsAt,
+        CarbonImmutable $endsAt,
+    ): void {
+        $import = $this->activeFor($court);
+        if ($import === null) {
+            return;
+        }
+
+        $cursor = $startsAt->utc();
+        $end = $endsAt->utc();
+        $slots = $import->snapshot->slots()
+            ->where('starts_at', '<', $end->toIso8601String())
+            ->where('ends_at', '>', $cursor->toIso8601String())
+            ->orderBy('starts_at')
+            ->get();
+
+        $booked = false;
+        $allBooked = true;
+        $unavailable = false;
+        foreach ($slots as $slot) {
+            if ($slot->starts_at->greaterThan($cursor) || ! $slot->day_complete) {
+                return;
+            }
+            $booked = $booked || $slot->status === 'booked';
+            $allBooked = $allBooked && $slot->status === 'booked';
+            $unavailable = $unavailable || $slot->status !== 'available';
+            if ($slot->ends_at->greaterThan($cursor)) {
+                $cursor = $slot->ends_at->utc();
+            }
+            if ($cursor->greaterThanOrEqualTo($end)) {
+                break;
+            }
+        }
+
+        if ($cursor->lessThan($end) || ! $unavailable) {
+            return;
+        }
+
+        $this->assertFresh($import, now());
+
+        throw new InvalidArgumentException($booked
+            ? ($allBooked ? 'Выбранное время уже занято.' : 'Выбранное время уже занято частично.')
+            : 'Выбранное время недоступно по расписанию FindSport.');
+    }
+
+    private function assertFresh(VenueCourtExternalScheduleImport $import, CarbonInterface $reference): void
+    {
+        $snapshot = $import->snapshot;
+        if ($snapshot->isStale($reference)
+            || (config('venue_integrations.public_schedule_refresh_enabled', false)
+                && $snapshot->observed_at->addSeconds(FindSportOnDemandRefresh::REFRESH_AFTER_SECONDS)
+                    ->lessThan($reference))) {
+            throw new InvalidArgumentException('Требуется обновление расписания');
+        }
+    }
+
     public function assertAvailable(
         VenueCourt $court,
         CarbonImmutable $startsAt,
@@ -55,13 +118,7 @@ final class AppliedImportedCourtAvailability
         }
 
         $snapshot = $import->snapshot;
-        $reference = $asOf ?? now();
-        if ($snapshot->isStale($reference)
-            || (config('venue_integrations.public_schedule_refresh_enabled', false)
-                && $snapshot->observed_at->addSeconds(FindSportOnDemandRefresh::REFRESH_AFTER_SECONDS)
-                    ->lessThan($reference))) {
-            throw new InvalidArgumentException('Расписание FindSport устарело: сначала обновите и примените снимок.');
-        }
+        $this->assertFresh($import, $asOf ?? now());
 
         $cursor = $startsAt->utc();
         $end = $endsAt->utc();

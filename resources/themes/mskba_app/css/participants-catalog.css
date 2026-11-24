@@ -1,0 +1,4 @@
+.app-participant-card__avatar { display: block; width: 68px; height: 68px; border-radius: 50%; object-fit: cover; background: var(--surface-raised); }
+.app-participant-card__avatar--empty { display: grid; place-items: center; font-size: 34px; color: var(--muted); }
+.app-participant-card .app-category__card-body { align-items: flex-start; }
+.app-category__items--list .app-participant-card { min-height: 0; }

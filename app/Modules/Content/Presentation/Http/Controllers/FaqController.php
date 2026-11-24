@@ -20,6 +20,8 @@ final class FaqController extends Controller
         $contentItems = ContentItem::query()
             ->published()
             ->where('type', ContentTypeEnum::FAQ)
+            // The per-page quick-help articles are not an extra 89 public FAQ cards.
+            ->where(fn ($query) => $query->whereNull('system_key')->orWhere('system_key', 'not like', 'faq.page.%'))
             ->with('tags')
             ->orderByRaw('system_key is null')
             ->orderBy('title')

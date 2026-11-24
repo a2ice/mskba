@@ -4,10 +4,10 @@ namespace App\Modules\Identity\Infrastructure\Http\Middleware;
 
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
+use App\Support\Privacy\CookieConsent;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -22,6 +22,11 @@ final class RecordBrowserFingerprint
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Optional durable browser tracking is separate from session/authentication.
+        if ($request->routeIs('cookie-consent.store') || ! CookieConsent::internalAnalyticsAllowed($request)) {
+            return $next($request);
+        }
+
         $fingerprintId = $this->fingerprintId($request);
         $fingerprint = null;
 
@@ -34,12 +39,12 @@ final class RecordBrowserFingerprint
 
         $user = $request->user();
 
-        if ($fingerprint !== null && $user instanceof User) {
+        if ($fingerprint !== null && $user instanceof User && CookieConsent::internalAnalyticsAllowed($request)) {
             $this->recordAuthenticatedUser($fingerprint, $user->id);
         }
 
         if (! $request->cookies->has(self::COOKIE_NAME)) {
-            Cookie::queue(cookie(
+            $response->headers->setCookie(cookie(
                 name: self::COOKIE_NAME,
                 value: $fingerprintId,
                 minutes: self::COOKIE_LIFETIME_MINUTES,

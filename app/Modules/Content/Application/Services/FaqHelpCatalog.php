@@ -16,6 +16,9 @@ final class FaqHelpCatalog
     {
         $systemSections = config('support.faq_system_sections', []);
         $items = ContentItem::query()->published()->where('type', ContentTypeEnum::FAQ)
+            // Page-specific quick help is accessed by context, not as 89 extra
+            // items inside the generic FAQ selector.
+            ->where(fn ($query) => $query->whereNull('system_key')->orWhere('system_key', 'not like', 'faq.page.%'))
             ->with(['tags', 'inlineImages', 'faqSections'])->orderBy('title')->get();
         $groups = [];
         foreach (FaqSection::query()->orderBy('sort_order')->orderBy('id')->get() as $faqSection) {

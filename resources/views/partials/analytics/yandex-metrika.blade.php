@@ -5,8 +5,8 @@
         : null;
 @endphp
 
-{{-- Analytics is never initialized before an explicit, current-version opt-in. --}}
-@if ($counterId !== null && $counterId > 0 && \App\Support\Privacy\CookieConsent::analyticsAllowed())
+{{-- External counter is independent of the MSKBA internal analytics preference. --}}
+@if ($counterId !== null && $counterId > 0)
     <!-- Yandex.Metrika counter -->
     <script>
         (function(m,e,t,r,i,k,a){

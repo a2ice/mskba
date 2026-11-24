@@ -13,6 +13,7 @@
     $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
     $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
     $categoryToolbarCount = 'Найдено '.$events->total().' мероприятий';
+    $categoryResultTotal = $events->total();
 @endphp
 @extends('theme::layouts.category')
 

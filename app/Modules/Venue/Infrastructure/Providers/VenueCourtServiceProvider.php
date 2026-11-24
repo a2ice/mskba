@@ -6,6 +6,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtSettingsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtPhotoController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtPublicController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueTariffGridController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,10 @@ final class VenueCourtServiceProvider extends RouteServiceProvider
             });
 
             Route::middleware(['web', 'auth'])->group(function (): void {
+                Route::get('/account/venues/{venue}/tariff-grid', [VenueTariffGridController::class, 'edit'])
+                    ->whereNumber('venue')->name('account.venues.tariff-grid.edit');
+                Route::post('/account/venues/{venue}/tariff-grid', [VenueTariffGridController::class, 'store'])
+                    ->middleware('throttle:30,1')->whereNumber('venue')->name('account.venues.tariff-grid.store');
                 Route::get('/account/venues/{venue}/courts', [VenueCourtController::class, 'index'])
                     ->name('account.venues.courts.index');
                 Route::post('/account/venues/{venue}/courts', [VenueCourtController::class, 'store'])

@@ -72,12 +72,7 @@
                 <div class="form-group field mb-3"><label class="form-label" for="revisionReason">Причина изменения (необязательно)</label><input id="revisionReason" class="form-control" name="revision_reason" value="{{ old('revision_reason') }}" maxlength="255"></div>
             @endif
         @else
-            <div class="alert alert-info mb-3">
-                Для площадок с оплатой или подтверждением бронирования после подачи заявки изменение места и времени доступно только через отмену или согласованный перенос брони.
-            </div>
-            <input type="hidden" name="venue_id" value="{{ $event->venue_id }}">
-            <input type="hidden" name="starts_at" value="{{ $event->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
-            <input type="hidden" name="duration_minutes" value="{{ $currentDuration }}">
+            @include('components.event-time-only-fields')
         @endif
         <div class="row g-3 mb-3">
             <div class="col-md-6 form-group field">
@@ -100,6 +95,9 @@
             <input id="eventCapacity" type="number" min="2" max="500" class="form-control @error('max_participants') is-invalid @enderror" name="max_participants" value="{{ old('max_participants', $event->max_participants) }}" placeholder="Без ограничения">
             @error('max_participants') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
+        @include('components.event-time-comment-fields', ['timeCommentEvent' => $event])
+        @include('components.event-participation-pricing-fields', ['pricingEvent' => $event])
+        @include('components.event-social-publication-fields', ['socialEvent' => $event])
         <div class="form-group field mb-4">
             <label class="form-label" for="eventDescription">Описание</label>
             <textarea id="eventDescription" class="form-control @error('description') is-invalid @enderror" name="description" rows="7" maxlength="5000">{{ old('description', $event->description) }}</textarea>

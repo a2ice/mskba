@@ -69,6 +69,12 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
             && $content->publish_in_telegram
             && $publication->chat?->is_active;
 
+        // A previous send with no provider receipt may already exist remotely.
+        // Only the explicit, validated recovery endpoint may reset failed to pending.
+        if ($shouldPublish && $publication->status === 'failed' && $publication->message_id === null) {
+            return;
+        }
+
         try {
             if (! $shouldPublish) {
                 if ($publication->message_id !== null) {
@@ -155,6 +161,16 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
                 'last_error' => mb_substr($exception->getMessage(), 0, 1000),
                 'synced_at' => now(),
             ])->save();
+
+            // A send with no recorded message_id may have reached Telegram even
+            // when its HTTP response is missing. Never let queue backoff blindly
+            // issue a second send: reconcile first and explicitly retry only a
+            // definitive provider rejection through the scoped editorial API.
+            // Bot API 4xx errors are also terminal until the underlying access
+            // or content problem is fixed.
+            if ($publication->message_id === null && $exception instanceof TelegramBotApiException) {
+                return;
+            }
 
             throw $exception;
         }

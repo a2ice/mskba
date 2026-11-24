@@ -282,6 +282,7 @@
                             <input class="form-control @error('max_participants') is-invalid @enderror" type="number" name="max_participants" min="2" max="500" value="{{ old('max_participants') }}" placeholder="Без ограничения">
                             @error('max_participants')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                         </label>
+                        @include('components.event-cost-inclusion-fields', ['pricingEvent' => null])
                     </section>
 
                     <section class="event-wizard-step" data-wizard-step="details" data-step-title="О мероприятии" hidden>

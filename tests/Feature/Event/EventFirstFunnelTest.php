@@ -93,6 +93,38 @@ final class EventFirstFunnelTest extends TestCase
         ];
     }
 
+    public function test_selected_telegram_groups_are_saved_for_quick_creation_and_edit(): void
+    {
+        $organizer = $this->verifiedOrganizer();
+        $venue = $this->venue();
+        $chats = collect([123456701, 123456702, 123456703])->map(fn ($id) =>
+            \App\Modules\Telegram\Domain\Models\TelegramChat::query()->create([
+                'telegram_chat_id' => -$id,
+                'title' => 'Event chat '.$id,
+                'type' => 'supergroup',
+                'is_active' => true,
+                'publishes_events' => true,
+                'publishes_coordination' => false,
+            ]));
+        $payload = $this->payload($venue, $this->slots());
+        $this->actingAs($organizer)->postJson(route('events.funnel.store'), [
+            ...$payload,
+            'publish_to_telegram' => true,
+            'telegram_chat_ids' => $chats->take(2)->pluck('id')->all(),
+        ])->assertCreated();
+        $event = Event::query()->sole();
+        $this->assertCount(2, $event->telegramPublications()->get());
+
+        $this->put(route('events.update', $event->routeIdentifier()), [
+            'title' => $event->title,
+            'type' => $event->type->value,
+            'visibility' => 'public',
+            'publish_to_telegram' => true,
+            'telegram_chat_ids' => [$chats->last()->id],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertCount(3, $event->telegramPublications()->get());
+    }
+
     public function test_retired_game_training_type_cannot_create_new_event(): void
     {
         $user = $this->verifiedOrganizer();

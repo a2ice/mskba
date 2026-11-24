@@ -150,4 +150,7 @@ Route::middleware(['auth:sanctum', 'throttle:15,1'])
         Route::post('/{alias}/publish', [EditorialNewsAgentApiController::class, 'publish'])
             ->where('alias', '[a-z0-9-]+')
             ->name('api.internal.editorial-news.publish');
+        Route::post('/{alias}/telegram/{chatId}/retry', [EditorialNewsAgentApiController::class, 'retryTelegram'])
+            ->where(['alias' => '[a-z0-9-]+', 'chatId' => '[0-9]+'])
+            ->name('api.internal.editorial-news.telegram.retry');
     });
