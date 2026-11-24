@@ -118,6 +118,81 @@ final class VenueWeeklyScheduleEditorTest extends TestCase
         }
     }
 
+    public function test_midnight_is_accepted_for_default_weekday_and_date_exception_and_round_trips(): void
+    {
+        $this->signIn();
+
+        $editor = app(VenueBackofficeEditor::class);
+        $venue = $editor->save([
+            'name' => 'Зал до полуночи',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'initial_courts' => [[
+                'name' => 'Корт 1',
+                'environment' => 'outdoor',
+                'hoops_count' => 2,
+                'amenity_ids' => [],
+            ]],
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+            'schedule_timezone' => 'Europe/Moscow',
+            'weekly_default_intervals' => [
+                ['starts_at' => '07:00', 'ends_at' => '16:00'],
+                ['starts_at' => '16:00', 'ends_at' => '00:00'],
+            ],
+            'weekday_overrides' => [
+                ['day_of_week' => 6, 'is_closed' => false, 'intervals' => [
+                    ['starts_at' => '12:00', 'ends_at' => '00:00'],
+                ]],
+            ],
+            'schedule_exceptions' => [
+                ['date' => '2026-12-31', 'is_closed' => false, 'intervals' => [
+                    ['starts_at' => '18:00', 'ends_at' => '00:00'],
+                ]],
+            ],
+        ]);
+
+        $schedule = $venue->schedule()->firstOrFail();
+        $this->assertDatabaseHas('venue_schedule_intervals', [
+            'venue_schedule_id' => $schedule->id,
+            'day_of_week' => 1,
+            'starts_at' => '16:00',
+            'ends_at' => '00:00',
+        ]);
+        $exception = $schedule->exceptions()->whereDate('date', '2026-12-31')->firstOrFail();
+        $this->assertDatabaseHas('venue_schedule_exception_intervals', [
+            'venue_schedule_exception_id' => $exception->id,
+            'starts_at' => '18:00',
+            'ends_at' => '00:00',
+        ]);
+
+        $fields = $editor->fields($venue->refresh());
+        $this->assertSame('00:00', $fields['weekly_default_intervals'][1]['ends_at']);
+        $this->assertSame('00:00', $fields['weekday_overrides'][0]['intervals'][0]['ends_at']);
+        $this->assertSame('00:00', $fields['schedule_exceptions'][0]['intervals'][0]['ends_at']);
+
+        // A midnight close is exclusive; the previous slot still belongs to
+        // the selected date, never to the following day's first working hour.
+        $monday = \Carbon\CarbonImmutable::parse('2026-12-28 23:30:00', 'Europe/Moscow');
+        $effective = app(\App\Modules\Venue\Application\Services\EffectiveVenueHours::class)
+            ->intervals($venue->refresh(), null, $monday);
+        $this->assertSame('24:00', $effective->last()->ends_at);
+    }
+
+    public function test_midnight_end_still_rejects_an_overlapping_earlier_range(): void
+    {
+        $this->signIn();
+        $this->expectException(ValidationException::class);
+
+        app(VenueBackofficeEditor::class)->save([
+            'name' => 'Пересекающиеся интервалы',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+            'weekly_default_intervals' => [
+                ['starts_at' => '07:00', 'ends_at' => '00:00'],
+                ['starts_at' => '16:00', 'ends_at' => '20:00'],
+            ],
+        ]);
+    }
+
     public function test_backoffice_create_with_one_configured_court_and_no_schedule(): void
     {
         $this->signIn();
