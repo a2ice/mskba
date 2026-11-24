@@ -13,6 +13,11 @@
         $placeholderDateLabel = static fn ($date) => $date->format('d') . ' ' . $shortMonths[(int) $date->month];
         $placeholderWeekdayLabel = static fn ($date) => $shortWeekdays[(int) $date->dayOfWeekIso];
         $legacyBookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
+        // On a multi-zone venue the aggregate occupancy calendar would mix
+        // independent areas. Show that calendar only on an individual court,
+        // or on a venue with exactly one court.
+        $legacyShowOccupancy = $legacyBookableCourtIds !== []
+            && ($venue->isCourtPage || count($venue->courtSchedules) === 1);
         $legacyCreateEventUrl = route('events.wizard', array_filter([
             'venue_id' => $venue->id,
             'venue_court_id' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null,
@@ -315,7 +320,7 @@
                                 @endif
                             </p>
                         </div>
-                        @if($venue->isCourtPage && $legacyBookableCourtIds !== [])
+                        @if($legacyShowOccupancy)
                         <div>
                             <span class="venue-hero__detail-label">Занятые слоты</span>
                             <div class="venue-occupancy-calendar" aria-label="Занятость площадки на девять дней">
@@ -360,6 +365,7 @@
                 </div>
             </section>
 
+            @if($legacyShowOccupancy)
             @component('theme::partials.modal.layout', [
                 'id' => 'venue-occupancy-schedule',
                 'dialogClass' => 'venue-occupancy-modal__dialog',
@@ -436,6 +442,7 @@
                     </footer>
                 </div>
             @endcomponent
+            @endif
             <button type="button" class="js-handler" hidden data-venue-booking-details-trigger data-handler="modal" data-modal-action="open" data-modal-target="venue-booking-details"></button>
 
             @component('theme::partials.modal.layout', [
