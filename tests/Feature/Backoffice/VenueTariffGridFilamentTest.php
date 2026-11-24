@@ -6,6 +6,8 @@ use App\Filament\Backoffice\Resources\Venues\Pages\EditVenueTariffs;
 use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
+use App\Filament\Backoffice\Resources\Venues\Support\VenueTariffModal;
+use Filament\Actions\Testing\TestAction;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -25,6 +27,76 @@ final class VenueTariffGridFilamentTest extends TestCase
     {
         parent::setUp();
         config()->set('features.venue_rental.rental_flow', true);
+    }
+
+    public function test_real_filament_schedule_popup_saves_venue_price_bands_and_reloads_them(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $admin->createProfile([]);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venue = Venue::factory()->create(['requires_payment' => true]);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $policy = app(PublishVenueBookingPolicyHandler::class)->handle($venue, $admin, [
+            'is_enabled' => true, 'allows_whole' => true, 'allows_halves' => false,
+            'minimum_duration_minutes' => 60, 'maximum_duration_minutes' => 180,
+            'time_step_minutes' => 30, 'minimum_lead_time_minutes' => 120,
+            'maximum_advance_days' => 90, 'currency' => 'RUB',
+            'whole_price_per_step_minor' => 50000, 'half_price_per_step_minor' => null,
+            'hold_duration_minutes' => 30, 'requires_payment' => true,
+            'payment_window_minutes' => 30, 'quote_validity_minutes' => 15,
+            'cancellation_before_minutes' => 1440,
+        ]);
+
+        $band = [
+            'days' => [1, 2],
+            'starts_at' => '07:00', 'ends_at' => '16:00',
+            'operation' => 'set', 'whole_price_per_step' => '1000',
+            'half_price_per_step' => null, 'exceptions' => [],
+        ];
+        Livewire::test(EditVenue::class, ['record' => $venue->id])
+            ->callAction(
+                TestAction::make('venueTariffsFromSchedule')->schemaComponent(),
+                data: ['mode' => 'weekly', 'ranges' => [$band]],
+            )
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('venue_schedule_slot_prices', [
+            'venue_id' => $venue->id, 'day_of_week' => 1,
+            'starts_at' => '07:00:00', 'whole_price_per_step_minor' => 100000,
+        ]);
+        $state = VenueTariffModal::initialState($venue, null);
+        $this->assertSame('07:00', $state['ranges'][0]['starts_at']);
+        $this->assertSame([1, 2], $state['ranges'][0]['days']);
+        $this->assertSame('1000', $state['ranges'][0]['whole_price_per_step']);
+
+        $courtBand = [
+            'days' => [1],
+            'starts_at' => '16:00', 'ends_at' => '23:30',
+            'operation' => 'set', 'whole_price_per_step' => '1500',
+            'half_price_per_step' => null, 'exceptions' => [],
+        ];
+        Livewire::test(CourtsRelationManager::class, [
+            'ownerRecord' => $venue,
+            'pageClass' => EditVenue::class,
+        ])
+            ->callAction(
+                TestAction::make('unifiedTariffGrid')->table($court),
+                data: ['mode' => 'weekly', 'ranges' => [$courtBand]],
+            )
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('venue_court_manual_slot_prices', [
+            'venue_court_id' => $court->id, 'day_of_week' => 1,
+            'starts_at' => '16:00:00', 'whole_price_per_step_minor' => 150000,
+        ]);
+        $courtState = VenueTariffModal::initialState($venue, $court);
+        $this->assertSame('16:00', $courtState['ranges'][0]['starts_at']);
+        $this->assertSame('1500', $courtState['ranges'][0]['whole_price_per_step']);
     }
 
     public function test_venue_schedule_and_court_table_offer_native_tariff_popups_instead_of_external_links(): void

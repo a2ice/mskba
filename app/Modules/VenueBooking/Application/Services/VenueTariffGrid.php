@@ -31,6 +31,97 @@ final class VenueTariffGrid
     }
 
     /**
+     * Return only persisted, explicitly configured price ranges for editing.
+     * A court's imported calendar and inherited venue prices must NOT become
+     * manual overrides merely because the user opens and saves the editor.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function editableRanges(
+        Venue $venue, VenueBookingPolicy $policy, ?VenueCourt $court,
+        string $mode = 'weekly', ?string $date = null
+    ): array {
+        $isDate = $mode === 'date';
+        $step = $this->step($policy, $court);
+        $venueStep = (int) $policy->time_step_minutes;
+        if ($step < 1 || $step > 240 || $venueStep < 1 || $step % $venueStep !== 0) {
+            throw ValidationException::withMessages(['court' => 'Шаг зала несовместим с шагом площадки.']);
+        }
+        if ($isDate && ($date === null || ! CarbonImmutable::hasFormat($date, 'Y-m-d'))) {
+            throw ValidationException::withMessages(['date' => 'Выберите корректную дату тарифа.']);
+        }
+
+        if ($court !== null) {
+            $query = DB::table('venue_court_manual_slot_prices')
+                ->where('venue_court_id', $court->id);
+        } else {
+            $query = DB::table($isDate ? 'venue_calendar_slot_prices' : 'venue_schedule_slot_prices')
+                ->where('venue_id', $venue->id);
+        }
+
+        $records = $query
+            ->when($isDate, fn ($q) => $q->whereDate('date', $date),
+                fn ($q) => $court === null ? $q : $q->whereNull('date'))
+            ->orderBy($isDate ? 'starts_at' : 'day_of_week')
+            ->orderBy('starts_at')
+            ->get();
+
+        $formatter = app(MinorAmountParser::class);
+        $parts = [];
+        foreach ($records as $record) {
+            $day = $isDate ? (int) CarbonImmutable::parse($date)->dayOfWeekIso : (int) $record->day_of_week;
+            $minute = self::minutes((string) $record->starts_at);
+            if ($day < 1 || $day > 7 || $minute < 0 || $minute + $step > 1440 || $minute % $step !== 0) {
+                continue;
+            }
+            $whole = $record->whole_price_per_step_minor === null
+                ? '' : $formatter->format((int) $record->whole_price_per_step_minor, $policy->currency);
+            $half = $record->half_price_per_step_minor === null
+                ? '' : $formatter->format((int) $record->half_price_per_step_minor, $policy->currency);
+            $last = array_key_last($parts);
+            if ($last !== null && $parts[$last]['day'] === $day
+                && $parts[$last]['endMinute'] === $minute
+                && $parts[$last]['whole_price_per_step'] === $whole
+                && $parts[$last]['half_price_per_step'] === $half) {
+                $parts[$last]['endMinute'] += $step;
+                continue;
+            }
+            $parts[] = [
+                'day' => $day,
+                'startMinute' => $minute,
+                'endMinute' => $minute + $step,
+                'whole_price_per_step' => $whole,
+                'half_price_per_step' => $half,
+            ];
+        }
+
+        // Collapse identical bands across weekdays into one editable range.
+        $grouped = [];
+        foreach ($parts as $part) {
+            $endTime = $part['endMinute'] === 1440 ? '00:00' : self::clock($part['endMinute']);
+            $signature = implode('|', [
+                $part['startMinute'], $part['endMinute'],
+                $part['whole_price_per_step'], $part['half_price_per_step'],
+            ]);
+            if (! $isDate && isset($grouped[$signature])) {
+                $grouped[$signature]['days'][] = $part['day'];
+                continue;
+            }
+            $grouped[$isDate ? count($grouped) : $signature] = [
+                'days' => [$part['day']],
+                'starts_at' => self::clock($part['startMinute']),
+                'ends_at' => $endTime,
+                'operation' => 'set',
+                'whole_price_per_step' => $part['whole_price_per_step'],
+                'half_price_per_step' => $part['half_price_per_step'],
+                'exceptions' => [],
+            ];
+        }
+
+        return array_values($grouped);
+    }
+
+    /**
      * Apply several named time ranges as one atomic operation. The same code
      * path serves Filament and the public venue editor.
      *
@@ -38,10 +129,10 @@ final class VenueTariffGrid
      */
     public function applyMany(
         Venue $venue, VenueBookingPolicy $policy, ?VenueCourt $court,
-        string $mode, string $date, array $ranges, ?int $userId
+        string $mode, string $date, array $ranges, ?int $userId, bool $replaceExisting = false
     ): int {
-        if ($ranges === [] || count($ranges) > 16) {
-            throw ValidationException::withMessages(['ranges' => 'Укажите от 1 до 16 тарифных диапазонов.']);
+        if ((! $replaceExisting && $ranges === []) || count($ranges) > 16) {
+            throw ValidationException::withMessages(['ranges' => 'Укажите не более 16 тарифных диапазонов.']);
         }
 
         $step = $this->step($policy, $court);
@@ -73,14 +164,45 @@ final class VenueTariffGrid
             }
         }
 
-        return DB::transaction(function () use ($venue, $policy, $court, $mode, $date, $ranges, $userId): int {
+        return DB::transaction(function () use ($venue, $policy, $court, $mode, $date, $ranges, $userId, $replaceExisting): int {
+            // This operation represents the *entire* set displayed in the editor.
+            // Removing a range must remove the saved slots too, without touching
+            // externally imported court prices.
+            if ($replaceExisting) {
+                if ($court !== null) {
+                    VenueCourt::query()->whereKey($court->id)->lockForUpdate()->firstOrFail();
+                    DB::table('venue_court_manual_slot_prices')
+                        ->where('venue_court_id', $court->id)
+                        ->when($mode === 'date', fn ($q) => $q->whereDate('date', $date),
+                            fn ($q) => $q->whereNull('date'))
+                        ->delete();
+                } else {
+                    Venue::query()->whereKey($venue->id)->lockForUpdate()->firstOrFail();
+                    DB::table($mode === 'date' ? 'venue_calendar_slot_prices' : 'venue_schedule_slot_prices')
+                        ->where('venue_id', $venue->id)
+                        ->when($mode === 'date', fn ($q) => $q->whereDate('date', $date))
+                        ->delete();
+                }
+            }
+
             $count = 0;
-            foreach ($ranges as $range) {
-                $count += $this->apply($venue, $policy, $court, [
-                    ...$range,
-                    'mode' => $mode,
-                    'date' => $date,
-                ], $userId);
+            foreach ($ranges as $index => $range) {
+                try {
+                    $count += $this->apply($venue, $policy, $court, [
+                        ...$range,
+                        'mode' => $mode,
+                        'date' => $date,
+                    ], $userId);
+                } catch (ValidationException $e) {
+                    // Nested Filament / public form fields need nested error keys.
+                    // A top-level "whole_price_per_step" error was invisible in
+                    // the modal and made saving appear to do nothing.
+                    $messages = [];
+                    foreach ($e->errors() as $field => $errors) {
+                        $messages['ranges.'.$index.'.'.$field] = $errors;
+                    }
+                    throw ValidationException::withMessages($messages);
+                }
             }
 
             return $count;

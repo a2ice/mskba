@@ -38,6 +38,13 @@
                 @endforeach
             </div>
         </details>
+        <p class="text-sm font-medium">
+            Минимальная стоимость одного шага площадки: {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->format((int) $policy->whole_price_per_step_minor, $policy->currency) }} {{ $policy->currency }} за {{ $policy->time_step_minutes }} мин.
+            Цена ниже минимума не сохранится; при необходимости измените базовый минимум на вкладке «Аренда».
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+            Ниже загружены уже сохранённые диапазоны. Можно изменить их, добавить новые или удалить: сохранение синхронизирует именно список строк.
+        </p>
         <p class="text-xs text-gray-500 dark:text-gray-400">
             Ниже можно назначить несколько диапазонов одной операцией. Временные диапазоны не должны перекрываться в пределах одного дня.
             Для точечной корректировки задайте диапазон длиной в один шаг или добавьте исключение.

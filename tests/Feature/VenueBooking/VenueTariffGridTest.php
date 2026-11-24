@@ -134,6 +134,174 @@ final class VenueTariffGridTest extends TestCase
             ->where('venue_court_id', $court->id)->count());
     }
 
+    public function test_public_schedule_renders_real_saved_prices_in_editable_fields_after_reload(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        [$owner, $venue] = $this->ownedVenue();
+        $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $this->actingAs($owner);
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [
+                [
+                    'days' => [1, 2], 'starts_at' => '07:00', 'ends_at' => '16:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+                [
+                    'days' => [1, 2], 'starts_at' => '16:00', 'ends_at' => '23:30',
+                    'operation' => 'set', 'whole_price_per_step' => '1500',
+                ],
+            ],
+        ])->assertRedirect();
+
+        $schedule = route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'schedule']);
+        $this->get($schedule)->assertOk()
+            ->assertSee('name="ranges[0][starts_at]"', false)
+            ->assertSee('name="ranges[1][starts_at]"', false)
+            ->assertSee('name="ranges[0][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="1000"', false)
+            ->assertSee('name="ranges[1][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="1500"', false)
+            ->assertSee('data-tariff-range-item', false);
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [[
+                'days' => [1], 'starts_at' => '16:00', 'ends_at' => '18:00',
+                'operation' => 'set', 'whole_price_per_step' => '1800',
+            ]],
+        ])->assertRedirect();
+
+        $courtResponse = $this->get($schedule.'&court='.$court->id)->assertOk();
+        $courtResponse->assertSee('name="ranges[0][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="1800"', false);
+        $this->assertStringContainsString(
+            'id="venue-tariff-panel-court-'.$court->id.'"',
+            $courtResponse->getContent(),
+        );
+    }
+
+    public function test_saved_venue_bands_are_reloaded_into_editor_and_deleting_one_removes_only_its_price_steps(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $policy = $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $this->actingAs($owner);
+        $url = route('account.venues.tariff-grid.store', $venue->id);
+
+        $first = [
+            'days' => [1, 2], 'starts_at' => '07:00', 'ends_at' => '16:00',
+            'operation' => 'set', 'whole_price_per_step' => '1000',
+        ];
+        $second = [
+            'days' => [1, 2], 'starts_at' => '16:00', 'ends_at' => '23:30',
+            'operation' => 'set', 'whole_price_per_step' => '1500',
+        ];
+
+        $this->post($url, [
+            'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [$first, $second],
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $grid = app(VenueTariffGrid::class);
+        $stored = $grid->editableRanges($venue, $policy, null);
+        $this->assertCount(2, $stored);
+        $this->assertSame([1, 2], $stored[0]['days']);
+        $this->assertSame('07:00', $stored[0]['starts_at']);
+        $this->assertSame('16:00', $stored[0]['ends_at']);
+        $this->assertSame('1000', $stored[0]['whole_price_per_step']);
+        $this->assertSame('1500', $stored[1]['whole_price_per_step']);
+
+        $this->assertSame([], $grid->editableRanges($venue, $policy, $court));
+
+        // Replacing the grid with only the second range must remove the first,
+        // even if it used to be present in the database.
+        $this->post($url, [
+            'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [$second],
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $stored = $grid->editableRanges($venue, $policy, null);
+        $this->assertCount(1, $stored);
+        $this->assertSame('16:00', $stored[0]['starts_at']);
+        $this->assertSame(30, DB::table('venue_schedule_slot_prices')->count());
+        $this->assertDatabaseMissing('venue_schedule_slot_prices', [
+            'venue_id' => $venue->id, 'day_of_week' => 1, 'starts_at' => '07:00:00',
+        ]);
+
+        // Removing all displayed ranges is an intentional empty snapshot.
+        $this->post($url, [
+            'mode' => 'weekly', 'replace_existing' => '1',
+        ])->assertRedirect()->assertSessionHas('status');
+        $this->assertSame([], $grid->editableRanges($venue, $policy, null));
+        $this->assertSame(0, DB::table('venue_schedule_slot_prices')->count());
+    }
+
+    public function test_court_price_snapshot_edit_and_reset_do_not_mutate_imported_source_prices(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $policy = $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $this->actingAs($owner);
+        $url = route('account.venues.tariff-grid.store', $venue->id);
+
+        $this->post($url, [
+            'court_id' => $court->id,
+            'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [
+                [
+                    'days' => [1], 'starts_at' => '07:00', 'ends_at' => '16:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+                [
+                    'days' => [1], 'starts_at' => '16:00', 'ends_at' => '23:30',
+                    'operation' => 'set', 'whole_price_per_step' => '1500',
+                ],
+            ],
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $saved = app(VenueTariffGrid::class)->editableRanges($venue, $policy, $court);
+        $this->assertCount(2, $saved);
+        $this->assertSame('1000', $saved[0]['whole_price_per_step']);
+        $this->assertSame('1500', $saved[1]['whole_price_per_step']);
+
+        $this->post($url, [
+            'court_id' => $court->id, 'mode' => 'weekly', 'replace_existing' => '1',
+        ])->assertRedirect()->assertSessionHas('status');
+        $this->assertSame(0, DB::table('venue_court_manual_slot_prices')->count());
+    }
+
+    public function test_snapshot_validation_error_does_not_delete_existing_tariffs(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $policy = $this->policy($venue, $owner);
+        $this->actingAs($owner);
+        $url = route('account.venues.tariff-grid.store', $venue->id);
+
+        $this->post($url, [
+            'mode' => 'weekly',
+            'ranges' => [[
+                'days' => [1], 'starts_at' => '07:00', 'ends_at' => '08:00',
+                'operation' => 'set', 'whole_price_per_step' => '1000',
+            ]],
+        ])->assertRedirect();
+
+        $this->post($url, [
+            'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [[
+                'days' => [1], 'starts_at' => '07:00', 'ends_at' => '08:00',
+                'operation' => 'set', 'whole_price_per_step' => '100',
+            ]],
+        ])->assertSessionHasErrors('ranges.0.whole_price_per_step');
+
+        $this->assertCount(1, app(VenueTariffGrid::class)->editableRanges($venue, $policy, null));
+        $this->assertDatabaseHas('venue_schedule_slot_prices', [
+            'venue_id' => $venue->id, 'day_of_week' => 1,
+            'starts_at' => '07:00:00', 'whole_price_per_step_minor' => 100000,
+        ]);
+    }
+
     public function test_two_non_overlapping_ranges_save_together_with_a_day_specific_exception(): void
     {
         [$owner, $venue] = $this->ownedVenue();

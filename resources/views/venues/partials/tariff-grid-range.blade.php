@@ -1,3 +1,10 @@
+@php
+    $rangeData = $rangeData ?? [];
+    $selectedDays = array_map('intval', (array) ($rangeData['days'] ?? [1, 2, 3, 4, 5]));
+    $rangeStart = (string) ($rangeData['starts_at'] ?? '07:00');
+    $rangeEnd = (string) ($rangeData['ends_at'] ?? '16:00');
+    $rangeOperation = (string) ($rangeData['operation'] ?? 'set');
+@endphp
 <div class="venue-tariff-grid__panel venue-tariff-grid__range" data-tariff-range-item>
     <div class="venue-tariff-grid__actions" style="justify-content:space-between;align-items:center">
         <h4>Диапазон {{ is_numeric($index) ? ((int) $index + 1) : '__NUMBER__' }}</h4>
@@ -9,7 +16,7 @@
             <div class="venue-tariff-grid__days">
                 @foreach([1=>'Пн',2=>'Вт',3=>'Ср',4=>'Чт',5=>'Пт',6=>'Сб',7=>'Вс'] as $number=>$name)
                     <label>
-                        <input type="checkbox" name="ranges[{{ $index }}][days][]" value="{{ $number }}" @checked($number <= 5)>
+                        <input type="checkbox" name="ranges[{{ $index }}][days][]" value="{{ $number }}" @checked(in_array($number, $selectedDays, true))>
                         {{ $name }}
                     </label>
                 @endforeach
@@ -19,22 +26,22 @@
     <div class="venue-tariff-grid__fields">
         <label>Начало диапазона
             <input type="time" name="ranges[{{ $index }}][starts_at]"
-                value="{{ sprintf('%02d:%02d', intdiv(intdiv(480, $step) * $step, 60), (intdiv(480, $step) * $step) % 60) }}" required step="{{ $step * 60 }}">
+                value="{{ $rangeStart }}" required step="{{ $step * 60 }}">
         </label>
         <label>Конец диапазона
             <input type="time" name="ranges[{{ $index }}][ends_at]"
-                value="{{ sprintf('%02d:%02d', intdiv((intdiv(480, $step) + 2) * $step, 60), ((intdiv(480, $step) + 2) * $step) % 60) }}" required step="{{ $step * 60 }}">
+                value="{{ $rangeEnd }}" required step="{{ $step * 60 }}">
         </label>
         <label>Весь зал, {{ $policy->currency }} / шаг
-            <input name="ranges[{{ $index }}][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать">
+            <input name="ranges[{{ $index }}][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="{{ $rangeData['whole_price_per_step'] ?? '' }}">
         </label>
         <label>Половина, {{ $policy->currency }} / шаг
-            <input name="ranges[{{ $index }}][half_price_per_step]" inputmode="decimal" placeholder="Наследовать">
+            <input name="ranges[{{ $index }}][half_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="{{ $rangeData['half_price_per_step'] ?? '' }}">
         </label>
         <label>Действие
             <select name="ranges[{{ $index }}][operation]">
-                <option value="set">Установить цену</option>
-                <option value="clear">Очистить ручную цену</option>
+                <option value="set" @selected($rangeOperation === 'set')>Установить цену</option>
+                <option value="clear" @selected($rangeOperation === 'clear')>Наследовать — очистить ручную цену</option>
             </select>
         </label>
     </div>

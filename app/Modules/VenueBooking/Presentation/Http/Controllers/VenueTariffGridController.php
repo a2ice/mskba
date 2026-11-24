@@ -54,13 +54,14 @@ final class VenueTariffGridController extends Controller
         $input = $request->validate([
             'court_id' => ['nullable', 'integer', 'min:1'],
             'return_to_schedule' => ['nullable', 'boolean'],
+            'replace_existing' => ['nullable', 'boolean'],
             'mode' => ['required', Rule::in(['weekly', 'date'])],
             'date' => ['required_if:mode,date', 'nullable', 'date_format:Y-m-d'],
             'days' => ['nullable', 'array', 'max:7'],
             'days.*' => ['required', 'integer', 'between:1,7', 'distinct'],
-            'starts_at' => ['required_without:ranges', 'date_format:H:i'],
-            'ends_at' => ['required_without:ranges', 'date_format:H:i'],
-            'operation' => ['required_without:ranges', Rule::in(['set', 'clear'])],
+            'starts_at' => [Rule::requiredIf(fn () => ! $request->boolean('replace_existing') && ! $request->has('ranges')), 'nullable', 'date_format:H:i'],
+            'ends_at' => [Rule::requiredIf(fn () => ! $request->boolean('replace_existing') && ! $request->has('ranges')), 'nullable', 'date_format:H:i'],
+            'operation' => [Rule::requiredIf(fn () => ! $request->boolean('replace_existing') && ! $request->has('ranges')), 'nullable', Rule::in(['set', 'clear'])],
             'whole_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
             'half_price_per_step' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
             'exceptions' => ['nullable', 'array', 'max:100'],
@@ -87,11 +88,13 @@ final class VenueTariffGridController extends Controller
         ]);
 
         [$policy, $court] = $this->context($request, $venue, $access, $input['court_id'] ?? null);
-        $count = isset($input['ranges'])
+        $replace = (bool) ($input['replace_existing'] ?? false);
+        $count = $replace || isset($input['ranges'])
             ? $grid->applyMany(
                 $venue, $policy, $court,
                 $input['mode'], $input['date'] ?? now('Europe/Moscow')->toDateString(),
-                array_values($input['ranges']), $request->user()?->id,
+                array_values($input['ranges'] ?? []), $request->user()?->id,
+                $replace,
             )
             : $grid->apply($venue, $policy, $court, $input, $request->user()?->id);
 

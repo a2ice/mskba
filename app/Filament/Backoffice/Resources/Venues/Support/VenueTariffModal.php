@@ -31,6 +31,7 @@ final class VenueTariffModal
     public static function forVenue(string $name = 'editVenueTariffs'): Action
     {
         return self::base($name)
+            ->fillForm(fn (Venue $record): array => self::initialState($record, null))
             ->label('Тарифная сетка площадки')
             ->modalHeading('Тарифы площадки по дням недели')
             ->visible(fn (?Venue $record): bool => $record !== null && VenueResource::canEdit($record))
@@ -44,6 +45,7 @@ final class VenueTariffModal
     public static function forCourt(Venue $venue, string $name = 'editCourtTariffs'): Action
     {
         return self::base($name)
+            ->fillForm(fn (VenueCourt $record): array => self::initialState($venue, $record))
             ->label('Тарифная сетка')
             ->modalHeading(fn (VenueCourt $record): string => 'Тарифы зала: '.$record->publicName())
             ->visible(fn (VenueCourt $record): bool => VenueResource::canEdit($venue)
@@ -69,23 +71,23 @@ final class VenueTariffModal
             ->stickyModalHeader()
             ->stickyModalFooter()
             ->modalSubmitActionLabel('Сохранить все диапазоны')
-            ->modalDescription('Диапазоны и исключения редактируются прямо здесь. Ручные цены не изменяют импортируемые данные.')
-            ->fillForm(fn (): array => [
-                'mode' => 'weekly',
-                'date' => now('Europe/Moscow')->toDateString(),
-                'ranges' => [
-                    [
-                        'days' => [1, 2, 3, 4, 5],
-                        'starts_at' => '07:00',
-                        'ends_at' => '16:00',
-                        'operation' => 'set',
-                        'whole_price_per_step' => null,
-                        'half_price_per_step' => null,
-                        'exceptions' => [],
-                    ],
-                ],
-            ])
+            ->modalDescription('Сохранённые диапазоны загружаются из базы. Удалённые строки удаляются из ручных тарифов. Пустые цены наследуются; импорт не изменяется.')
             ->schema(self::schema());
+    }
+
+    /** @return array<string, mixed> */
+    public static function initialState(Venue $venue, ?VenueCourt $court, string $mode = 'weekly', ?string $date = null): array
+    {
+        $date ??= now($venue->schedule?->timezone ?: 'Europe/Moscow')->toDateString();
+        $policy = self::policy($venue);
+
+        return [
+            'mode' => $mode,
+            'date' => $date,
+            'ranges' => $policy === null ? [] : app(VenueTariffGrid::class)->editableRanges(
+                $venue, $policy, $court, $mode, $date,
+            ),
+        ];
     }
 
     /** @return list<mixed> */
@@ -107,11 +109,11 @@ final class VenueTariffModal
                         ->visible(fn (Get $get): bool => $get('mode') === 'date'),
                 ]),
             Repeater::make('ranges')
-                ->label('Временные диапазоны')
+                ->label('Сохранённые диапазоны — редактируйте, добавляйте или удаляйте')
                 ->addActionLabel('Добавить диапазон')
                 ->reorderable(false)
-                ->defaultItems(1)
-                ->minItems(1)
+                ->defaultItems(0)
+                ->minItems(0)
                 ->maxItems(16)
                 ->itemLabel(fn (?array $state): string => trim((string) ($state['starts_at'] ?? '')).' — '.trim((string) ($state['ends_at'] ?? '')))
                 ->schema([
@@ -225,7 +227,7 @@ final class VenueTariffModal
             $data['mode'] ?? 'weekly',
             $data['date'] ?? now('Europe/Moscow')->toDateString(),
             array_values($data['ranges'] ?? []),
-            auth('web')->id(),
+            auth('web')->id(), true,
         );
 
         Notification::make()->success()
