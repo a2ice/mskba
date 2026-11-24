@@ -3,7 +3,7 @@
         $title = "{$venue->name}";
         $address = $venue->address;
         $displayAddress = $address?->display ?: $venue->rawAddress;
-        $hasCoordinates = $address?->latitude && $address?->longitude;
+        $hasCoordinates = is_numeric($address?->latitude) && is_numeric($address?->longitude);
         $hasMap = $hasCoordinates && $venue->about->mapApiKey;
         $yandexMapUrl = $displayAddress
             ? 'https://yandex.ru/maps/?text=' . urlencode($displayAddress)
@@ -13,6 +13,45 @@
         $placeholderDateLabel = static fn ($date) => $date->format('d') . ' ' . $shortMonths[(int) $date->month];
         $placeholderWeekdayLabel = static fn ($date) => $shortWeekdays[(int) $date->dayOfWeekIso];
         $legacyBookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
+        $legacyCreateEventUrl = route('events.wizard', array_filter([
+            'venue_id' => $venue->id,
+            'venue_court_id' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null,
+        ]));
+        $legacyAudience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue(\App\Modules\Venue\Domain\Models\Venue::query()->findOrFail($venue->id));
+        $legacyInterestCount = (int) $legacyAudience['total'];
+        $legacyInterestUsers = collect(array_merge($legacyAudience['direct'], $legacyAudience['matched']))
+            ->sortByDesc(fn (array $player): bool => filled($player['avatar']))->values();
+        $legacyCriteriaLabels = [
+            'type' => 'Тип площадки',
+            'environment' => 'Крытый зал или уличный корт',
+            'payment' => 'Платный или бесплатный доступ',
+            'requires_booking' => 'Необходимость предварительной записи',
+            'requires_booking_approval' => 'Подтверждение администратором',
+            'surface' => 'Тип покрытия',
+            'amenities' => 'Удобства',
+            'dimensions' => 'Размеры игровой зоны',
+            'hoops' => 'Количество баскетбольных колец',
+        ];
+        $legacyNearbySimilar = request('nearby') === 'similar';
+        $legacyCriteria = array_values(array_intersect(array_keys($legacyCriteriaLabels),
+            (array) request('criteria', ['type', 'environment', 'payment'])));
+        $legacyNearby = [];
+        $legacyNearbyCards = collect();
+        if ($hasCoordinates) {
+            $nearbyHandler = app(\App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler::class);
+            $latitude = (float) $address->latitude;
+            $longitude = (float) $address->longitude;
+            $legacyNearby = $legacyNearbySimilar
+                ? $nearbyHandler->similar($venue->id, $latitude, $longitude,
+                    $venue->isCourtPage ? (int) $venue->selectedCourt['id'] : null, $legacyCriteria)
+                : $nearbyHandler->handle($venue->id, $latitude, $longitude, 6, 10);
+            if (! $legacyNearbySimilar && $legacyNearby === []) {
+                $legacyNearby = $nearbyHandler->handle($venue->id, $latitude, $longitude, 3);
+            }
+            $legacyNearbyCards = collect(app(\App\Modules\Venue\Application\UseCases\ListVenuesHandler::class)
+                ->handle(null, null, [], null, array_column($legacyNearby, 'id')))->keyBy('id');
+        }
         $favoritesCount = \App\Modules\Favorites\Domain\Models\Favorite::query()
             ->where('entity_type', 'venue')->where('entity_id', $venue->id)
             ->whereNull('trashed_at')->count();
@@ -55,6 +94,11 @@
                         @endif
                     </a>
                 @endforeach
+                @if($hasCoordinates)
+                    <a href="#venue-nearby" class="venue-side-nav__link" data-venue-anchor-link>
+                        <span>Площадки рядом</span>
+                    </a>
+                @endif
             </nav>
         </div>
 
@@ -271,6 +315,7 @@
                                 @endif
                             </p>
                         </div>
+                        @if($venue->isCourtPage && $legacyBookableCourtIds !== [])
                         <div>
                             <span class="venue-hero__detail-label">Занятые слоты</span>
                             <div class="venue-occupancy-calendar" aria-label="Занятость площадки на девять дней">
@@ -310,6 +355,7 @@
                                 @endforeach
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </section>
@@ -611,6 +657,44 @@
                 @endif
             </section>
 
+            <section id="venue-interest" class="venue-show-section">
+                <div class="venue-show-section__heading">
+                    <h2>{{ $legacyInterestCount > 0 ? 'Площадкой интересуются' : 'Играй здесь' }}</h2>
+                </div>
+                @if($legacyInterestCount > 0)
+                    <div class="venue-nearby__interest-avatars" aria-label="Заинтересованные игроки">
+                        @foreach($legacyInterestUsers->take(5) as $player)
+                            <span class="venue-nearby__avatar" title="{{ $player['public'] || $player['is_self'] ? $player['name'] : 'Игрок' }}">
+                                @if(($player['public'] || $player['is_self']) && $player['avatar'])
+                                    <img src="{{ $player['avatar'] }}" alt="{{ $player['name'] }}" loading="lazy">
+                                @elseif($player['public'] || $player['is_self'])
+                                    {{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}
+                                @else
+                                    <i class="ti ti-user" aria-hidden="true"></i>
+                                @endif
+                            </span>
+                        @endforeach
+                    </div>
+                    <p>{{ $legacyInterestCount }} {{ $legacyInterestCount % 100 >= 11 && $legacyInterestCount % 100 <= 14
+                        ? 'игроков' : (match ($legacyInterestCount % 10) {1 => 'игрок', 2, 3, 4 => 'игрока', default => 'игроков'}) }}</p>
+                    <button type="button" class="btn btn--secondary btn--sm" data-venue-interest-count-open>Посмотреть всех</button>
+                    <dialog class="venue-nearby__dialog" data-venue-interest-count-dialog aria-labelledby="venue-interest-count-title">
+                        <header class="venue-nearby__dialog-header">
+                            <h2 id="venue-interest-count-title">Площадкой интересуются</h2>
+                            <button type="button" class="btn btn--secondary btn--sm" data-venue-nearby-close aria-label="Закрыть"><i class="ti ti-x"></i></button>
+                        </header>
+                        <p>{{ $legacyInterestCount }} игроков</p>
+                        <div class="venue-nearby__interest-list">
+                            @foreach($legacyInterestUsers as $player)
+                                <p>{{ $player['public'] || $player['is_self'] ? $player['name'] : 'Игрок' }}</p>
+                            @endforeach
+                        </div>
+                    </dialog>
+                @else
+                    <p>Добавьте площадку в избранное, чтобы следить за новыми играми.</p>
+                    @include('components.venue-favorite-follow', ['buttonClass' => 'btn btn--primary', 'eventUrl' => $legacyCreateEventUrl])
+                @endif
+            </section>
             <section id="schedule" class="venue-show-section">
                 <div class="venue-show-section__heading">
                     <div>
@@ -785,6 +869,66 @@
                     </div>
                 @endif
             </section>
+
+            @if($hasCoordinates)
+                <section id="venue-nearby" class="venue-show-section">
+                    <div class="venue-show-section__heading"><h2>Площадки рядом</h2></div>
+                    <div class="venue-nearby__toolbar" aria-label="Режим поиска площадок">
+                        <a class="btn {{ ! $legacyNearbySimilar ? 'btn--primary' : 'btn--secondary' }}"
+                            href="{{ request()->fullUrlWithQuery(['nearby' => 'all']) }}#venue-nearby"
+                            @if(! $legacyNearbySimilar) aria-current="true" @endif>Все</a>
+                        <a class="btn {{ $legacyNearbySimilar ? 'btn--primary' : 'btn--secondary' }}"
+                            href="{{ request()->fullUrlWithQuery(['nearby' => 'similar']) }}#venue-nearby"
+                            @if($legacyNearbySimilar) aria-current="true" @endif>Похожие</a>
+                        @if($legacyNearbySimilar)
+                            <button type="button" class="btn btn--secondary" data-venue-nearby-criteria-open>
+                                <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i>Критерии сходства
+                            </button>
+                        @endif
+                    </div>
+                    @if($legacyNearby !== [])
+                        <div class="venue-nearby__cards">
+                            @foreach($legacyNearby as $item)
+                                @if($legacyNearbyCards->has($item['id']))
+                                    @include('theme::pages.venues.partials.catalog-item', [
+                                        'venue' => $legacyNearbyCards->get($item['id']),
+                                        'mode' => 'card',
+                                        'cardUrl' => $item['url'],
+                                        'distanceMeters' => $item['distance_meters'],
+                                        'cardCourtName' => $item['court_name'] ?? null,
+                                    ])
+                                @endif
+                            @endforeach
+                        </div>
+                    @else
+                        <p>{{ $legacyNearbySimilar
+                            ? 'Похожие площадки не найдены. Измените критерии сходства.'
+                            : 'Другие площадки не найдены.' }}</p>
+                    @endif
+                </section>
+                @if($legacyNearbySimilar)
+                    <dialog class="venue-nearby__dialog" data-venue-nearby-criteria-dialog aria-labelledby="venue-nearby-criteria-title">
+                        <header class="venue-nearby__dialog-header">
+                            <h2 id="venue-nearby-criteria-title">Критерии сходства</h2>
+                            <button type="button" class="btn btn--secondary btn--sm" data-venue-nearby-close aria-label="Закрыть"><i class="ti ti-x"></i></button>
+                        </header>
+                        <form method="get" action="{{ request()->url() }}#venue-nearby">
+                            <input type="hidden" name="nearby" value="similar">
+                            <input type="hidden" name="criteria[]" value="">
+                            <div class="venue-nearby__criteria">
+                                <p>Выберите признаки, которые должны совпадать у одной и той же игровой зоны.</p>
+                                @foreach($legacyCriteriaLabels as $key => $label)
+                                    <label class="venue-nearby__check">
+                                        <input type="checkbox" name="criteria[]" value="{{ $key }}" @checked(in_array($key, $legacyCriteria, true))>
+                                        {{ $label }}
+                                    </label>
+                                @endforeach
+                            </div>
+                            <footer class="venue-nearby__dialog-actions"><button type="submit" class="btn btn--primary">Применить</button></footer>
+                        </form>
+                    </dialog>
+                @endif
+            @endif
 
             @if($venue->fullDescription)
                 <section id="venue-full-description" class="venue-show-section" aria-labelledby="venue-full-description-title">
