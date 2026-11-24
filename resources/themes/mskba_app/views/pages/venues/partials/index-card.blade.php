@@ -22,9 +22,12 @@
             <p class="app-venues-catalog__address">{{ $venue->displayAddress }}</p>
         @endif
         @if(isset($distanceMeters))
-        <p class="app-venues-catalog__distance"><svg aria-hidden="true" width="16" height="16"><use href="#pin"/></svg> {{ number_format($distanceMeters / 1000, 1, ',', ' ') }} км от площадки</p>
-    @endif
-    @if($venue->shortDescription)
+            <p class="app-venues-catalog__distance"><svg aria-hidden="true" width="16" height="16"><use href="#pin"/></svg> {{ number_format($distanceMeters / 1000, 1, ',', ' ') }} км от площадки</p>
+        @endif
+        @if(!empty($cardCourtName))
+            <p class="app-venues-catalog__matched-court">{{ $cardCourtName }}</p>
+        @endif
+        @if($venue->shortDescription)
             <p class="app-venues-catalog__description">{{ $venue->shortDescription }}</p>
         @endif
         <p class="app-venues-catalog__access">
