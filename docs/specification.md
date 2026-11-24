@@ -277,6 +277,8 @@ applyVenuePhotoCrop под транзакцией и блокировкой пр
 - `VenueStatusEnum` - жизненный статус записи: `unconfirmed`, `confirmed`, `blocked`;
 - `VenueTypeEnum` - тип площадки.
 
+В публичном каталоге и поиске фильтры `street_court` и `sports_hall` означают наличие не удалённого корта с `VenueCourtEnvironmentEnum::OUTDOOR` и `INDOOR` соответственно, а остальные значения фильтруют паспортный `venues.type`. Выдача сохраняет фактический тип площадки, не дублирует её по числу кортов. Если одновременно выбраны условия доступа, тип игрового пространства и эффективные условия должны совпадать на одном доступном корте. Правило применяется до пагинации и подсчёта выдачи; административный классификатор и SEO-адреса не меняются.
+
 Удаление площадок выполняется через `softDeletes()` и поле `deleted_at`, а пояснение к жизненному статусу, например причина блокировки, хранится в `venues.status_info`.
 
 `Venue` имеет relation `creatorActor()` к `Actor` по `created_by_actor_id`, relation `location()` к `Location` по `location_id`, relation `canonicalVenue()` к канонической площадке по `canonical_venue_id`, relation `moderationRequests()` к заявкам модерации и relations `revisions()`/`draftRevision()` к предлагаемым изменениям подтверждённой площадки.

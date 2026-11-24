@@ -108,6 +108,7 @@ final readonly class SearchVenuesHandler
     private function resolve(?User $user, ?Actor $actor, array $parameters): array
     {
         $venues = collect($this->cache->documents());
+        $environment = VenueTypeEnum::tryFrom((string) ($parameters['type'] ?? ''))?->discoveryEnvironment();
 
         if ($parameters['confirmed_only']) {
             $venues = $venues->where('status_slug', VenueStatusEnum::CONFIRMED->value)
@@ -121,7 +122,10 @@ final readonly class SearchVenuesHandler
             ->when($parameters['venue_id'], fn (Collection $items, int $value) => $items->where('id', $value))
             ->when($parameters['city'] !== '', fn (Collection $items) => $items->where('city', $parameters['city']))
             ->when($parameters['street'] !== '', fn (Collection $items) => $items->where('street', $parameters['street']))
-            ->when($parameters['type'], fn (Collection $items, string $value) => $items->where('type_slug', $value))
+            ->when($parameters['type'], fn (Collection $items, string $value) => $environment === null
+                ? $items->where('type_slug', $value)
+                : $items->filter(fn (array $venue): bool =>
+                    in_array($environment->value, $venue['court_environments'] ?? [], true)))
             ->when($parameters['status'], fn (Collection $items, string $value) => $items->where('status_slug', $value))
             ->when($parameters['operational_status'], fn (Collection $items, string $value) => $items->where('operational_status', $value))
             ->when($parameters['metro_station_id'], fn (Collection $items, int $value) => $items->filter(
@@ -132,7 +136,7 @@ final readonly class SearchVenuesHandler
             ->when(
                 $parameters['requires_payment'] !== null || $parameters['requires_booking_approval'] !== null,
                 fn (Collection $items): Collection => $items
-                    ->map(function (array $venue) use ($parameters): array {
+                    ->map(function (array $venue) use ($parameters, $environment): array {
                         $courtAccess = $venue['court_access'] ?? [];
                         $courts = collect(array_merge(
                             $courtAccess['free'] ?? [],
@@ -140,7 +144,11 @@ final readonly class SearchVenuesHandler
                             $courtAccess['unknown'] ?? [],
                         ))->unique('court_id');
 
-                        $matched = $courts->first(function (array $court) use ($courtAccess, $parameters): bool {
+                        $matched = $courts->first(function (array $court) use ($courtAccess, $parameters, $environment, $venue): bool {
+                            if ($environment !== null && ($venue['court_environments'][$court['court_id']] ?? null) !== $environment->value) {
+                                return false;
+                            }
+
                             $payment = $parameters['requires_payment'];
                             $approval = $parameters['requires_booking_approval'];
                             $paidCourtIds = array_column($courtAccess['paid'] ?? [], 'court_id');
