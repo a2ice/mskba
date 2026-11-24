@@ -16,6 +16,8 @@
         @error('operational_status')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
+    <p class="account-venue-schedule__hint">В поле «До» 00:00 — конец текущего дня (24:00), включая последний временной слот.</p>
+
     <div class="account-venue-schedule__bulk-actions mb-4">
         <button type="button" class="btn btn--secondary btn--sm" data-venue-schedule-apply-all>Применить первый заполненный день ко всем</button>
         <button type="button" class="btn btn--secondary btn--sm" data-venue-schedule-reset-all>Сбросить у всех</button>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Application\Services\VenueScheduleClock;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -254,7 +255,7 @@ final class VenueCourtSettingsController extends Controller
         }
 
         foreach ($data['weekly_intervals'] ?? [] as $interval) {
-            if ($interval['starts_at'] >= $interval['ends_at']) {
+            if (! VenueScheduleClock::isOrdered($interval['starts_at'], $interval['ends_at'])) {
                 throw ValidationException::withMessages([
                     'weekly_intervals' => 'Конец рабочего интервала должен быть позже начала.',
                 ]);
@@ -262,7 +263,7 @@ final class VenueCourtSettingsController extends Controller
         }
         foreach ($data['exceptions'] ?? [] as $exception) {
             if (! $exception['is_closed'] && (empty($exception['starts_at'])
-                || empty($exception['ends_at']) || $exception['starts_at'] >= $exception['ends_at'])) {
+                || empty($exception['ends_at']) || ! VenueScheduleClock::isOrdered($exception['starts_at'], $exception['ends_at']))) {
                 throw ValidationException::withMessages([
                     'exceptions' => 'У исключения часы должны быть заданы корректно.',
                 ]);

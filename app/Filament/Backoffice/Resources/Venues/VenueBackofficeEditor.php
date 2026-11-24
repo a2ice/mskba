@@ -14,6 +14,7 @@ use App\Filament\Backoffice\Resources\Venues\Support\VenueRentalPolicyEditor;
 use App\Modules\Rewards\Application\Services\VenueRentalCashbackSettings;
 use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
 use App\Modules\Venue\Application\Services\VenueCourtConfigurator;
+use App\Modules\Venue\Application\Services\VenueScheduleClock;
 use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Application\Services\VenueProximityService;
@@ -448,11 +449,11 @@ final class VenueBackofficeEditor
     {
         $start = $this->time($row['starts_at'] ?? '', $field);
         $end = $this->time($row['ends_at'] ?? '', $field);
-        if ($start >= $end) {
-            throw ValidationException::withMessages([$field => 'Конец интервала должен быть позже начала.']);
+        if (! VenueScheduleClock::isOrdered($start, $end)) {
+            throw ValidationException::withMessages([$field => 'Конец интервала должен быть позже начала. 00:00 в поле «До» — конец текущего дня.']);
         }
 
-        return [$start, $end];
+        return [$start, VenueScheduleClock::end($end)];
     }
 
     /** @param array<int, array{0:string,1:string}> $ranges */

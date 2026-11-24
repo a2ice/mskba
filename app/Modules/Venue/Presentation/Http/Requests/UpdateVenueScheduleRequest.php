@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Presentation\Http\Requests;
 
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+use App\Modules\Venue\Application\Services\VenueScheduleClock;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -102,14 +103,14 @@ class UpdateVenueScheduleRequest extends FormRequest
                 continue;
             }
 
-            if (is_string($startsAt) && is_string($endsAt) && $startsAt >= $endsAt) {
+            if (is_string($startsAt) && is_string($endsAt) && ! VenueScheduleClock::isOrdered($startsAt, $endsAt)) {
                 $validator->errors()->add("$path.$index.ends_at", 'Конец интервала должен быть позже начала.');
 
                 continue;
             }
 
             if (is_string($startsAt) && is_string($endsAt)) {
-                $complete[] = ['index' => $index, 'starts_at' => $startsAt, 'ends_at' => $endsAt];
+                $complete[] = ['index' => $index, 'starts_at' => $startsAt, 'ends_at' => VenueScheduleClock::end($endsAt)];
             }
         }
 

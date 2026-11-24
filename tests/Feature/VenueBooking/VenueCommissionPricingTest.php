@@ -215,6 +215,26 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertSame(220000, $this->quote($venue, $court)->amountMinor);
     }
 
+    public function test_manually_configured_midnight_close_keeps_last_half_hour_available(): void
+    {
+        [, $venue, $court] = $this->scenario();
+        $date = CarbonImmutable::now('Europe/Moscow')->addDay()->startOfDay();
+        $venue->schedule()->firstOrFail()->intervals()->create([
+            'day_of_week' => $date->dayOfWeekIso,
+            'starts_at' => '07:00',
+            'ends_at' => '00:00',
+            'sort_order' => 0,
+        ]);
+
+        $schedule = app(PublicVenueDaySchedule::class)->forDate(
+            $venue, $court, $date->toDateString(),
+        );
+        $lastSlot = collect($schedule['slots'])->firstWhere('starts_at', '23:30');
+        $this->assertNotNull($lastSlot);
+        $this->assertSame('available', $lastSlot['status']);
+        $this->assertSame('24:00', $lastSlot['ends_at']);
+    }
+
     public function test_public_day_prices_include_commissions_and_range_preview_charges_fixed_fee_once(): void
     {
         [$admin, $venue, $court] = $this->scenario();

@@ -173,6 +173,38 @@ final class VenueCourtDetailInheritanceTest extends TestCase
         $this->assertSame('09:00', substr((string) $hours->intervals($venue, $court, $monday)->first()->starts_at, 0, 5));
     }
 
+    public function test_midnight_parent_hours_remain_available_through_last_slot_for_its_court(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $schedule = $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
+        $schedule->intervals()->create([
+            'day_of_week' => 1, 'starts_at' => '07:00', 'ends_at' => '00:00', 'sort_order' => 0,
+        ]);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $monday = CarbonImmutable::parse('2026-10-26 23:30:00', 'Europe/Moscow');
+
+        $hours = app(EffectiveVenueHours::class);
+        $this->assertSame('24:00', $hours->intervals($venue, $court, $monday)->last()->ends_at);
+
+        $court->schedule()->create([
+            'weekly_intervals' => [[
+                'day_of_week' => 1, 'starts_at' => '16:00', 'ends_at' => '00:00',
+            ]],
+        ]);
+        $court->unsetRelation('schedule');
+        $this->assertSame('24:00', $hours->intervals($venue, $court, $monday)->last()->ends_at);
+
+        $exception = $schedule->exceptions()->create(['date' => '2026-10-26', 'is_closed' => false]);
+        $exception->intervals()->create([
+            'starts_at' => '18:00', 'ends_at' => '00:00', 'sort_order' => 0,
+        ]);
+        $venue->unsetRelation('schedule');
+        $effective = $hours->intervals($venue, $court, $monday);
+        $this->assertCount(1, $effective);
+        $this->assertSame('18:00', $effective->first()->starts_at);
+        $this->assertSame('24:00', $effective->first()->ends_at);
+    }
+
     public function test_parent_shortened_hours_exception_limits_court_override(): void
     {
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
