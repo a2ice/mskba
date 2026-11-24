@@ -11,12 +11,25 @@
 <dialog class="mskba-modal app-context-help-dialog" data-context-help-dialog
         data-help-url="{{ route('faq.help-content') }}"
         data-question-url="{{ route('faq.questions.store') }}"
+        data-help-page-key="{{ app(\App\Presentation\Navigation\PageFaqContextResolver::class)->pageKey() }}"
         aria-labelledby="context-help-title">
     <header class="mskba-modal__header app-context-dialog__header">
         <h2 id="context-help-title">Помощь и FAQ</h2>
         <button type="button" data-context-help-close aria-label="Закрыть">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll app-context-help__body">
+        <section class="app-context-help__page" data-help-page hidden aria-label="Справка по текущей странице">
+            <h3 class="app-context-help__page-heading" data-help-page-title></h3>
+            <div class="app-context-help__tabs" role="tablist" aria-label="Разделы справки">
+                <button type="button" role="tab" aria-selected="true" aria-controls="context-page-help-panel" data-help-page-tab="about">Что это за страница</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="context-page-help-panel" data-help-page-tab="features" tabindex="-1">Возможности</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="context-page-help-panel" data-help-page-tab="related" tabindex="-1">Связанные материалы</button>
+            </div>
+            <div class="app-context-help__page-content app-context-help__rendered" id="context-page-help-panel"
+                 data-help-page-content role="tabpanel" tabindex="0"></div>
+            <button type="button" class="app-context-help__catalog-link" data-help-page-catalog>Перейти ко всем вопросам FAQ</button>
+        </section>
+        <div data-help-catalog>
         <div class="app-context-help__lookup" data-help-combobox>
             <input type="text" id="context-help-section" data-help-search
                    role="combobox" aria-label="Выбрать раздел FAQ" aria-autocomplete="list"
@@ -32,6 +45,7 @@
         </div>
         <nav class="app-context-help__breadcrumbs" aria-label="Навигация внутри FAQ" data-help-breadcrumbs></nav>
         <div class="app-context-help__articles" data-help-articles role="status" aria-live="polite">Загружаем ответы…</div>
+        </div>
         <details class="app-context-help__ask" data-help-ask>
             <summary>Задать вопрос</summary>
             <div class="app-context-help__ask-body">
