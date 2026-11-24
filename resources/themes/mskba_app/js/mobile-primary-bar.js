@@ -224,6 +224,12 @@ if (dock) {
             .forEach(link => link.addEventListener('click', () => close()));
     }
 
+    // The standard subscription wizard is a native top-layer dialog. Release
+    // the dock focus trap before Vue opens it; never create a second wizard.
+    filterPanel?.addEventListener('click', event => {
+        if (event.target.closest?.('[data-subscription-create]')) close(false);
+    });
+
     let backdropPointer = null;
     backdrop?.addEventListener('pointerdown', event => {
         backdropPointer = event.target === backdrop ? event.pointerId : null;
