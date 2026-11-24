@@ -58,6 +58,51 @@ final readonly class FindNearbyVenuesHandler
         });
     }
 
+    public function similar(int $venueId, float $latitude, float $longitude, ?int $courtId = null, array $criteria = ['type', 'environment', 'payment']): array
+    {
+        $documents = collect($this->cache->documents())->keyBy('id');
+        $source = $documents->get($venueId);
+        if ($source === null) {
+            return [];
+        }
+        $zones = static function (array $document): array {
+            $result = [];
+            foreach (['free', 'paid', 'unknown'] as $payment) {
+                foreach ($document['court_access'][$payment] ?? [] as $zone) {
+                    $zone['payment'] = $payment;
+                    $zone['environment'] = $document['court_environments'][$zone['court_id']] ?? null;
+                    $result[] = $zone;
+                }
+            }
+            return $result;
+        };
+        $sources = array_filter($zones($source), fn ($zone) => $courtId === null || $zone['court_id'] === $courtId);
+        $matches = [];
+        foreach ($documents as $candidate) {
+            if ((int) $candidate['id'] === $venueId || !($candidate['is_published'] ?? false)
+                || ($candidate['status_slug'] ?? null) !== VenueStatusEnum::CONFIRMED->value
+                || !is_numeric($candidate['latitude'] ?? null) || !is_numeric($candidate['longitude'] ?? null)
+                || (in_array('type', $criteria, true) && $candidate['type_slug'] !== $source['type_slug'])) {
+                continue;
+            }
+            foreach ($zones($candidate) as $zone) {
+                foreach ($sources as $origin) {
+                    foreach (['environment', 'payment', 'requires_booking', 'requires_booking_approval'] as $key) {
+                        if (in_array($key, $criteria, true) && ($origin[$key] === null || $origin[$key] === 'unknown' || $origin[$key] !== $zone[$key])) {
+                            continue 2;
+                        }
+                    }
+                    $matches[] = ['id' => $candidate['id'], 'name' => $candidate['name'].' — '.$zone['name'],
+                        'url' => $zone['url'], 'distance_meters' => $this->haversineMeters($latitude, $longitude, (float) $candidate['latitude'], (float) $candidate['longitude'])];
+                    continue 3;
+                }
+            }
+        }
+        $sorted = collect($matches)->sortBy('distance_meters')->values();
+        $near = $sorted->where('distance_meters', '<=', 10000);
+        return ($near->isEmpty() ? $sorted->take(3) : $near->take(6))->values()->all();
+    }
+
     private function haversineMeters(float $latA, float $lonA, float $latB, float $lonB): int
     {
         $earthRadius = 6_371_000;
