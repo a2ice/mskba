@@ -19,6 +19,15 @@ final class ContentBodySanitizer
         'content-image',
         'content-image--wide',
         'content-table',
+        'content-gallery',
+        'content-gallery__item',
+        'content-lightbox',
+        'd-flex',
+        'flex-wrap',
+        'gap-2',
+        'gap-3',
+        'gap-4',
+        'img-fluid',
     ];
 
     private HtmlSanitizer $sanitizer;
@@ -49,7 +58,12 @@ final class ContentBodySanitizer
             ->allowElement('blockquote', ['class'])
             ->allowElement('pre', ['class'])
             ->allowElement('code', ['class'])
-            ->allowElement('a', ['href', 'title', 'target', 'rel', 'class'])
+            ->allowElement('a', [
+                'href', 'title', 'target', 'rel', 'class',
+                // Explicit safe UI actions, never arbitrary event handlers.
+                'data-venue-play-open', 'data-venue-rental-open',
+                'data-venue-lightbox', 'data-lightbox',
+            ])
             ->allowElement('hr')
             ->allowElement('figure', ['class'])
             ->allowElement('figcaption', ['class'])

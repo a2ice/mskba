@@ -26,6 +26,7 @@
         'new' => 'Сначала новые',
     ];
     $categorySidebarLabel = 'Фильтры площадок';
+    $categoryResultTotal = $total;
 @endphp
 @extends('theme::layouts.category')
 
@@ -42,6 +43,71 @@
                     <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание">
                 </label>
                 @include('components.venue-catalog-nearby-filter', ['scope' => 'app'])
+                <div data-catalog-range-filter>
+                    <label class="check-label">
+                        <input type="checkbox" name="has_upcoming_events" value="1" data-catalog-range-toggle
+                            aria-controls="venue-event-days-filter" @checked($filters['has_upcoming_events'] ?? false)>
+                        <span>Есть ближайшие мероприятия</span>
+                    </label>
+                    <label class="app-player-workspace__field app-player-workspace__range-field" for="venue-event-days"
+                        id="venue-event-days-filter" data-catalog-range-options @if(!($filters['has_upcoming_events'] ?? false)) hidden @endif>
+                        <span class="app-player-workspace__range-heading">Период, дней <output for="venue-event-days" data-catalog-range-value>{{ $filters['event_days'] ?? 7 }}</output></span>
+                        <input id="venue-event-days" type="range" name="event_days" min="1" max="14" step="1"
+                            value="{{ $filters['event_days'] ?? 7 }}" data-catalog-range-input @disabled(!($filters['has_upcoming_events'] ?? false))>
+                        <span class="app-player-workspace__range-bounds" aria-hidden="true"><span>1</span><span>14</span></span>
+                    </label>
+                </div>
+                <div class="app-venues-catalog__interest-filter" data-venue-interest-filter>
+                    <div class="app-venues-catalog__interest-label">
+                        <label class="check-label">
+                            <input type="checkbox" name="my_interests" value="1" data-venue-interest-toggle
+                                @checked($filters['my_interests'] ?? false) @guest disabled @endguest>
+                            <span>Мои интересы</span>
+                        </label>
+                        <button class="app-venues-catalog__interest-help" type="button"
+                            data-venue-interest-help aria-expanded="false"
+                            aria-controls="venue-interest-help" aria-label="Что такое мои интересы?">?</button>
+                        <span class="app-venues-catalog__interest-tooltip" id="venue-interest-help"
+                            role="tooltip" hidden>Показывать площадки, подходящие под мои сохранённые интересы. Без выбора конкретного интереса учитываются все активные.</span>
+                    </div>
+                    @guest
+                        <button type="button" class="app-venues-catalog__interest-login" data-auth-trigger>
+                            Войдите, чтобы подобрать площадки по своим интересам
+                        </button>
+                    @else
+                        <div class="app-venues-catalog__interest-options" data-venue-interest-options
+                             @unless($filters['my_interests'] ?? false) hidden @endunless>
+                            <label for="venue-my-interest-select"><span>Выберите интерес</span>
+                                <span class="select-control">
+                                    <select id="venue-my-interest-select" name="interest_id" data-venue-interest-select
+                                            @unless($filters['my_interests'] ?? false) disabled @endunless>
+                                        <option value="">Не выбрано</option>
+                                        @foreach($myInterests as $interest)
+                                            <option value="{{ $interest->id }}"
+                                                @selected((int) ($filters['interest_id'] ?? 0) === (int) $interest->id)>
+                                                {{ $interest->name ?: ($interest->venue?->name ?? 'Интерес №'.$interest->id) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </span>
+                            </label>
+                            <div class="app-venues-catalog__interest-create-row">
+                                <button type="button" class="app-venues-catalog__interest-create"
+                                        data-subscription-create>+ Добавить интерес</button>
+                                <button class="app-venues-catalog__interest-help" type="button"
+                                    data-venue-interest-help aria-expanded="false"
+                                    aria-controls="venue-interest-create-help"
+                                    aria-label="Как добавить интерес?">?</button>
+                                <span class="app-venues-catalog__interest-tooltip" id="venue-interest-create-help"
+                                      role="tooltip" hidden>Создайте свою подборку площадок по желаемым условиям — например, месту, формату и удобствам.</span>
+                            </div>
+                            @if($myInterests->isEmpty())
+                                <p class="app-venues-catalog__interest-empty">Пока нет сохранённых интересов. Добавьте первый, чтобы получить подборку.</p>
+                            @endif
+                        </div>
+                    @endguest
+                </div>
                 <label><span>Тип площадки</span>
                     <span class="select-control"><select name="type"><option value="">Все типы</option>
                         @foreach($types as $type)
@@ -64,20 +130,6 @@
                         <option value="approval" @selected(($filters['access'] ?? '') === 'approval')>По подтверждению</option>
                     </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                 </label>
-                <div data-catalog-range-filter>
-                    <label class="check-label">
-                        <input type="checkbox" name="has_upcoming_events" value="1" data-catalog-range-toggle
-                            aria-controls="venue-event-days-filter" @checked($filters['has_upcoming_events'] ?? false)>
-                        <span>Есть ближайшие мероприятия</span>
-                    </label>
-                    <label class="app-player-workspace__field app-player-workspace__range-field" for="venue-event-days"
-                        id="venue-event-days-filter" data-catalog-range-options @if(!($filters['has_upcoming_events'] ?? false)) hidden @endif>
-                        <span class="app-player-workspace__range-heading">Период, дней <output for="venue-event-days" data-catalog-range-value>{{ $filters['event_days'] ?? 7 }}</output></span>
-                        <input id="venue-event-days" type="range" name="event_days" min="1" max="14" step="1"
-                            value="{{ $filters['event_days'] ?? 7 }}" data-catalog-range-input @disabled(!($filters['has_upcoming_events'] ?? false))>
-                        <span class="app-player-workspace__range-bounds" aria-hidden="true"><span>1</span><span>14</span></span>
-                    </label>
-                </div>
                 <div class="app-venues-catalog__filter-actions">
                     <button class="button primary" type="submit">Применить</button>
                 </div>

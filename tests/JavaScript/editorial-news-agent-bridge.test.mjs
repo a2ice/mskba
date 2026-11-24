@@ -29,3 +29,13 @@ test('pending is not delivered, mismatch fails closed', () => {
     assert.equal(delivery({ ...item, vk_publication: { ...item.vk_publication, status: 'unknown' } }, selection), 'failed');
     assert.throws(() => verifySelection({ ...item, telegram_publications: [{ chat_id: 8 }] }, selection));
 });
+
+
+test('optional SEO fields are accepted and constrained', () => {
+    const valid = { alias: 'basketball', title: 'Basketball', summary: 'News', content: 'Text',
+        cover: 'ops/editorial-news/covers/news.jpg', telegram_chat_titles: [], vk_group_id: null,
+        meta_title: 'SEO headline', meta_description: 'Readable summary', meta_keywords: 'basketball, Moscow' };
+    assert.equal(validatePlan(valid).meta_title, 'SEO headline');
+    assert.throws(() => validatePlan({ ...valid, meta_description: 'x'.repeat(321) }), /Invalid meta_description/);
+    assert.throws(() => validatePlan({ ...valid, meta_keywords: 7 }), /Invalid meta_keywords/);
+});

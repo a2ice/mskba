@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Application\UseCases;
 
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\Cursor;
@@ -15,14 +16,20 @@ final class ListPublicVenuesHandler
      */
     public function handle(int $limit, ?Cursor $cursor = null, array $filters = []): CursorPaginator
     {
+        $environment = VenueTypeEnum::tryFrom((string) ($filters['type'] ?? ''))?->discoveryEnvironment();
+
         $query = $this->publicQuery()
-            ->when($filters['type'] ?? null, fn (Builder $q, string $type): Builder => $q->where('type', $type))
+            ->when($filters['type'] ?? null, fn (Builder $q, string $type): Builder => $q->whereDiscoveryType($type))
             ->when($filters['operational_status'] ?? null, fn (Builder $q, string $status): Builder => $q->where('operational_status', $status))
             // Resolve inherited policies in SQL *before* cursor pagination;
             // a venue can qualify through a single matching open court.
             ->when($filters['access'] ?? null, fn (Builder $q, string $access): Builder => $q
                 ->where('venues.operational_status', 'active')
-                ->whereHas('courts', function (Builder $courts) use ($access): void {
+                ->whereHas('courts', function (Builder $courts) use ($access, $environment): void {
+                    if ($environment !== null) {
+                        $courts->where('environment', $environment->value);
+                    }
+
                     $courts->where(function (Builder $state): void {
                         $state->whereNull('operational_status')->orWhere('operational_status', 'active');
                     });

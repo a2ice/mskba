@@ -208,6 +208,10 @@ jobs:
             $COMPOSE run -T --rm phpfpm php artisan storage:link </dev/null
             $COMPOSE run -T --rm phpfpm php artisan migrate --force </dev/null
             $COMPOSE run -T --rm phpfpm php artisan db:seed --class='Database\Seeders\GeographySeeder' --force </dev/null
+            # Load the new catalog before seeding, even when an older config cache exists.
+            $COMPOSE run -T --rm phpfpm php artisan config:clear </dev/null
+            # Publish initial page-specific FAQ material; never overwrite existing edits.
+            $COMPOSE run -T --rm phpfpm php artisan db:seed --class='Database\Seeders\PageFaqContentSeeder' --force </dev/null
             $COMPOSE run -T --rm phpfpm php artisan telegram:sync-profile-avatars --missing </dev/null
             $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
@@ -479,6 +483,31 @@ jobs:
             touch "$DIR/RELEASE_COMPLETE"
             chmod 600 "$DIR/RELEASE_COMPLETE"
             echo 'CUTOVER_RELEASE_VERIFIED=true'
+
+
+      - name: Record verified production environment checkpoint
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          VERIFIED_SHA: ${{ github.sha }}
+          CHECKPOINT_RUN: ${{ github.run_id }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: VERIFIED_SHA,CHECKPOINT_RUN
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'APP_URL=https://mskba.ru' .env
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            # Host deploy need not belong to www-data. Use the existing root container
+            # only to prepare this private directory, with the host UID as writer.
+            $COMPOSE exec -T --user 0:0 phpfpm install -d -m 2750 -o "$(id -u)" -g www-data storage/app/private/environment-checkpoints
+            test -w storage/app/private/environment-checkpoints
+            python3 scripts/environment-state.py record production "$VERIFIED_SHA" "$CHECKPOINT_RUN"
+            $COMPOSE exec -T --user www-data phpfpm test -r storage/app/private/environment-checkpoints/latest.json
 
 
   publish-first-system-update:

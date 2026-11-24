@@ -34,6 +34,14 @@ final readonly class ConfirmVenueBookingHandler
         ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $expectedVersion): VenueBooking {
             $this->authorization->assertCanConfirmBooking($actor, $venue, $booking);
             $this->lifecycle->confirm($booking, $actor, CarbonImmutable::now(), $expectedVersion);
+            if ($booking->event_time_sync_version !== null && $booking->event_id !== null) {
+                $event = \App\Modules\Event\Domain\Models\Event::query()
+                    ->whereKey($booking->event_id)->where('booking_id', $booking->id)->lockForUpdate()->first();
+                if ($event !== null && $event->participation_confirmation_version === $booking->event_time_sync_version) {
+                    app(\App\Modules\Event\Application\Services\EventTimeComment::class)
+                        ->confirmFromRental($event, $booking->starts_at, $booking->ends_at, $actor);
+                }
+            }
             $this->outbox->record($booking->id, VenueBookingConfirmed::class);
 
             return $booking->fresh('transitions');

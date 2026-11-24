@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             $this->call(SuperadminSeeder::class);
             $this->call(GeographySeeder::class);
             $this->call(FaqContentSeeder::class);
+            $this->call(PageFaqContentSeeder::class);
             $this->call(MoscowMetroSeeder::class);
         });
     }

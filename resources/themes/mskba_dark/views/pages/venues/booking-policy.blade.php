@@ -30,6 +30,7 @@
 @endsection
 
 @section('section-content')
+    @if($policy)<p><a href="{{ route('account.venues.tariff-grid.edit', $venue->id) }}">Тарифная сетка по времени — все залы, диапазоны и исключения</a></p>@endif
     @if(app(\App\Modules\VenueBooking\Application\Services\VenueSpecialTermsManager::class)->canManage(auth()->user(), $venue))
         <p><a href="{{ route('account.venues.special-terms.index', $venue->id) }}">Специальные условия</a></p>
     @endif
@@ -106,15 +107,5 @@
             <p><a href="{{ route('account.venues.invoice-templates.index', $venue->id) }}">Шаблоны счетов аренды</a></p>
             <button class="btn btn--primary btn--sm" type="submit">Опубликовать новую версию</button>
         </div></form>
-        @if($policy)
-            @include('theme::partials.venues.calendar-price-editor', [
-                'calendarPrices' => $venue->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
-                'calendarStoreUrl' => route('account.venues.calendar-prices.store', $venue->id),
-                'calendarDeleteUrl' => route('account.venues.calendar-prices.destroy', [$venue->id, '__PRICE__']),
-                'calendarStep' => $policy->time_step_minutes,
-                'calendarCurrency' => $policy->currency,
-                'calendarId' => 'venue-calendar',
-                'amounts' => $amounts,
-            ])
-        @endif
+    
 @endsection

@@ -13,6 +13,7 @@
     $canonicalUrl = $leagues->currentPage() > 1 ? route('leagues.index', ['page' => $leagues->currentPage()]) : route('leagues.index');
     $paginationPrevUrl = $leagues->previousPageUrl();
     $paginationNextUrl = $leagues->nextPageUrl();
+    $categoryResultTotal = $leagues->total();
 @endphp
 @extends('theme::layouts.category')
 

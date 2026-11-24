@@ -14,6 +14,7 @@
     $paginationPrevUrl = $sections->previousPageUrl();
     $paginationNextUrl = $sections->nextPageUrl();
     $catalogItems = app(\App\Modules\SportsSection\Presentation\Catalog\SportsSectionCatalogPresenter::class)->present($sections->getCollection());
+    $categoryResultTotal = $sections->total();
 @endphp
 @extends('theme::layouts.category')
 

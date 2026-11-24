@@ -1,0 +1,97 @@
+name: Environment checkpoints
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test fingerprint and deployment evidence
+        run: python3 -m unittest discover -s scripts -p test_environment_state.py
+      - name: Compare exact branch trees (not merge-base)
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main +refs/heads/dev:refs/remotes/origin/dev
+          python3 scripts/environment-state.py compare origin/main origin/dev > environment-comparison.json
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          report = json.loads(Path("environment-comparison.json").read_text())
+          print("## Exact main ↔ dev tree comparison")
+          for key in ("left", "right"):
+              s = report[key]
+              print(f"- {report[key + '_ref']}: `{s['git_sha']}`, functional SHA-256 `{s['functional_sha256']}`")
+          print(f"- Functional content equal: **{report['functional_equal']}**")
+          print(f"- All tracked files equal: **{report['all_tracked_equal']}**")
+          for group, changes in report["differences"].items():
+              print(f"### {group}: {len(changes)}")
+              for change in changes[:100]:
+                  print(f"- {change['status']}: `{change['path'].replace(chr(96), '')}`")
+              if len(changes) > 100:
+                  print("Full list in the JSON artifact.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: environment-comparison
+          path: environment-comparison.json
+          retention-days: 90
+          if-no-files-found: error
+
+  inspect_production:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read actual production checkout and last verified deployment
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'APP_URL=https://mskba.ru' .env
+            git rev-parse HEAD
+            if [ -f scripts/environment-state.py ]; then
+              python3 scripts/environment-state.py inspect
+            else
+              echo 'Checkpoint mechanism not deployed; state unverified'
+            fi
+            curl -fsS -o /dev/null --max-time 15 https://mskba.ru/
+
+  inspect_development:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Read actual development checkout and last verified deployment
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -Fxq 'APP_ENV=staging' .env
+            grep -Fxq 'APP_URL=https://dev.mskba.ru' .env
+            git rev-parse HEAD
+            if [ -f scripts/environment-state.py ]; then
+              python3 scripts/environment-state.py inspect
+            else
+              echo 'Checkpoint mechanism not deployed; state unverified'
+            fi
+            curl -fsS -o /dev/null --max-time 15 https://dev.mskba.ru/

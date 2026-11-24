@@ -31,12 +31,31 @@
             data-event-post-url="{{ route('events.wall.store', ['event'=>$event->routeIdentifier(),'report'=>1]) }}"
             data-reaction-url="{{ route('events.report.reaction', $event->routeIdentifier()) }}"
             data-can-react="{{ $feedback['can_react']?'1':'0' }}">
-            <h3>Комментарии</h3>
             <div class="venue-play-dialog__rsvp app-event-report-reactions" role="group" aria-label="Оценка мероприятия">
-            <button type="button" class="button secondary" data-report-reaction="like" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg>Нравится</button>
-            <button type="button" class="button secondary" data-report-reaction="dislike" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg>Не нравится</button>
+            <button type="button" class="button secondary" data-report-reaction="like" aria-label="Нравится" title="Нравится" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg><span data-report-reaction-count>{{ $feedback['likes'] ?? 0 }}</span></button>
+            <button type="button" class="button secondary" data-report-reaction="dislike" aria-label="Не нравится" title="Не нравится" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg><span data-report-reaction-count>{{ $feedback['dislikes'] ?? 0 }}</span></button>
             </div>
-            @include('components.event-discussion',['chatEvent'=>$event,'chatCanRespond'=>false,'chatShowRoster'=>false,'chatComposerId'=>'event-report-message-'.$event->id,'chatComposerLabel'=>'Написать комментарий','primaryButton'=>'button primary','secondaryButton'=>'button secondary'])
+            <hr class="app-event-report-divider">
+            <h3>Комментарии</h3>
+            @include('components.event-discussion',['chatEvent'=>$event,'chatCanRespond'=>false,'chatIsReport'=>true,'chatShowRoster'=>false,'chatComposerId'=>'event-report-message-'.$event->id,'chatComposerLabel'=>'Написать комментарий','primaryButton'=>'button primary','secondaryButton'=>'button secondary'])
+            <dialog class="mskba-modal app-event-dialog" data-report-reaction-dialog aria-labelledby="event-reaction-heading">
+                <form data-report-reaction-form>
+                    <header class="mskba-modal__header">
+                        <h2 id="event-reaction-heading" data-report-reaction-title>Оценка мероприятия</h2>
+                        <button type="button" class="icon-button" data-report-reaction-cancel aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button>
+                    </header>
+                    <div class="mskba-modal__body mskba-scroll">
+                        <label class="field-group"><span>Можете оставить комментарий</span>
+                            <textarea name="body" rows="4" maxlength="200" placeholder="Необязательно"></textarea>
+                        </label>
+                        <p class="muted" data-report-reaction-error role="alert" hidden></p>
+                    </div>
+                    <footer class="mskba-modal__footer">
+                        <button type="button" class="button secondary" data-report-reaction-cancel>Отмена</button>
+                        <button type="submit" class="button primary">Принять</button>
+                    </footer>
+                </form>
+            </dialog>
         </div>
     @endif
 </section>

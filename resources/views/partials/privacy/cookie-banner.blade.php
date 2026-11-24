@@ -1,28 +1,16 @@
 @php
     $cookieConsentState = \App\Support\Privacy\CookieConsent::state();
-    $rawMetrikaId = config('services.yandex_metrika.id');
-    $metrikaId = (is_int($rawMetrikaId) || (is_string($rawMetrikaId) && ctype_digit($rawMetrikaId)))
-        ? (int) $rawMetrikaId
-        : 0;
-    $metrikaHostAllowed = in_array(
-        strtolower(request()->getHost()),
-        array_map('strtolower', (array) config('seo.indexable_hosts', ['mskba.ru'])),
-        true,
-    );
 @endphp
 
 <section class="mskba-cookie-consent" data-cookie-consent-banner
          aria-labelledby="mskba-cookie-consent-title"
-         @if($metrikaHostAllowed && $metrikaId > 0) data-metrika-counter-id="{{ $metrikaId }}" @endif
          @if($cookieConsentState !== null) hidden @endif>
     <div class="container mskba-cookie-consent__inner">
         <div class="mskba-cookie-consent__copy">
             <strong id="mskba-cookie-consent-title">Файлы cookie на MSKBA</strong>
             <p>
-                Необходимые cookie обеспечивают работу портала и безопасность аккаунта.
-                С вашего разрешения мы также используем Яндекс Метрику для анализа посещаемости.
-                Вы можете отказаться от аналитики, не теряя доступ к сайту.
-                Подробнее — в <a href="{{ route('privacy.policy') }}">Политике обработки персональных данных</a>.
+                Мы используем необходимые cookie для работы сайта, а с вашего согласия — для внутренней аналитики.
+                <a href="{{ route('privacy.policy') }}">Подробнее</a>.
             </p>
             <p class="mskba-cookie-consent__error" data-cookie-consent-error role="alert" hidden>
                 Не удалось сохранить выбор. Проверьте подключение и повторите попытку.

@@ -38,6 +38,7 @@
     <div class="app-rental-pricing__actions">
         <a class="button secondary" href="{{ route('account.venues.courts.index', $venue->routeIdentifier()) }}">Залы</a>
         <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
+        @if($policy)<a class="button secondary" href="{{ route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'schedule']).'#venue-tariff-panel-venue' }}">Тарифная сетка по времени</a>@endif
     </div>
     @if(session('status'))<p class="app-rental-pricing__success" role="status">{{ session('status') }}</p>@endif
     @if(session('error'))<p class="app-rental-pricing__error" role="alert">{{ session('error') }}</p>@endif
@@ -130,16 +131,7 @@
         </form>
     </section>
 
-    @if($policy)
-        @include('theme::pages.venues.partials.calendar-price-editor', [
-            'calendarPrices' => $venue->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
-            'calendarStoreUrl' => route('account.venues.calendar-prices.store', $venue->id),
-            'calendarDeleteUrl' => route('account.venues.calendar-prices.destroy', [$venue->id, '__PRICE__']),
-            'calendarStep' => $policy->time_step_minutes,
-            'calendarCurrency' => $policy->currency,
-            'calendarId' => 'venue-calendar',
-        ])
-    @endif
+
 </div>
 </div>
 @endsection

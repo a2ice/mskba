@@ -30,6 +30,10 @@ final class EffectiveVenueHours
         $parentIntervals = $parentException !== null
             ? $parentException->intervals->values()
             : $parent?->intervals->where('day_of_week', $date->dayOfWeekIso)->values();
+        // A stored 00:00 ending is the *exclusive* end of the current day.
+        // Project 24:00 for availability and intersection calculations, never
+        // as the database value or a value in an HTML time picker.
+        $parentIntervals = $parentIntervals === null ? collect() : $this->intervalObjects($parentIntervals);
 
         // A day when the complex itself is closed cannot be reopened by a court.
         if ($parentControlsDate && $parentIntervals->isEmpty()) {
@@ -93,10 +97,10 @@ final class EffectiveVenueHours
     {
         return $rows
             ->filter(fn ($row): bool => ! empty($row['starts_at']) && ! empty($row['ends_at'])
-                && $row['starts_at'] < $row['ends_at'])
+                && VenueScheduleClock::isOrdered((string) $row['starts_at'], (string) $row['ends_at']))
             ->map(fn ($row): object => (object) [
                 'starts_at' => $row['starts_at'],
-                'ends_at' => $row['ends_at'],
+                'ends_at' => VenueScheduleClock::end((string) $row['ends_at']),
             ])
             ->sortBy('starts_at')
             ->values();

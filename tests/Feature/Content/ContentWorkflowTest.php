@@ -319,6 +319,31 @@ HTML,
         $this->get(route('news.show', $content->alias))->assertNotFound();
     }
 
+
+    public function test_telegram_unknown_outcome_does_not_send_again_on_job_replay(): void
+    {
+        $this->configureTelegram();
+        $attempts = 0;
+        Http::fake(function () use (&$attempts): never {
+            $attempts++;
+            throw new \Illuminate\Http\Client\ConnectionException('Synthetic timeout after possible acceptance');
+        });
+        [$content, $publication] = $this->contentPublication();
+
+        // The first attempt may reach Telegram before the connection response is lost.
+        app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
+        $this->assertDatabaseHas('telegram_content_publications', [
+            'id' => $publication->id,
+            'message_id' => null,
+            'status' => 'failed',
+        ]);
+
+        // A duplicate/old queued invocation MUST NOT repeat that send.
+        app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
+        $this->assertSame(1, $attempts);
+        $this->assertSame('Telegram API connection failed.', $publication->fresh()->last_error);
+    }
+
     public function test_content_with_cover_is_sent_to_telegram_as_photo(): void
     {
         $this->configureTelegram();

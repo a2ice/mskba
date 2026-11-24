@@ -7,6 +7,7 @@
     @csrf @method('PUT')
     <section class="panel app-venue-editor__panel">
         <h2>Расписание на неделю</h2>
+        <p class="app-venue-editor__muted">В поле «До» 00:00 означает конец текущего дня (24:00). Последний слот до полуночи включён.</p>
         <div class="app-venue-editor__grid">
             <label class="app-venue-editor__field">Часовой пояс
                 <input name="timezone" type="text" required maxlength="64" value="{{ old('timezone', $schedule?->timezone ?? 'Europe/Moscow') }}">
@@ -109,3 +110,5 @@
         </div>
     </template>
 </form>
+
+@include('theme::pages.venues.partials.editor-tariffs', ['venue' => $venue])

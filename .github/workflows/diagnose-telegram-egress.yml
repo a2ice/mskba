@@ -1,0 +1,65 @@
+name: Diagnose production Telegram Bot API egress (read only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-telegram-egress.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect TCP and configured bot API connectivity (no messages)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'APP_URL=https://mskba.ru' .env
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T phpfpm php artisan tinker --execute='
+              $host = "api.telegram.org";
+              $a = gethostbynamel($host) ?: [];
+              $aaaa = array_column(dns_get_record($host, DNS_AAAA) ?: [], "ipv6");
+              $paths = array_merge(array_map(fn ($ip) => ["v4", $ip], array_slice($a, 0, 3)),
+                array_map(fn ($ip) => ["v6", $ip], array_slice($aaaa, 0, 3)));
+              foreach ($paths as [$family, $ip]) {
+                $addr = $family === "v6" ? "tcp://[$ip]:443" : "tcp://$ip:443";
+                $socket = @stream_socket_client($addr, $errno, $errstr, 4, STREAM_CLIENT_CONNECT);
+                $isConnected = is_resource($socket);
+                if ($isConnected) fclose($socket);
+                echo $family . "_TCP_443=" . ($isConnected ? "OK" : "TIMEOUT_OR_UNREACHABLE") . "\n";
+              }
+              echo "DNS_V4_COUNT=" . count($a) . "\n";
+              echo "DNS_V6_COUNT=" . count($aaaa) . "\n";
+              echo "CONFIG_FORCE_V4=" . (config("telegram.force_ipv4") ? "YES" : "NO") . "\n";
+              echo "CONFIG_PROXY=" . (filled(config("telegram.http_proxy")) ? "SET" : "NOT_SET") . "\n";
+              echo "CONFIG_PINNED_IP=" . (filled(config("telegram.api_ip")) ? "SET" : "NOT_SET") . "\n";
+              $client = app(\App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient::class);
+              try {
+                $client->call("getMe", [], 8);
+                echo "BOT_GETME=OK\n";
+                $chat = \App\Modules\Telegram\Domain\Models\TelegramChat::query()->find(1);
+                if ($chat && $chat->is_active) {
+                  try {
+                    $client->call("getChat", ["chat_id" => $chat->telegram_chat_id], 8);
+                    echo "BOT_GETCHAT=OK\n";
+                  } catch (\Throwable $e) {
+                    echo "BOT_GETCHAT=FAILED\n";
+                  }
+                }
+              } catch (\Throwable $e) {
+                echo "BOT_GETME=FAILED\n";
+              }
+            '

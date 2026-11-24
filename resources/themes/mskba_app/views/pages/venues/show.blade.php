@@ -22,7 +22,8 @@
     $canStartInterest = $isConfirmedVenue;
     $venueAudience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
         ->forVenue(\App\Modules\Venue\Domain\Models\Venue::query()->findOrFail($venue->id));
-    $venueInterestUsers = collect(array_merge($venueAudience['direct'], $venueAudience['matched']));
+    $venueInterestUsers = collect(array_merge($venueAudience['direct'], $venueAudience['matched']))
+        ->sortByDesc(fn (array $player): bool => filled($player['avatar']))->values();
     $activeVenueInterestCount = $venueAudience['total'];
     $venuePlayerWord = $activeVenueInterestCount % 100 >= 11 && $activeVenueInterestCount % 100 <= 14
         ? 'игроков'
@@ -164,7 +165,7 @@
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-venue-play-open>Хочу здесь играть</button>
-                <button type="button" class="button secondary large" data-venue-favorite-main aria-pressed="false">В избранное</button>
+                <button type="button" class="button secondary large" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false">В избранное ({{ $favoritesCount }})</button>
             </div>
         </div>
     </div>
@@ -365,7 +366,11 @@
                 @else
                     <p class="app-venue-court-overview"><strong>Залов и кортов:</strong> {{ count($venue->courts) }}</p>
                 @endif
-                @if(trim((string) $venue->fullDescription) !== '')<p class="app-venue-block__description">{{ $venue->fullDescription }}</p>@endif
+                @if(trim((string) $venue->fullDescription) !== '')
+                    <div class="app-venue-block__description app-venue-description">
+                        {!! app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription) !!}
+                    </div>
+                @endif
                 @if($venueAboutPromotions->isNotEmpty())
                     <div class="app-venue-about__promotions" aria-label="Акции площадки">
                         @foreach($venueAboutPromotions as $promotion)
@@ -492,7 +497,7 @@
         <span class="app-venue-interests-dialog__total-word">{{ $venuePlayerWord }}</span>
     </div>
     @include('theme::pages.venues.partials.interest-users-list', ['venueAudience' => $venueAudience])
-    <button type="button" class="button primary" data-venue-play-open>Тоже хочу здесь играть</button>
+    @include('components.venue-favorite-follow', ['buttonClass' => 'button primary'])
 </dialog>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">

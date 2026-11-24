@@ -481,6 +481,62 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertSame(238, $court->calendarSlotPrices()->count());
     }
 
+    public function test_event_availability_distinguishes_imported_occupancy_from_opening_hours(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', false);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+        $report = $this->report($source);
+        $report['days'][1]['slots'][2]['status'] = 'booked';
+        $report['days'][1]['slots'][3]['status'] = 'booked';
+        $report['days'][1]['counts']['available'] -= 2;
+        $report['days'][1]['counts']['booked'] += 2;
+        foreach ($report['days'][2]['slots'] as &$slot) {
+            $slot['status'] = 'booked';
+        }
+        unset($slot);
+        $report['days'][2]['counts']['booked'] = $report['days'][2]['slot_count'];
+        $report['days'][2]['counts']['available'] = 0;
+        $report['days'][3]['slots'][2]['status'] = 'unavailable';
+        $report['days'][3]['counts']['unavailable'] = 1;
+        $report['days'][3]['counts']['available']--;
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record($source, $actor, $report);
+        app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+        $this->travelTo($snapshot->observed_at->addMinute());
+
+        $assertInterval = function (string $start, int $minutes, ?string $error = null) use ($venue): void {
+            $freshVenue = $venue->fresh();
+            $court = $freshVenue->courts()->firstOrFail();
+            $startsAt = CarbonImmutable::parse($start, 'Europe/Moscow');
+            try {
+                app(VenueEventAvailability::class)->assertAvailable(
+                    $freshVenue, $startsAt, $startsAt->addMinutes($minutes), court: $court,
+                );
+                $this->assertNull($error, 'Expected availability rejection.');
+            } catch (\InvalidArgumentException $exception) {
+                $this->assertSame($error, $exception->getMessage());
+            }
+        };
+
+        $assertInterval('2026-11-14 08:00', 60, 'Выбранное время уже занято.');
+        $assertInterval('2026-11-14 08:30', 60, 'Выбранное время уже занято частично.');
+        $assertInterval('2026-11-15 10:00', 60, 'Выбранное время уже занято.');
+        $assertInterval('2026-11-16 08:00', 60, 'Выбранное время недоступно по расписанию FindSport.');
+        $assertInterval('2026-11-14 06:00', 60, 'Выбранное время не входит в часы работы площадки.');
+        $assertInterval('2026-11-14 09:00', 60);
+
+        // An explicit parent closure still takes precedence.
+        $venue->schedule()->firstOrFail()->exceptions()->create([
+            'date' => '2026-11-15', 'is_closed' => true,
+        ]);
+        $assertInterval('2026-11-15 10:00', 60, 'В выбранную дату площадка закрыта.');
+
+        $this->travelTo($snapshot->observed_at->addHours(2));
+        $assertInterval('2026-11-14 08:00', 60, 'Требуется обновление расписания');
+    }
+
     public function test_day_occupancy_bar_becomes_fully_red_when_all_slots_are_booked(): void
     {
         config()->set('venue_integrations.apply_findsport_native_enabled', true);

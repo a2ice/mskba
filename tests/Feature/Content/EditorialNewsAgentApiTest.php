@@ -7,6 +7,8 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
+use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
+use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramContentPublicationJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -203,6 +205,98 @@ final class EditorialNewsAgentApiTest extends TestCase
         app('auth')->forgetGuards();
         $long = $dev->createToken('mskba-editorial-news:bridge-test', $abilities, now()->addDays(31))->plainTextToken;
         $this->withToken($long)->getJson(self::URI.'/winter-basketball')->assertForbidden();
+    }
+
+
+    public function test_editorial_api_persists_seo_defaults_and_explicit_fields(): void
+    {
+        $dev = $this->dev();
+        $this->withToken($this->token($dev, ['editorial-news:write']))
+            ->postJson(self::URI, $this->payload())
+            ->assertCreated();
+        $first = ContentItem::query()->where('alias', 'winter-basketball')->sole();
+        $this->assertSame('Перебираемся в залы', $first->meta_title);
+        $this->assertSame('На улице холодно.', $first->meta_description);
+        $this->assertSame('баскетбол, Москва, MSKBA', $first->meta_keywords);
+
+        $this->postJson(self::URI, [
+            ...$this->payload(),
+            'alias' => 'another-basketball-news',
+            'meta_title' => 'Играем в зале | MSKBA',
+            'meta_description' => 'Баскетбол рядом с вами.',
+            'meta_keywords' => 'баскетбол, игры, спорт',
+        ])->assertCreated();
+        $other = ContentItem::query()->where('alias', 'another-basketball-news')->sole();
+        $this->assertSame('Играем в зале | MSKBA', $other->meta_title);
+        $this->assertSame('Баскетбол рядом с вами.', $other->meta_description);
+        $this->assertSame('баскетбол, игры, спорт', $other->meta_keywords);
+        $this->postJson(self::URI, [...$this->payload(), 'alias' => 'invalid-seo',
+            'meta_description' => str_repeat('x', 321),
+        ])->assertUnprocessable();
+    }
+
+    public function test_telegram_retry_is_scoped_and_rejects_uncertain_delivery(): void
+    {
+        Queue::fake();
+        config([
+            'app.env' => 'production', 'app.url' => 'https://mskba.ru',
+            'telegram.bot_token' => 'test-bot',
+        ]);
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001234567891, 'title' => 'Основной чат MSKBA',
+            'type' => 'supergroup', 'is_active' => true,
+        ]);
+        $dev = $this->dev();
+        $this->withToken($this->token($dev, [
+            'editorial-news:write', 'editorial-news:publish', 'editorial-news:social',
+        ]))->postJson(self::URI, $this->payload())->assertCreated();
+
+        $route = self::URI.'/winter-basketball/telegram/'.$chat->id.'/retry';
+        $this->postJson(self::URI.'/winter-basketball/publish', [
+            'telegram_chat_ids' => [$chat->id],
+        ])->assertOk();
+
+        $record = TelegramContentPublication::query()->sole();
+        $record->forceFill([
+            'status' => 'failed', 'message_id' => null,
+            'last_error' => 'Telegram API returned HTTP 403. Forbidden: bot was kicked from the group',
+        ])->save();
+
+        $this->getJson(self::URI.'/winter-basketball')
+            ->assertOk()
+            ->assertJsonPath('data.telegram_publications.0.error_code', 'bot_access_denied')
+            ->assertJsonPath('data.telegram_publications.0.retry_safe', true)
+            ->assertDontSee('bot was kicked');
+
+        $this->postJson($route)->assertOk()
+            ->assertJsonPath('data.telegram_publications.0.status', 'pending');
+        $this->postJson($route)->assertOk(); // pending does not dispatch twice
+        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 2);
+
+        $record->refresh()->forceFill([
+            'status' => 'failed', 'message_id' => null,
+            'last_error' => 'Telegram API connection failed.',
+        ])->save();
+        $this->getJson(self::URI.'/winter-basketball')
+            ->assertJsonPath('data.telegram_publications.0.error_code', 'outcome_unknown')
+            ->assertJsonPath('data.telegram_publications.0.retry_safe', false);
+        $this->postJson($route)->assertConflict();
+        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 2);
+
+        $record->refresh()->forceFill(['status' => 'published', 'message_id' => 99])->save();
+        $this->postJson($route)->assertOk()
+            ->assertJsonPath('data.telegram_publications.0.message_id', 99);
+        Queue::assertPushed(SyncTelegramContentPublicationJob::class, 2);
+
+        $this->postJson(self::URI.'/winter-basketball/telegram/99999/retry')->assertNotFound();
+    }
+
+    public function test_telegram_retry_requires_social_scope(): void
+    {
+        $dev = $this->dev();
+        $this->withToken($this->token($dev, ['editorial-news:write', 'editorial-news:publish']))
+            ->postJson(self::URI, $this->payload())->assertCreated();
+        $this->postJson(self::URI.'/winter-basketball/telegram/1/retry')->assertForbidden();
     }
 
     public function test_existing_system_update_token_and_wildcard_cannot_use_editorial_api(): void

@@ -181,6 +181,7 @@ final class EventWizardBookingFirstTest extends TestCase
 
         $event = $event->refresh()->load('primaryGame');
         $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
+        $this->assertFalse($event->time_confirmed);
         $this->assertSame(GameFormatEnum::BASKETBALL_5X5, $event->primaryGame->format);
         $this->assertSame(GameTimingModeEnum::PERIODS, $event->primaryGame->timing_mode);
         $this->assertSame(GameRecruitmentModeEnum::INDIVIDUAL_DRAFT, $event->primaryGame->recruitment_mode);
@@ -360,7 +361,7 @@ final class EventWizardBookingFirstTest extends TestCase
             ->assertSee('Подстроили время под команду.');
     }
 
-    public function test_explicit_rental_selection_checks_original_and_revises_only_when_booking_is_sent(): void
+    public function test_explicit_rental_selection_updates_event_time_only_after_opted_in_confirmation(): void
     {
         $organizer = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $representative = User::factory()->withVerifiedContact()->create([
@@ -400,14 +401,15 @@ final class EventWizardBookingFirstTest extends TestCase
         $this->assertDatabaseCount('venue_bookings', 1);
         $this->assertSame('open', $interest->refresh()->status);
         $quote = \App\Modules\VenueBooking\Domain\Models\VenueBookingQuote::query()->sole();
-        $this->post($storeUrl, $selected + ['quote_id' => $quote->public_id])->assertSessionHasNoErrors();
+        $this->post($storeUrl, $selected + ['quote_id' => $quote->public_id, 'sync_event_time' => '1'])->assertSessionHasNoErrors();
         $event->refresh();
-        $this->assertTrue($event->starts_at->equalTo($next));
-        $this->assertSame(2, $event->participation_confirmation_version);
-        $this->assertSame('revised', $interest->refresh()->status);
+        $this->assertTrue($event->starts_at->equalTo($original));
+        $this->assertFalse($event->time_confirmed);
+        $this->assertSame(1, $event->participation_confirmation_version);
+        $this->assertSame('booking_requested', $interest->refresh()->status);
         $booking = VenueBooking::query()->where('event_id', $event->id)->sole();
         $this->assertSame($booking->id, $event->booking_id);
-        $this->assertSame('booking_requested', $event->venueInterests()->where('revision', 2)->sole()->status);
+        $this->assertSame('booking_requested', $event->venueInterests()->where('revision', 1)->sole()->status);
         $timeline = app(\App\Modules\VenueBooking\Application\Queries\GetRentalReviewTimeline::class);
         $entries = $timeline->handle($booking, $organizer);
         $this->assertSame('Заявка отправлена', $entries[0]['label']);
@@ -415,6 +417,27 @@ final class EventWizardBookingFirstTest extends TestCase
         $this->assertSame([], $timeline->handle($booking, $representative));
         $this->assertNotContains('Заявка просмотрена', array_column($entries, 'label'));
         $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $block->fresh()->status);
+        $representativeActor = app(CurrentActorResolver::class)->resolve($representative, null);
+        $booking = app(AcceptVenueBookingHandler::class)->handle(
+            $booking->id, $representativeActor, $booking->optimistic_version, (string) Str::uuid(),
+        );
+        $this->assertTrue($event->fresh()->starts_at->equalTo($original));
+        app(ConfirmVenueBookingHandler::class)->handle(
+            $booking->id, $representativeActor, $booking->optimistic_version, (string) Str::uuid(),
+        );
+        $event->refresh();
+        $this->assertTrue($event->starts_at->equalTo($next));
+        $this->assertTrue($event->time_confirmed);
+        $this->assertSame(2, $event->participation_confirmation_version);
+        $this->actingAs($organizer)->put(route('events.update', $event->routeIdentifier()), [
+            'title' => $event->title, 'type' => 'training', 'visibility' => 'public',
+            'event_time_only' => '1', 'venue_id' => $venue->id,
+            'starts_at' => $next->addHour()->format('Y-m-d H:i:s'), 'duration_minutes' => 60,
+            'time_confirmed' => '0',
+        ])->assertSessionHasNoErrors();
+        $this->assertTrue($event->fresh()->starts_at->equalTo($next->addHour()));
+        $this->assertFalse($event->fresh()->time_confirmed);
+        $this->assertTrue($booking->fresh()->starts_at->equalTo($next));
     }
 
     private function venue(User $publisher): Venue

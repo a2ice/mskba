@@ -7,6 +7,7 @@ use App\Modules\Content\Application\Services\PageSeoResolver;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
@@ -80,6 +81,8 @@ class VenueController extends Controller
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
             'has_upcoming_events' => ['nullable', 'boolean'],
+            'my_interests' => ['nullable', 'boolean'],
+            'interest_id' => ['nullable', 'integer', 'min:1'],
             'event_days' => ['nullable', 'integer', 'between:1,14'],
             'latitude' => ['nullable', 'required_with:longitude,radius_km', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'required_with:latitude,radius_km', 'numeric', 'between:-180,180'],
@@ -89,13 +92,35 @@ class VenueController extends Controller
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'fragment' => ['nullable', Rule::in(['items'])],
         ]);
-        $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request), $filters);
+        // A selected interest is strictly owned by the current canonical user.
+        // An empty selection filters against ANY active, non-expired interest.
+        $viewer = $request->user()?->canonical();
+        $interestsQuery = $viewer
+            ? PlayIntent::query()->with('venue')->where('user_id', $viewer->id)
+                ->where('status', 'active')
+                ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                ->where('favorite_generated', false)
+            : null;
+        $myInterests = $interestsQuery?->orderByDesc('updated_at')->get() ?? collect();
+        $chosenInterest = isset($filters['interest_id']) ? (int) $filters['interest_id'] : null;
+        if ($chosenInterest !== null) {
+            abort_unless(($filters['my_interests'] ?? false) && $viewer, 404);
+            abort_unless($myInterests->contains('id', $chosenInterest), 404);
+        }
+        if ($request->boolean('my_interests')) {
+            abort_unless($viewer, 403);
+        }
+        $matchingInterests = $request->boolean('my_interests')
+            ? ($chosenInterest !== null ? $myInterests->where('id', $chosenInterest)->values() : $myInterests)
+            : null;
+        $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request), $filters, $matchingInterests);
         if (app(ThemeResolver::class)->active() !== 'mskba_app') {
             return ThemeResolver::page('venues.index', [
                 'venues' => $venues,
                 'filters' => $filters,
                 'types' => VenueTypeEnum::cases(),
                 'operationalStatuses' => VenueOperationalStatusEnum::cases(),
+                'myInterests' => $myInterests,
             ]);
         }
 
@@ -145,6 +170,7 @@ class VenueController extends Controller
         ) + [
             'types' => VenueTypeEnum::cases(),
             'operationalStatuses' => VenueOperationalStatusEnum::cases(),
+            'myInterests' => $myInterests,
         ]);
     }
 

@@ -11,6 +11,16 @@ enum VenueTypeEnum: string
     case ARENA = 'arena';
     case STREET_COURT = 'street_court';
 
+    /** Catalog filters for playing spaces use court environment, not the venue passport. */
+    public function discoveryEnvironment(): ?VenueCourtEnvironmentEnum
+    {
+        return match ($this) {
+            self::SPORTS_HALL => VenueCourtEnvironmentEnum::INDOOR,
+            self::STREET_COURT => VenueCourtEnvironmentEnum::OUTDOOR,
+            default => null,
+        };
+    }
+
     public function label(): string
     {
         return match ($this) {

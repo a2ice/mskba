@@ -12,6 +12,9 @@
         $shortMonths = [1 => 'янв', 2 => 'фев', 3 => 'мар', 4 => 'апр', 5 => 'мая', 6 => 'июн', 7 => 'июл', 8 => 'авг', 9 => 'сен', 10 => 'окт', 11 => 'ноя', 12 => 'дек'];
         $placeholderDateLabel = static fn ($date) => $date->format('d') . ' ' . $shortMonths[(int) $date->month];
         $placeholderWeekdayLabel = static fn ($date) => $shortWeekdays[(int) $date->dayOfWeekIso];
+        $favoritesCount = \App\Modules\Favorites\Domain\Models\Favorite::query()
+            ->where('entity_type', 'venue')->where('entity_id', $venue->id)
+            ->whereNull('trashed_at')->count();
         $ratingPercent = max(0, min(100, (($venue->about->rating ?? 0) / 5) * 100));
         $ratingLabel = $venue->about->rating
             ? 'Рейтинг: ' . number_format($venue->about->rating, 1, ',', ' ') . ' из 5'
@@ -251,7 +254,7 @@
                 <div class="venue-hero__summary">
                     <div class="venue-play-hero-actions" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
                         <button type="button" class="btn btn--primary" data-venue-play-open>Хочу здесь играть</button>
-                        <button type="button" class="btn btn--secondary" data-venue-favorite-main aria-pressed="false">В избранное</button>
+                        <button type="button" class="btn btn--secondary" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false">В избранное ({{ $favoritesCount }})</button>
                     </div>
                     <div class="venue-hero__details">
                         <div>
@@ -746,7 +749,9 @@
                     <div class="venue-show-section__heading">
                         <h2 id="venue-full-description-title">О площадке</h2>
                     </div>
-                    <p>{{ $venue->fullDescription }}</p>
+                    <div class="venue-show-section__description">
+                        {!! app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)->sanitize((string) $venue->fullDescription) !!}
+                    </div>
                 </section>
             @endif
         </div>

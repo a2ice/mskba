@@ -18,7 +18,7 @@ final class VenueSearchCache
         $version = $this->version();
 
         return $this->repository()->remember(
-            "venue-search:index:v{$version}",
+            "venue-search:index:environment-v1:v{$version}",
             (int) config('venue_search.index_ttl_seconds', 3600),
             fn (): array => $this->buildDocuments(),
         );
@@ -54,6 +54,9 @@ final class VenueSearchCache
 
                     return [
                         'court_access' => $courtAccess,
+                        'court_environments' => $venue->courts->mapWithKeys(
+                            fn ($court): array => [(int) $court->id => $court->environment?->value],
+                        )->all(),
                         'id' => $venue->id,
                         'name' => $venue->name,
                         'alias' => $venue->alias,
@@ -94,7 +97,7 @@ final class VenueSearchCache
         $hash = sha1(json_encode($parameters, JSON_THROW_ON_ERROR));
 
         return $this->repository()->remember(
-            "venue-search:result:v{$version}:{$hash}",
+            "venue-search:result:environment-v1:v{$version}:{$hash}",
             (int) config('venue_search.result_ttl_seconds', 60),
             $resolver,
         );

@@ -5,7 +5,7 @@
         : null;
 @endphp
 
-@if ($counterId !== null && $counterId > 0 && \App\Support\Privacy\CookieConsent::analyticsAllowed())
+@if ($counterId !== null && $counterId > 0)
     <noscript>
         <div>
             <img src="https://mc.yandex.ru/watch/{{ $counterId }}" style="position:absolute; left:-9999px;" alt="">

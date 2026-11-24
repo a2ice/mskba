@@ -62,6 +62,50 @@ final class VenueCreateFilamentFormTest extends TestCase
         $this->assertSame(6, $venue->schedule()->firstOrFail()->intervals()->count());
     }
 
+    public function test_filament_real_schedule_time_pickers_accept_midnight_as_end_of_day(): void
+    {
+        $admin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $admin->createProfile([]);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateVenue::class)
+            ->fillForm([
+                'name' => 'Зал с закрытием в полночь',
+                'type' => VenueTypeEnum::STREET_COURT->value,
+                'status' => VenueStatusEnum::UNCONFIRMED->value,
+                'owner_user_id' => $admin->id,
+                'operational_status' => 'active',
+                'access_type' => 'free',
+                'schedule_timezone' => 'Europe/Moscow',
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
+                'weekly_default_intervals' => [
+                    ['starts_at' => '07:00', 'ends_at' => '16:00'],
+                    ['starts_at' => '16:00', 'ends_at' => '00:00'],
+                ],
+                'weekday_overrides' => [],
+                'schedule_exceptions' => [],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $venue = Venue::query()->where('name', 'Зал с закрытием в полночь')->firstOrFail();
+        $this->assertDatabaseHas('venue_schedule_intervals', [
+            'venue_schedule_id' => $venue->schedule()->firstOrFail()->id,
+            'day_of_week' => 1,
+            'starts_at' => '16:00',
+            'ends_at' => '00:00',
+        ]);
+    }
+
     public function test_school_can_create_indoor_hall_and_outdoor_court_with_independent_amenities(): void
     {
         $admin = User::factory()->create([

@@ -56,3 +56,48 @@
 .app-venues-catalog__map-empty strong{font-size:20px;color:var(--text)}
 .app-venues-catalog__map-empty span{font-size:14px;color:var(--muted)}
 @media(max-width:590px){.app-venues-catalog__map-canvas{height:clamp(320px,45dvh,400px)}}
+
+
+/* Saved-venue-interest discovery, shared between desktop sidebar and mobile dock. */
+.app-venues-catalog__interest-filter { display: grid; gap: 10px; min-width: 0; }
+.app-venues-catalog__interest-label,.app-venues-catalog__interest-create-row {
+    position: relative; display: flex; align-items: center; gap: 8px;
+    min-width: 0;
+}
+.app-venues-catalog__interest-label > .check-label { flex: 0 1 auto; }
+.app-venues-catalog__interest-help {
+    display: inline-grid; place-items: center; flex: 0 0 23px;
+    width: 23px; height: 23px; padding: 0; margin: 0;
+    border-radius: 50%; border: 1px solid var(--control-line);
+    background: var(--surface-raised); color: var(--muted);
+    font-size: 12px; font-weight: 800; cursor: help;
+}
+.app-venues-catalog__interest-help:is(:hover,:focus-visible,[aria-expanded="true"]) {
+    border-color: var(--accent); color: var(--accent);
+}
+.app-venues-catalog__interest-tooltip {
+    position: absolute; z-index: 25; top: calc(100% + 7px); left: 0;
+    width: min(310px, 85vw); max-width: 100%;
+    padding: 11px 12px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--surface);
+    box-shadow: 0 8px 25px var(--ambient-shadow);
+    color: var(--text); font-size: 12px; font-weight: 550; line-height: 1.4;
+}
+.app-venues-catalog__interest-tooltip[hidden],
+.app-venues-catalog__interest-options[hidden] { display: none !important; }
+.app-venues-catalog__interest-options { display: grid; gap: 10px; padding-left: 3px; }
+.app-venues-catalog__interest-create,.app-venues-catalog__interest-login {
+    appearance: none; border: 0; background: transparent;
+    width: fit-content; max-width: 100%; padding: 5px 0;
+    color: var(--accent); cursor: pointer; font: inherit;
+    font-size: 13px; font-weight: 750; line-height: 1.4; text-align: left;
+    text-decoration: underline; text-underline-offset: 3px;
+}
+.app-venues-catalog__interest-empty { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.app-venues-catalog__interest-filter .check-label input[disabled] { opacity: .45; cursor: not-allowed; }
+@media(max-width:768px) {
+    .app-mobile-primary__filter-scroll .app-venues-catalog__interest-filter {
+        margin: 3px 0; padding: 3px 0;
+    }
+    .app-venues-catalog__interest-tooltip { width: min(295px, 76vw); }
+}

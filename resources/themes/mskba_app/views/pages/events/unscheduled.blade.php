@@ -12,6 +12,7 @@
             <p><a href="{{ route('venues.show', $event->venue->routeIdentifier()) }}">← К площадке</a></p>
             <h1>{{ $event->title }}</h1>
             <p>{{ $event->type->label() }} · {{ $event->venue->name }}</p>
+            @include('components.event-participation-price', ['pricingEvent' => $event])
         </header>
         <section class="{{ $isApp ? 'panel' : 'card' }} event-draft-panel">
             <h2>Мероприятие сохранено как черновик</h2>

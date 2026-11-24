@@ -307,7 +307,7 @@ class PublicVenueCreateEntryTest extends TestCase
         $actor = $venue->creatorActor()->firstOrFail();
 
         $this->assertSame($user->id, $actor->user_id);
-        $this->assertNotNull($actor->user_fingerprint_id);
+        $this->assertNull($actor->user_fingerprint_id);
     }
 
     public function test_guest_cannot_submit_venue(): void
@@ -361,7 +361,7 @@ class PublicVenueCreateEntryTest extends TestCase
         $actor = $venue->creatorActor()->firstOrFail();
 
         $this->assertSame($user->id, $actor->user_id);
-        $this->assertNotNull($actor->user_fingerprint_id);
+        $this->assertNull($actor->user_fingerprint_id);
     }
 
     public function test_show_page_prefers_current_user_venue_when_alias_has_duplicates(): void

@@ -24,7 +24,7 @@ final class VenueSubscriptionAudience
                     ->orWhereNull('venue_id')
                     ->orWhere('include_similar_venues', true);
             })
-            ->with(['user.profile.activeAvatar', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment'])
+            ->with(['user.profile.activeAvatar', 'user.telegramAccount', 'user.vkAccount', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment'])
             ->get();
 
         $byUser = [];
@@ -56,7 +56,7 @@ final class VenueSubscriptionAudience
             ->where('entity_id', $venue->id)
             ->whereNull('trashed_at')
             ->whereNotNull('user_id')
-            ->with(['user.profile.activeAvatar', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment'])
+            ->with(['user.profile.activeAvatar', 'user.telegramAccount', 'user.vkAccount', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment'])
             ->get();
         foreach ($favorites as $favorite) {
             $user = $favorite->user;
@@ -97,7 +97,9 @@ final class VenueSubscriptionAudience
                 'name' => $public
                     ? ($user->username ?: (trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: 'Игрок'))
                     : ($user->username ?: 'Игрок'),
-                'avatar' => $canViewDetails ? $user->profile?->avatarUrl() : null,
+                'avatar' => $canViewDetails
+                    ? ($user->profile?->avatarUrl() ?: $user->telegramAccount?->photo_url ?: $user->vkAccount?->avatar_url)
+                    : null,
                 'positions' => $positions,
                 'experience_years' => $canViewDetails ? $experience : null,
                 'height_cm' => $canViewDetails ? $player?->height_cm : null,

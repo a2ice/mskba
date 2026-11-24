@@ -6,6 +6,9 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\PlayInterest\Application\Services\RecommendVenuesForIntent;
+use App\Modules\PlayInterest\Domain\Models\PlayIntent;
+use Illuminate\Support\Collection;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
@@ -13,6 +16,7 @@ use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 
@@ -24,10 +28,12 @@ final class ListVenuesHandler
         private readonly AddressDisplayFormatter $addressFormatter,
         private readonly VenueCourtDiscoveryAccess $courtDiscovery,
         private readonly VenueProximityService $proximity,
+        private readonly RecommendVenuesForIntent $interestMatcher,
     ) {}
 
     /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
-    public function handle(?User $user, ?Actor $actor = null, array $filters = []): array
+    /** @param Collection<int, PlayIntent>|null $matchingInterests */
+    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -57,7 +63,7 @@ final class ListVenuesHandler
                             ->orWhereLike('short_description', $needle));
                     }
                 })
-                ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->where('type', $type))
+                ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->whereDiscoveryType($type))
                 ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status))
                 ->when((bool) ($filters['has_upcoming_events'] ?? false), function ($filtered) use ($filters): void {
                     $now = now();
@@ -90,6 +96,14 @@ final class ListVenuesHandler
                 ($this->proximity->distanceToCoordinates($venue, $latitude, $longitude) ?? INF) <= $radiusMeters);
         }
 
+        // Apply the same subscription eligibility policy used by the existing
+        // matching service, before the catalog count, pagination and map mode.
+        if ($matchingInterests !== null) {
+            $venues = $venues->filter(fn (Venue $venue): bool =>
+                $matchingInterests->contains(fn (PlayIntent $intent): bool =>
+                    $this->interestMatcher->matchesVenue($intent, $venue)));
+        }
+
         $policies = VenueBookingPolicy::query()
             ->whereIn('venue_id', $venues->pluck('id')->all())
             ->where('active_marker', true)
@@ -98,23 +112,33 @@ final class ListVenuesHandler
             ->keyBy('venue_id');
 
         $accessFilter = $filters['access'] ?? null;
+        $environment = VenueTypeEnum::tryFrom((string) ($filters['type'] ?? ''))?->discoveryEnvironment();
 
         return $venues
-            ->map(fn (Venue $venue): array => [
-                'venue' => $venue,
-                'access' => $this->courtDiscovery->classify($venue, $policies->get($venue->id)),
-            ])
+            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment): array {
+                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id));
+                $eligible = $access[$accessFilter ?? ''] ?? [];
+
+                if ($environment !== null) {
+                    $ids = $venue->courts->filter(fn ($court): bool => $court->environment === $environment)
+                        ->pluck('id')->map(fn ($id): int => (int) $id)->all();
+                    $eligible = array_values(array_filter($eligible, fn (array $court): bool =>
+                        in_array($court['court_id'], $ids, true)));
+                }
+
+                return ['venue' => $venue, 'access' => $access, 'matched' => $eligible[0] ?? null];
+            })
             ->filter(fn (array $row): bool => $accessFilter === null
                 || $accessFilter === ''
-                || ! empty($row['access'][$accessFilter]))
+                || $row['matched'] !== null)
             ->map(function (array $row) use (
-                $accessFilter, $contractViewableVenueIds, $contractEditableVenueIds,
+                $contractViewableVenueIds, $contractEditableVenueIds,
                 $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds,
             ) {
                 /** @var Venue $venue */
                 $venue = $row['venue'];
                 $access = $row['access'];
-                $matched = $accessFilter ? ($access[$accessFilter][0] ?? null) : null;
+                $matched = $row['matched'];
                 $isBootstrapOwned = in_array($venue->id, $bootstrapOwnedVenueIds, true);
                 $isActorOwned = in_array($venue->id, $actorOwnedVenueIds, true);
 

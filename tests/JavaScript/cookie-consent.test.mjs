@@ -53,7 +53,7 @@ function setup({ counterId = '12345678', initialHidden = false, response, failur
     return { submit, requests, banner, error, buttons, host, toasts, appended };
 }
 
-test('accept all persists with JSON POST, hides banner, displays toast and starts analytics', async () => {
+test('accept all persists with JSON POST, hides banner, displays toast without touching external analytics', async () => {
     const app = setup();
     const event = await app.submit('accepted');
     assert.equal(event.defaultPrevented, true);
@@ -64,19 +64,18 @@ test('accept all persists with JSON POST, hides banner, displays toast and start
     assert.equal(app.banner.dataset.cookieConsentState, 'accepted');
     assert.equal(app.error.hidden, true);
     assert.deepEqual(app.toasts, [{ message: 'Все cookie приняты', failed: false }]);
-    assert.equal(app.host.disableYaCounter12345678, false);
-    assert.equal(app.appended[0].src, 'https://mc.yandex.ru/metrika/tag.js');
-    assert.equal(app.host.ym.a[0][0], 12345678);
-    assert.equal(app.host.ym.a[0][1], 'init');
+    assert.equal(app.host.disableYaCounter12345678, undefined);
+    assert.equal(app.appended.length, 0);
+    assert.equal(app.host.ym, undefined);
     assert.deepEqual(app.buttons.map((button) => button.disabled), [false, false]);
 });
 
-test('necessary cookies only persists without reload, skips analytics, gives feedback', async () => {
+test('necessary cookies only persists without reload, leaves external analytics untouched, gives feedback', async () => {
     const app = setup();
     await app.submit('rejected');
     assert.equal(app.banner.hidden, true);
     assert.equal(app.banner.dataset.cookieConsentState, 'rejected');
-    assert.equal(app.host.disableYaCounter12345678, true);
+    assert.equal(app.host.disableYaCounter12345678, undefined);
     assert.equal(app.appended.length, 0);
     assert.deepEqual(app.toasts, [{ message: 'Выбраны только необходимые cookie', failed: false }]);
 });
@@ -112,7 +111,7 @@ test('revoke an existing choice without reinitializing analytics', async () => {
     const app = setup({ initialHidden: true });
     app.host.ym = () => {};
     await app.submit('rejected');
-    assert.equal(app.host.disableYaCounter12345678, true);
+    assert.equal(app.host.disableYaCounter12345678, undefined);
     assert.equal(app.banner.hidden, true);
     assert.equal(app.appended.length, 0);
 });

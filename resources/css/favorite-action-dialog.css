@@ -13,3 +13,19 @@
 .venue-main-favorite-dialog__error{color:#f29b9b}
 .venue-main-favorite-dialog__actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;padding:15px 20px 20px;border-top:1px solid var(--line,#646a72)}
 @media(max-width:480px){.venue-main-favorite-dialog__header{padding:16px}.venue-main-favorite-dialog__body{padding:18px 16px}.venue-main-favorite-dialog__actions{padding:16px}}
+
+
+/* Shared venue follow action, reused in the interested-players and games dialogs. */
+.venue-favorite-follow{display:grid;gap:12px;justify-items:stretch;min-width:0;
+    padding:16px;border:1px solid var(--line,#59606a);border-radius:14px;
+    background:var(--surface-raised,var(--surface,#1d2027));}
+.venue-favorite-follow__message{margin:0;text-align:center;color:var(--muted,#929aa4);
+    line-height:1.55;font-size:14px;}
+.venue-favorite-follow__action{display:inline-flex;align-items:center;
+    justify-content:center;gap:9px;width:100%;max-width:none;}
+.venue-favorite-follow__icon{display:block;flex:none;width:18px;height:18px;
+    fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.venue-favorite-follow[data-state="active"] .venue-favorite-follow__icon{fill:currentColor;}
+.venue-favorite-follow[data-state="active"] .venue-favorite-follow__message{color:var(--text,#f5f6f8);}
+.venue-favorite-follow[data-state="loading"] .venue-favorite-follow__action{cursor:progress;}
+@media(max-width:480px){.venue-favorite-follow{padding:12px;gap:10px}}

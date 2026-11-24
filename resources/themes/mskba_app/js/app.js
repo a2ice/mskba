@@ -14,6 +14,7 @@ initActionToasts();
 import './operator-presence.js';
 import './context-bar.js';
 import './context-dialogs.js';
+import './help-launcher-intro.js';
 import './privacy-distribution.js';
 import './privacy-onboarding-dialog.js';
 import './distribution-consent-document-dialog.js';
@@ -44,6 +45,8 @@ import './play-interest-continuation.js';
 import './play-interest-mine.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
+import './venue-description-lightbox.js';
+import '../css/venue-description-rich.css';
 import './venue-choice.js';
 import './venue-rental-search.js';
 import './venue-play-funnel.js';
@@ -126,4 +129,14 @@ if (eventAvailabilityDialog && eventAvailabilityUrl.searchParams.get('availabili
     }}));
     for (const key of ['availability','availability_date','availability_time','availability_court']) query.delete(key);
     history.replaceState(history.state, '', eventAvailabilityUrl);
+}
+
+const duplicateDialog = document.querySelector('[data-account-duplicate-dialog]');
+if (duplicateDialog && typeof duplicateDialog.showModal === 'function') {
+    duplicateDialog.removeAttribute('open');
+    duplicateDialog.showModal();
+    duplicateDialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        window.location.assign(duplicateDialog.querySelector('a').href);
+    });
 }

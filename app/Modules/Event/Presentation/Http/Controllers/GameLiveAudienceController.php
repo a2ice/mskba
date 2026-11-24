@@ -7,6 +7,7 @@ use App\Modules\Analytics\Application\Services\GameLiveViewHistoryRecorder;
 use App\Modules\Event\Application\Services\GameLiveAudiencePresence;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
+use App\Support\Privacy\CookieConsent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,7 +35,9 @@ final class GameLiveAudienceController extends Controller
         $viewerId = $fingerprint instanceof UserFingerprint
             ? $fingerprint->fingerprint_hash
             : hash('sha256', $request->session()->getId());
-        $history->record($gameModel->id, $viewerId, $request->user()?->id, $fingerprint instanceof UserFingerprint ? $fingerprint : null);
+        if (CookieConsent::internalAnalyticsAllowed($request)) {
+            $history->record($gameModel->id, $viewerId, $request->user()?->id, $fingerprint instanceof UserFingerprint ? $fingerprint : null);
+        }
 
         return response()->json(
             $presence->touch($gameModel->id, $viewerId, $request->user() !== null)->toArray(),

@@ -15,6 +15,7 @@
     $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
     $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
     $categoryToolbarCount = 'Публикаций: '.$contentItems->total();
+    $categoryResultTotal = $contentItems->total();
 @endphp
 @extends('theme::layouts.category')
 

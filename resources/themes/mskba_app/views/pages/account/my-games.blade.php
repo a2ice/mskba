@@ -8,7 +8,7 @@
 @endsection
 
 @section('account-content')
-    <section class="app-my-games account-collection account-collection--games" aria-labelledby="my-games-heading">
+    <section class="app-my-games account-collection account-collection--games" data-context-result-total="{{ $games->total() }}" aria-labelledby="my-games-heading">
         <div class="app-my-games__top">
             <h2 id="my-games-heading">Мои игры и игровые тренировки</h2>
             <a class="account-collection__action" href="{{ route('events.index', ['type' => 'games']) }}">Найти игру</a>

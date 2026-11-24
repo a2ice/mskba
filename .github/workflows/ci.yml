@@ -221,7 +221,7 @@ jobs:
 
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
         if: steps.change_scope.outputs.full_suite == 'true'
-        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-day-booking.test.mjs tests/JavaScript/venue-rental-review.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/cookie-consent.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
+        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-day-booking.test.mjs tests/JavaScript/venue-rental-review.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/mobile-dock-context.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/help-launcher-intro.test.mjs tests/JavaScript/cookie-consent.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
 
       - name: Validate dynamic Page Builder and theme-owned JavaScript syntax
         if: steps.change_scope.outputs.full_suite == 'true'
@@ -672,6 +672,15 @@ jobs:
             rm -f "$MANIFEST_BACKUP" "$AI_ENV_BACKUP"
             ROLLBACK_ARMED=0
             echo 'Dev deployment completed with verified frontend assets; production untouched'
+
+            # Capture only a successful, exact checkout after the rollback guard is disarmed.
+            # Host deploy need not belong to www-data. Use the existing root container
+            # only to prepare this private directory, with the host UID as writer.
+            $COMPOSE exec -T --user 0:0 phpfpm install -d -m 2750 -o "$(id -u)" -g www-data storage/app/private/environment-checkpoints
+            test -w storage/app/private/environment-checkpoints
+            python3 scripts/environment-state.py record development "$VERIFIED_SHA" "${{ github.run_id }}"
+            $COMPOSE exec -T --user www-data phpfpm test -r storage/app/private/environment-checkpoints/latest.json
+
 
   activate_dev_rental_cashback:
     needs: [test, deploy_dev]

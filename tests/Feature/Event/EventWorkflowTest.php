@@ -850,7 +850,7 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($organizer)
             ->get(route('events.edit', $event->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Для площадок с оплатой или подтверждением бронирования');
+            ->assertSee('Меняется только дата и время мероприятия. Связанная аренда остаётся без изменений.');
 
         $this->actingAs($organizer)
             ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
