@@ -281,7 +281,9 @@
                     </div>
                 </div>
             </section>
-            @php($bookableCourtIds = collect($venue->courtSchedules)->where("bookingEnabled", true)->pluck("id")->all())
+            @php
+                $bookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
+            @endphp
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Расписание</h2>
                     @if(count($bookableCourtIds))
