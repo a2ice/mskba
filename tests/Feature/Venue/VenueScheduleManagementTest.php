@@ -187,6 +187,57 @@ class VenueScheduleManagementTest extends TestCase
             ->assertSee('data-venue-price-apply-week', false);
     }
 
+    public function test_public_account_allows_exclusive_midnight_end_and_preserves_last_slot(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($user),
+            'alias' => 'midnight-schedule-venue',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this->actingAs($user)->put(route('account.venues.schedule.update', $venue->alias), [
+            'timezone' => 'Europe/Moscow',
+            'intervals' => [
+                1 => [
+                    ['starts_at' => '07:00', 'ends_at' => '16:00'],
+                    ['starts_at' => '16:00', 'ends_at' => '00:00'],
+                ],
+            ],
+            'exceptions' => [[
+                'date' => '2026-12-31', 'is_closed' => false,
+                'intervals' => [['starts_at' => '12:00', 'ends_at' => '00:00']],
+            ]],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $schedule = $venue->schedule()->firstOrFail();
+        $this->assertDatabaseHas('venue_schedule_intervals', [
+            'venue_schedule_id' => $schedule->id,
+            'day_of_week' => 1,
+            'starts_at' => '16:00',
+            'ends_at' => '00:00',
+        ]);
+        $monday = \Carbon\CarbonImmutable::parse('2026-12-28 23:30:00', 'Europe/Moscow');
+        $effective = app(\App\Modules\Venue\Application\Services\EffectiveVenueHours::class)
+            ->intervals($venue->refresh(), null, $monday);
+        $this->assertCount(2, $effective);
+        $this->assertSame('24:00', $effective->last()->ends_at);
+    }
+
+    public function test_public_account_midnight_end_detects_overlap(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['created_by_actor_id' => $this->actorIdFor($user)]);
+
+        $this->actingAs($user)->put(route('account.venues.schedule.update', $venue->routeIdentifier()), [
+            'timezone' => 'Europe/Moscow',
+            'intervals' => [1 => [
+                ['starts_at' => '07:00', 'ends_at' => '00:00'],
+                ['starts_at' => '18:00', 'ends_at' => '23:00'],
+            ]],
+        ])->assertSessionHasErrors('intervals.1.1.starts_at');
+    }
+
     public function test_schedule_update_validates_interval_order(): void
     {
         $user = User::factory()->create();
