@@ -177,6 +177,9 @@
         <a href="#app-venue-interest">Интересы игроков</a>
         <a href="#app-venue-schedule">Расписание</a>
         <a href="#app-venue-about">О площадке</a>
+        @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
+            <a href="#app-venue-nearby">Площадки рядом</a>
+        @endif
     </nav>
 
     <div class="app-venue-page__columns">
@@ -262,7 +265,7 @@
             <section class="panel app-venue-block" id="app-venue-interest">
                 <header class="app-venue-block__header"><h2>{{ $activeVenueInterestCount > 0 ? "Площадкой интересуются" : "Играй здесь" }}</h2></header>
                 @if($activeVenueInterestCount === 0)
-                    @include('components.venue-favorite-follow', ['buttonClass' => 'button primary'])
+                    @include('components.venue-favorite-follow', ['buttonClass' => 'button primary', 'eventUrl' => $createEventUrl])
                 @else
                 <div class="app-venue-interest-summary" data-play-venue-interest-summary>
                     <div class="app-venue-interest-summary__profiles">
@@ -291,7 +294,7 @@
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Расписание</h2>
                     @if(count($bookableCourtIds))
-                    <button type="button" class="button secondary" data-venue-rental-open>{{ $venue->isCourtPage ? "Забронировать" : "Арендовать площадку" }}</button>
+                    <button type="button" class="button secondary" data-venue-rental-open>{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'Арендовать корт' : 'Арендовать зал') : 'Арендовать площадку' }}</button>
                     @endif
                 </header>
                 @foreach($venue->courtSchedules as $scheduleGroup)
@@ -305,11 +308,30 @@
                         @endunless
                         @if(!($scheduleGroup['bookingEnabled'] ?? false))
                             <p class="muted">Онлайн-бронирование недоступно.</p>
-                            @forelse(collect($scheduleGroup['days'])->groupBy(fn ($day) => json_encode($day['intervals'] ?? [])) as $days)
-                                <p aria-label="Часы работы"><svg aria-hidden="true" width="16" height="16"><use href="#clock"/></svg> <strong>{{ $days->pluck('label')->implode(', ') }}</strong> — {{ collect($days->first()['intervals'])->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') ?: 'Не работает' }}</p>
+                            @forelse(collect($scheduleGroup['weeklyHours'] ?? [])->groupBy(fn ($day) => json_encode($day['intervals'])) as $days)
+                                @php $hours = $days->first()['intervals']; @endphp
+                                <p aria-label="Часы работы"><svg aria-hidden="true" width="16" height="16"><use href="#clock"/></svg>
+                                    <strong>{{ $days->pluck('weekday')->implode(', ') }}</strong> —
+                                    @if($hours === null)Режим работы не указан
+                                    @elseif($hours === [])Не работает
+                                    @else{{ collect($hours)->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') }}
+                                    @endif
+                                </p>
                             @empty
                                 <p>Режим работы не указан.</p>
                             @endforelse
+                            @if(!empty($scheduleGroup['exceptions']))
+                                <h4>Изменения графика</h4>
+                                @foreach($scheduleGroup['exceptions'] as $exception)
+                                    <p><strong>{{ $exception['label'] }} ({{ $exception['weekday'] }})</strong> —
+                                        @forelse($exception['intervals'] as $interval)
+                                            {{ $interval['startsAt'] }}–{{ $interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt'] }}{{ $loop->last ? '' : ', ' }}
+                                        @empty
+                                            Не работает
+                                        @endforelse
+                                    </p>
+                                @endforeach
+                            @endif
                         @elseif(count($scheduleGroup['days']))
                             <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}">
                                 @foreach($scheduleGroup['days'] as $day)
@@ -479,7 +501,7 @@
 @include('theme::pages.venues.partials.rental-search-dialog')
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog aria-labelledby="app-venue-choice-title">
     <div class="app-venue-overlay__header">
-        <h2 id="app-venue-choice-title">Арендовать площадку</h2>
+        <h2 id="app-venue-choice-title">{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'Арендовать корт' : 'Арендовать зал') : 'Арендовать площадку' }}</h2>
         <button type="button" class="icon-button" data-venue-choice-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
     </div>
     <div class="app-venue-choice-dialog__body mskba-scroll">
@@ -506,8 +528,8 @@
 @include('components.venue-main-favorite-dialog')
 <dialog class="app-venue-overlay app-venue-day-dialog" data-venue-day-dialog
     data-day-url="{{ route('venues.schedule.day', $venue->id) }}"
-    data-court-id="{{ $venue->isCourtPage ? $venue->selectedCourt['id'] : (count($venue->courts) === 1 ? $venue->courts[0]['id'] : '') }}"
-    data-court-name="{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : (count($venue->courts) === 1 ? $venue->courts[0]['name'] : '') }}"
+    data-court-id="{{ count($rentalSearchCourts) === 1 ? $rentalSearchCourts[0]['id'] : '' }}"
+    data-court-name="{{ count($rentalSearchCourts) === 1 ? $rentalSearchCourts[0]['name'] : '' }}"
     aria-labelledby="app-venue-day-dialog-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-day-dialog-title" data-venue-day-title>Расписание дня</h2>
