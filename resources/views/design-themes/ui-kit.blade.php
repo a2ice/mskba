@@ -68,6 +68,7 @@
         .ui-kit-mobile-dock { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
         .ui-kit-mobile-dock span { min-height: 52px; display: grid; place-items: center; text-align: center; font-size: 12px; font-weight: 750; color: var(--muted); }
         .ui-kit-mobile-dock span.is-active { color: var(--accent); }
+        .ui-kit-mobile-gap { min-height: 22px; margin-top: -12px; background-color: rgba(0,0,0,.1); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); pointer-events: none; }
         .ui-kit-context-preview { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: 16px; display: grid; gap: 12px; }
         .ui-kit-context-preview > header,.ui-kit-context-preview > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .ui-kit-context-preview .ui-kit-context-search { width: 100%; min-height: 44px; border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: 10px 12px; background: var(--field); color: var(--text); }
@@ -310,6 +311,7 @@
                     <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели">
                         <span>Играть</span><span>Площадки</span><span>●</span><span>Меню</span><span class="is-active">Фильтры</span>
                     </div>
+                    <div class="ui-kit-mobile-gap" aria-hidden="true"></div>
                 </div>
             </article>
             <article class="panel ui-kit-panel">
@@ -324,6 +326,7 @@
                     <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели поиска">
                         <span>Играть</span><span>Площадки</span><span class="is-active">●</span><span>Меню</span><span>Поиск</span>
                     </div>
+                    <div class="ui-kit-mobile-gap" aria-hidden="true"></div>
                 </div>
             </article>
         </div>
