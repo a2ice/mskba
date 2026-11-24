@@ -31,7 +31,8 @@ final class VenueSearchCache
             'tags:id,venue_id,name,slug',
             'location.address.cityDirectory',
             'location.metroStations:id,name',
-            'courts',
+            'courts.amenities' => fn ($query) => $query->where('is_active', true),
+            'amenities' => fn ($query) => $query->where('is_active', true),
         ])->orderBy('id')->get();
 
         $policies = VenueBookingPolicy::query()
@@ -54,6 +55,18 @@ final class VenueSearchCache
 
                     return [
                         'court_access' => $courtAccess,
+                        'court_features' => $venue->courts->mapWithKeys(fn ($court): array => [
+                            (int) $court->id => [
+                                'surface' => $court->surface_type?->value,
+                                'hoops' => $court->hoops_count === null
+                                    ? ($court->supports_halves ? 2 : 1) : (int) $court->hoops_count,
+                                'dimensions' => $court->length_meters !== null && $court->width_meters !== null
+                                    ? [(float) $court->length_meters, (float) $court->width_meters] : null,
+                                'amenities' => $venue->amenities->pluck('id')
+                                    ->concat($court->amenities->pluck('id'))
+                                    ->map(fn ($id): int => (int) $id)->unique()->sort()->values()->all(),
+                            ],
+                        ])->all(),
                         'court_environments' => $venue->courts->mapWithKeys(
                             fn ($court): array => [(int) $court->id => $court->environment?->value],
                         )->all(),
