@@ -85,6 +85,55 @@ final class VenueTariffGridTest extends TestCase
         );
     }
 
+    public function test_court_inherits_both_parent_time_ranges_and_restores_them_after_override_reset(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $policy = $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $this->actingAs($owner);
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'mode' => 'weekly',
+            'ranges' => [
+                [
+                    'days' => [1],
+                    'starts_at' => '07:00', 'ends_at' => '16:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+                [
+                    'days' => [1],
+                    'starts_at' => '16:00', 'ends_at' => '23:30',
+                    'operation' => 'set', 'whole_price_per_step' => '1500',
+                ],
+            ],
+        ])->assertRedirect();
+
+        $quote = fn (): array => app(VenueSlotPricing::class)->calculate(
+            $venue, $policy,
+            CarbonImmutable::parse('2026-11-30 15:30:00', 'Europe/Moscow'),
+            60, VenueBookingScopeEnum::WHOLE, $court,
+            ['time_step_minutes' => 30, 'requires_payment' => true],
+        )['prices_per_step_minor'];
+        $this->assertSame([100000, 150000], $quote());
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly',
+            'days' => [1], 'starts_at' => '16:00', 'ends_at' => '16:30',
+            'operation' => 'set', 'whole_price_per_step' => '1900',
+        ])->assertRedirect();
+        $this->assertSame([100000, 190000], $quote());
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly',
+            'days' => [1], 'starts_at' => '16:00', 'ends_at' => '16:30',
+            'operation' => 'clear',
+        ])->assertRedirect();
+
+        $this->assertSame([100000, 150000], $quote());
+        $this->assertSame(0, DB::table('venue_court_manual_slot_prices')
+            ->where('venue_court_id', $court->id)->count());
+    }
+
     public function test_two_non_overlapping_ranges_save_together_with_a_day_specific_exception(): void
     {
         [$owner, $venue] = $this->ownedVenue();
