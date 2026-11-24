@@ -20,6 +20,8 @@
     <main class="app-shell" id="mskba-app-content">
         @inertia
     </main>
+    @include('theme::partials.context-action-dialogs')
+    @include('theme::partials.help-launcher')
     @include('theme::partials.auth-dialog-root')
 </body>
 </html>
