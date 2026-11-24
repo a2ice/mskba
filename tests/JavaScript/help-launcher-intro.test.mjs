@@ -18,7 +18,7 @@ function fixture({ reducedMotion = false, readyState = 'loading', size = '50px',
             add: (...names) => names.forEach((name) => classes.add(name)),
             remove: (...names) => names.forEach((name) => classes.delete(name)),
         },
-        querySelector: (selector) => selector === '[data-help-launcher-label]' ? label : null,
+        querySelector: (selector) => selector === '[data-help-intro-label]' ? label : null,
         addEventListener: (name, handler) => { buttonListeners[name] = handler; },
         style: { setProperty: (name, value) => { properties[name] = value; } },
     };
@@ -84,7 +84,7 @@ test('keyboard focus cancels a pending animation and keeps the button visible', 
 test('launcher is a single accessible action, with CSS-only label clipping', () => {
     const blade = readFileSync(new URL('../../resources/themes/mskba_app/views/partials/help-launcher.blade.php', import.meta.url), 'utf8');
     const css = readFileSync(new URL('../../resources/themes/mskba_app/css/context-dialogs.css', import.meta.url), 'utf8');
-    assert.match(blade, /data-help-launcher-label aria-hidden="true">Помощь<\/span>/);
+    assert.match(blade, /data-help-intro-label aria-hidden="true">Помощь<\/span>/);
     assert.match(blade, /aria-label="Помощь по этой странице"/);
     assert.match(css, /justify-content: flex-end;/);
     assert.match(css, /overflow: hidden;/);
