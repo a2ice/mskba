@@ -5,7 +5,7 @@ export const HELP_LAUNCHER_DELAY_MS = 2000;
 
 export function initHelpLauncherIntro(doc = document, host = window) {
     const launcher = doc.querySelector('[data-help-launcher]');
-    const label = launcher?.querySelector('[data-help-launcher-label]');
+    const label = launcher?.querySelector('[data-help-intro-label]');
     if (!launcher || !label) return null;
 
     // Respect operating-system accessibility preferences. No delayed hiding.
