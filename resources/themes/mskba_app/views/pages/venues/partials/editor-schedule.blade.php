@@ -109,3 +109,5 @@
         </div>
     </template>
 </form>
+
+@include('theme::pages.venues.partials.editor-tariffs', ['venue' => $venue])
