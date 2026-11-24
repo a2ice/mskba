@@ -70,13 +70,13 @@
         .ui-kit-mobile-dock span.is-active { color: var(--accent); }
         .ui-kit-mobile-shell { padding: 5px 0 22px; background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,.1)); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
         .ui-kit-context-preview { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: 16px; display: grid; gap: 12px; }
-        .ui-kit-context-preview > header,.ui-kit-context-preview > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .ui-kit-context-preview > header,.ui-kit-context-preview > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
         .ui-kit-context-preview .ui-kit-context-search { width: 100%; min-height: 44px; border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: 10px 12px; background: var(--field); color: var(--text); }
         .ui-kit-context-preview footer .button { flex: 1; }
         .ui-kit-context-preview p { font-size: 12px; color: var(--muted); }
         .ui-kit-context-preview .ui-kit-context-total { border-top:1px solid var(--line);padding:10px 2px 0;display:flex;align-items:center;gap:8px; }
         .ui-kit-context-preview .ui-kit-context-total strong { color:var(--text);font-size:15px;margin-left:0; }
-        .ui-kit-context-preview .ui-kit-context-chevron { display:grid;place-items:center;align-self:stretch;width:48px;margin-left:auto;border-left:1px solid var(--line);font-size:20px;color:var(--text); }
+        .ui-kit-context-preview .ui-kit-context-chevron { display:flex;justify-content:center;align-items:center;gap:5px;align-self:stretch;width:68px;margin-left:auto;border-left:1px solid var(--line);font-size:19px;color:var(--text); }
     </style>
 </head>
 <body class="ui-kit-body">
@@ -294,7 +294,7 @@
 
     <section class="ui-kit-section" id="mobile-context">
         <h2>Мобильная навигация · контекстный поиск</h2>
-        <p class="ui-kit-intro">Состояния общего Mobile Dock: Играть / Площадки / Главная / Меню / Фильтры или Поиск. Панель фильтров имеет компактный и развёрнутый режимы, прокручиваемый контент до 70dvh и фиксированные действия.</p>
+        <p class="ui-kit-intro">Состояния общего Mobile Dock: Играть / Площадки / Главная / Меню / Поиск (контекстные фильтры внутри). Панель фильтров имеет компактный и развёрнутый режимы, прокручиваемый контент до 70dvh и фиксированные действия.</p>
         <div class="ui-kit-grid">
             <article class="panel ui-kit-panel">
                 <h3>Каталог: фильтры</h3>
@@ -305,12 +305,12 @@
                         <label class="check-label"><input type="checkbox"> Есть ближайшие мероприятия</label>
                         <label class="check-label"><input type="checkbox"> Мои интересы <span title="Подбор площадок по сохранённым интересам">ⓘ</span></label>
                         <label>Интерес <span class="select-control"><select><option>Не выбрано</option><option>Мой вечерний баскетбол</option></select></span></label>
-                        <p class="ui-kit-context-total">Найдено: <strong>128</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">⌄</span></p>
+                        <p class="ui-kit-context-total">Найдено: <strong>128</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">☷ ⌄</span></p>
                         <footer><button class="button secondary" type="button">Сбросить</button><button class="button primary" type="button">Применить</button></footer>
                     </div>
                     <div class="ui-kit-mobile-shell">
                         <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели">
-                            <span>Играть</span><span>Площадки</span><span>●</span><span>Меню</span><span class="is-active">Фильтры</span>
+                            <span>Играть</span><span>Площадки</span><span>●</span><span>Меню</span><span class="is-active">⌕ Поиск</span>
                         </div>
                     </div>
                 </div>
@@ -326,7 +326,7 @@
                     </div>
                     <div class="ui-kit-mobile-shell">
                         <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели поиска">
-                            <span>Играть</span><span>Площадки</span><span class="is-active">●</span><span>Меню</span><span>Поиск</span>
+                            <span>Играть</span><span>Площадки</span><span class="is-active">●</span><span>Меню</span><span>⌕ Поиск</span>
                         </div>
                     </div>
                 </div>
