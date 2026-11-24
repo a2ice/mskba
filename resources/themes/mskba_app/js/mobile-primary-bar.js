@@ -25,7 +25,6 @@ if (dock) {
     const filterLabel = dock.querySelector('[data-app-mobile-primary-filter-label]');
     const filterBadge = dock.querySelector('[data-app-mobile-primary-filter-badge]');
     const filterResultValue = dock.querySelector('[data-context-filter-result-value]');
-    const filterExpandLabel = dock.querySelector('[data-context-filter-expand-label]');
     const filterExpand = dock.querySelector('[data-context-filter-expand]');
     const filterPreview = dock.querySelector('[data-context-filter-preview]');
     const quickSearch = dock.querySelector('[data-context-filter-quick-search]');
@@ -61,7 +60,7 @@ if (dock) {
             'game_format', 'pricing_type', 'team_id', 'accepts_requests', 'recruiting',
             'tag', 'product_type', 'stock', 'color', 'size', 'min_price', 'max_price',
             'sport_type', 'member_count', 'hiring', 'access', 'operational_status',
-            'has_upcoming_events', 'latitude', 'longitude', 'radius_km', 'scope', 'role']);
+            'has_upcoming_events', 'my_interests', 'interest_id', 'latitude', 'longitude', 'radius_km', 'scope', 'role']);
         const defaults = { period: ['upcoming', 'all'], status: ['not_cancelled'] };
         let count = 0;
         for (const [key, val] of url.searchParams) {
@@ -107,7 +106,9 @@ if (dock) {
         expanded = Boolean(value);
         filterPanel?.classList.toggle('is-expanded', expanded);
         filterExpand?.setAttribute('aria-expanded', String(expanded));
-        filterExpandLabel.textContent = expanded ? 'Свернуть фильтры' : 'Расширенный поиск';
+        const hint = expanded ? 'Свернуть фильтры' : 'Развернуть фильтры';
+        filterExpand?.setAttribute('aria-label', hint);
+        filterExpand?.setAttribute('title', hint);
         if (filterScroll) filterScroll.scrollTop = 0;
     };
 
@@ -222,6 +223,12 @@ if (dock) {
         item.panel?.querySelectorAll('a[href]')
             .forEach(link => link.addEventListener('click', () => close()));
     }
+
+    // The standard subscription wizard is a native top-layer dialog. Release
+    // the dock focus trap before Vue opens it; never create a second wizard.
+    filterPanel?.addEventListener('click', event => {
+        if (event.target.closest?.('[data-subscription-create]')) close(false);
+    });
 
     let backdropPointer = null;
     backdrop?.addEventListener('pointerdown', event => {

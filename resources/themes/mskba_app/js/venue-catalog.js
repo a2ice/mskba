@@ -20,6 +20,55 @@ document.querySelectorAll('[data-catalog-range-filter]').forEach(root => {
     sync();
 });
 
+/* Venue interest filters use the existing subscription matching and wizard. */
+document.querySelectorAll('[data-venue-interest-filter]').forEach(root => {
+    const checkbox = root.querySelector('[data-venue-interest-toggle]');
+    const options = root.querySelector('[data-venue-interest-options]');
+    const select = root.querySelector('[data-venue-interest-select]');
+    const sync = () => {
+        if (!checkbox || !options || !select) return;
+        options.hidden = !checkbox.checked;
+        select.disabled = !checkbox.checked;
+        if (!checkbox.checked) select.value = '';
+    };
+    checkbox?.addEventListener('change', sync);
+    window.addEventListener('pageshow', sync);
+    sync();
+
+    // A help control must work on touchscreen, not just on hover.
+    root.querySelectorAll('[data-venue-interest-help]').forEach(button => {
+        const hint = document.getElementById(button.getAttribute('aria-controls'));
+        button.addEventListener('click', () => {
+            const show = button.getAttribute('aria-expanded') !== 'true';
+            root.querySelectorAll('[data-venue-interest-help]').forEach(other => {
+                other.setAttribute('aria-expanded', 'false');
+                const target = document.getElementById(other.getAttribute('aria-controls'));
+                if (target) target.hidden = true;
+            });
+            button.setAttribute('aria-expanded', String(show));
+            if (hint) hint.hidden = !show;
+        });
+    });
+
+    window.addEventListener('mskba:play-intent:saved', event => {
+        const interestId = Number(event.detail?.id);
+        if (!select || !Number.isSafeInteger(interestId) || interestId <= 0) return;
+        // The shared wizard provides the just-created name without exposing
+        // other users' subscriptions or requiring an extra navigation.
+        const name = String(event.detail?.name || ('Интерес №' + interestId)).slice(0, 80);
+        let option = [...select.options].find(item => item.value === String(interestId));
+        if (!option) {
+            option = new Option(name, String(interestId));
+            select.add(option);
+        }
+        option.textContent = name;
+        checkbox.checked = true;
+        sync();
+        select.value = String(interestId);
+        root.querySelector('.app-venues-catalog__interest-empty')?.remove();
+    });
+});
+
 /* Venue infinite scrolling. Use the existing project loading spinner. */
 (() => {
     const root = document.querySelector('[data-venue-infinite-catalog]');

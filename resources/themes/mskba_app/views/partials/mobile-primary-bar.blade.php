@@ -108,11 +108,6 @@
             <input type="search" id="app-mobile-primary-quick-search" data-context-filter-quick-search
                    autocomplete="off" placeholder="Что хотите найти?">
         </div>
-        <button type="button" class="app-mobile-primary__filter-expand" data-context-filter-expand
-                aria-expanded="false" aria-controls="app-mobile-primary-filter-scroll">
-            <span data-context-filter-expand-label>Расширенный поиск</span>
-            <svg aria-hidden="true"><use href="#chevron-down"/></svg>
-        </button>
         <div class="app-mobile-primary__filter-scroll" id="app-mobile-primary-filter-scroll"
              data-context-filter-scroll>
             <div data-context-filter-host></div>
@@ -142,6 +137,11 @@
         <div class="app-mobile-primary__result-strip" data-context-result-strip role="status" aria-live="polite">
             <span>Кол-во результатов:</span>
             <strong data-context-filter-result-value>—</strong>
+            <button type="button" class="app-mobile-primary__filter-expand" data-context-filter-expand
+                    aria-expanded="false" aria-controls="app-mobile-primary-filter-scroll"
+                    aria-label="Развернуть фильтры" title="Развернуть фильтры">
+                <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+            </button>
         </div>
         <footer class="app-mobile-primary__filter-footer">
             <button type="button" class="button secondary" data-context-filter-reset>Сбросить</button>

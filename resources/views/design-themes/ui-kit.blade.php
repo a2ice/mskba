@@ -73,9 +73,9 @@
         .ui-kit-context-preview .ui-kit-context-search { width: 100%; min-height: 44px; border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: 10px 12px; background: var(--field); color: var(--text); }
         .ui-kit-context-preview footer .button { flex: 1; }
         .ui-kit-context-preview p { font-size: 12px; color: var(--muted); }
-        .ui-kit-context-preview .ui-kit-context-expand { display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:11px;padding:12px;background:var(--surface-raised);font-size:14px;font-weight:750;color:var(--text); }
         .ui-kit-context-preview .ui-kit-context-total { border-top:1px solid var(--line);padding:10px 2px 0;display:flex;align-items:center;gap:8px; }
-        .ui-kit-context-preview .ui-kit-context-total strong { color:var(--text);font-size:15px; }
+        .ui-kit-context-preview .ui-kit-context-total strong { color:var(--text);font-size:15px;margin-left:auto; }
+        .ui-kit-context-preview .ui-kit-context-chevron { display:grid;place-items:center;align-self:stretch;width:48px;border-left:1px solid var(--line);font-size:20px;color:var(--text); }
     </style>
 </head>
 <body class="ui-kit-body">
@@ -301,8 +301,10 @@
                     <div class="ui-kit-context-preview">
                         <header><strong>Фильтры площадок</strong><span>⌄</span></header>
                         <input class="ui-kit-context-search" aria-label="Поиск площадки" placeholder="Название, адрес или описание">
-                        <p class="ui-kit-context-expand">Расширенный поиск <span aria-hidden="true">⌄</span></p>
-                        <p class="ui-kit-context-total">Кол-во результатов: <strong>128</strong> (пример)</p>
+                        <label class="check-label"><input type="checkbox"> Есть ближайшие мероприятия</label>
+                        <label class="check-label"><input type="checkbox"> Мои интересы <span title="Подбор площадок по сохранённым интересам">ⓘ</span></label>
+                        <label>Интерес <span class="select-control"><select><option>Не выбрано</option><option>Мой вечерний баскетбол</option></select></span></label>
+                        <p class="ui-kit-context-total">Кол-во результатов: <strong>128</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">⌄</span></p>
                         <footer><button class="button secondary" type="button">Сбросить</button><button class="button primary" type="button">Применить</button></footer>
                     </div>
                     <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели">
@@ -316,8 +318,7 @@
                     <div class="ui-kit-context-preview">
                         <header><strong>Поиск по MSKBA</strong><span>⌃</span></header>
                         <input class="ui-kit-context-search" aria-label="Поиск MSKBA" placeholder="Что хотите найти?">
-                        <p class="ui-kit-context-expand">Расширенный поиск <span aria-hidden="true">⌄</span></p>
-                        <p class="ui-kit-context-total">Кол-во результатов: <strong>—</strong></p>
+                        <p class="ui-kit-context-total">Кол-во результатов: <strong>—</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">⌄</span></p>
                         <footer><button class="button secondary" type="button">Сбросить</button><button class="button primary" type="button">Найти</button></footer>
                     </div>
                     <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели поиска">

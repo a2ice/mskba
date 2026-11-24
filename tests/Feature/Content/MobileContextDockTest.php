@@ -92,7 +92,8 @@ final class MobileContextDockTest extends TestCase
     public function test_fixed_mobile_sheet_has_search_before_expansion_and_result_counter_above_actions(): void
     {
         $response = $this->get(route('venues'))->assertOk()
-            ->assertSee('data-context-filter-expand-label>Расширенный поиск', false)
+            ->assertSee('data-context-filter-expand', false)
+            ->assertSee('aria-label="Развернуть фильтры"', false)
             ->assertSee('Кол-во результатов:')
             ->assertSee('data-context-filter-result-value', false)
             ->assertSee('data-context-result-total="', false);
@@ -109,8 +110,8 @@ final class MobileContextDockTest extends TestCase
         $this->assertNotFalse($scroll);
         $this->assertNotFalse($results);
         $this->assertNotFalse($actions);
-        $this->assertTrue($search < $expand && $expand < $scroll);
-        $this->assertTrue($scroll < $results && $results < $actions);
+        $this->assertTrue($search < $scroll && $scroll < $results);
+        $this->assertTrue($results < $expand && $expand < $actions);
     }
 
     public function test_all_catalogs_expose_total_results_for_the_mobile_filter_footer(): void
