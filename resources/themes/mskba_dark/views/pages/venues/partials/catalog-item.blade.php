@@ -1,7 +1,7 @@
 @php
     $mode = $mode ?? 'card';
     $showDescription = $mode === 'list';
-    $venueUrl = $venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier());
+    $venueUrl = $cardUrl ?? ($venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()));
     $freeCourts = $venue->courtAccessSummary['free'] ?? [];
     $paidCourts = $venue->courtAccessSummary['paid'] ?? [];
     $approvalCourts = $venue->courtAccessSummary['approval'] ?? [];
@@ -27,6 +27,13 @@
 
         @if($venue->displayAddress)
             <p class="venue-catalog-item__address"><i class="ti ti-map-pin" aria-hidden="true"></i><span>{{ $venue->displayAddress }}</span></p>
+        @endif
+
+        @if(isset($distanceMeters))
+            <p class="venue-catalog-item__distance"><i class="ti ti-map-pin" aria-hidden="true"></i>{{ number_format($distanceMeters / 1000, 1, ',', ' ') }} км от этой площадки</p>
+        @endif
+        @if(!empty($cardCourtName))
+            <p class="venue-catalog-item__match"><i class="ti ti-layout-grid" aria-hidden="true"></i>Подходящий зал/корт: {{ $cardCourtName }}</p>
         @endif
 
         @if($showDescription && $venue->shortDescription)
