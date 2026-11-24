@@ -7,6 +7,7 @@ use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
 use App\Filament\Backoffice\Resources\Venues\Pages\EditVenueTariffs;
 use App\Filament\Backoffice\Resources\Venues\Pages\ListVenues;
 use App\Filament\Backoffice\Resources\Venues\Support\VenueRentalPolicyEditor;
+use App\Filament\Backoffice\Resources\Venues\Support\VenueTariffModal;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PricingRulesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalBookingsRelationManager;
@@ -347,15 +348,10 @@ final class VenueResource extends Resource
                                     ->numeric()->minValue(0)
                                     ->helperText('Тариф сохраняется и при временном отключении аренды половин.'),
                             ]),
-                        Section::make('Тарифная сетка')
-                            ->description('Единый редактор временных диапазонов, исключений и импортированных цен. Ручные изменения переживают повторную синхронизацию.')
+                        Section::make('Тарифная сетка площадки')
+                            ->description('Общие тарифы по дням недели наследуются залами без своих цен. Редактор открывается здесь, без перехода на другую страницу.')
                             ->schema([
-                                TextEntry::make('unified_tariff_grid')
-                                    ->label('Редактор стоимости по времени')
-                                    ->state('Открыть тарифную сетку площадки и её залов')
-                                    ->url(fn (?Venue $record): ?string => $record === null ? null
-                                        : self::getUrl('tariffs', ['record' => $record]))
-                                    ->openUrlInNewTab(),
+                                SchemaActions::make([VenueTariffModal::forVenue('venueTariffsFromRental')]),
                             ]),
                         Section::make('Время и ограничения')
                             ->columns(3)
@@ -623,6 +619,11 @@ final class VenueResource extends Resource
                                     ]),
                             ]),
                     ]),
+                    Section::make('Тарифы площадки по времени')
+                        ->description('Общая тарифная сетка площадки. Залы наследуют её цены до собственных переопределений. Настройка открывается в попапе.')
+                        ->schema([
+                            SchemaActions::make([VenueTariffModal::forVenue('venueTariffsFromSchedule')]),
+                        ]),
                 ]),
             ]),
         ]);
