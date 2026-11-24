@@ -3,6 +3,9 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
+use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -64,6 +67,56 @@ final class VenueCatalogCourtAccessTest extends TestCase
         $this->get(route('venues', ['access' => 'free', 'view' => 'map']))
             ->assertOk()
             ->assertSee(str_replace('/', '\\/', $free->matchedCourtUrl), false);
+    }
+
+    public function test_playing_space_type_and_access_match_the_same_court_without_changing_venue_type(): void
+    {
+        $school = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'type' => VenueTypeEnum::SCHOOL,
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => true,
+        ]);
+        $school->primaryCourt()->firstOrFail()->update([
+            'environment' => VenueCourtEnvironmentEnum::INDOOR,
+            'requires_payment' => false,
+        ]);
+        $outdoor = $school->courts()->create([
+            'name' => 'Уличный корт',
+            'alias' => 'outdoor',
+            'environment' => VenueCourtEnvironmentEnum::OUTDOOR,
+            'sort_order' => 20,
+            'allows_whole' => true,
+            'requires_payment' => true,
+        ]);
+
+        $handler = app(ListVenuesHandler::class);
+        foreach (['school', 'sports_hall', 'street_court'] as $type) {
+            $item = collect($handler->handle(null, null, ['type' => $type]))->firstWhere('id', $school->id);
+            $this->assertNotNull($item);
+            $this->assertSame('school', $item->typeSlug);
+            $this->getJson(route('api.v1.venues.index', ['type' => $type]))
+                ->assertOk()->assertJsonPath('data.0.id', $school->id)
+                ->assertJsonPath('data.0.type', 'school');
+        }
+
+        $filters = ['type' => 'street_court', 'access' => 'free'];
+        $this->assertNull(collect($handler->handle(null, null, $filters))->firstWhere('id', $school->id));
+        $this->getJson(route('api.v1.venues.index', $filters))->assertOk()->assertJsonCount(0, 'data');
+
+        $paid = collect($handler->handle(null, null, ['type' => 'street_court', 'access' => 'paid']))->firstWhere('id', $school->id);
+        $this->assertNotNull($paid);
+        $this->assertSame('Уличный корт', $paid->matchedCourtName);
+
+        $search = app(SearchVenuesHandler::class);
+        $this->assertSame([$school->id], array_map(fn ($item) => $item->id,
+            $search->handle(null, null, type: VenueTypeEnum::STREET_COURT, confirmedOnly: true)));
+        $this->assertSame([], $search->handle(null, null, type: VenueTypeEnum::STREET_COURT,
+            requiresPayment: false, confirmedOnly: true));
+
+        $outdoor->delete();
+        $this->assertNull(collect($handler->handle(null, null, ['type' => 'street_court']))->firstWhere('id', $school->id));
+        $this->getJson(route('api.v1.venues.index', ['type' => 'street_court']))->assertOk()->assertJsonCount(0, 'data');
     }
 
     public function test_inherited_conditions_closed_courts_and_unknown_payment_do_not_match_free(): void
