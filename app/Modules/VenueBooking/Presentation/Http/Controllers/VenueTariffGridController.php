@@ -54,6 +54,7 @@ final class VenueTariffGridController extends Controller
         $input = $request->validate([
             'court_id' => ['nullable', 'integer', 'min:1'],
             'return_to_schedule' => ['nullable', 'boolean'],
+            'replace_existing' => ['nullable', 'boolean'],
             'mode' => ['required', Rule::in(['weekly', 'date'])],
             'date' => ['required_if:mode,date', 'nullable', 'date_format:Y-m-d'],
             'days' => ['nullable', 'array', 'max:7'],
@@ -87,11 +88,13 @@ final class VenueTariffGridController extends Controller
         ]);
 
         [$policy, $court] = $this->context($request, $venue, $access, $input['court_id'] ?? null);
-        $count = isset($input['ranges'])
+        $replace = (bool) ($input['replace_existing'] ?? false);
+        $count = $replace || isset($input['ranges'])
             ? $grid->applyMany(
                 $venue, $policy, $court,
                 $input['mode'], $input['date'] ?? now('Europe/Moscow')->toDateString(),
-                array_values($input['ranges']), $request->user()?->id,
+                array_values($input['ranges'] ?? []), $request->user()?->id,
+                $replace,
             )
             : $grid->apply($venue, $policy, $court, $input, $request->user()?->id);
 
