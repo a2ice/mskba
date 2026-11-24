@@ -9,7 +9,7 @@
     data-step="{{ $rentalSearchPolicy['time_step_minutes'] ?? 30 }}"
     aria-labelledby="rental-search-title">
     <header class="mskba-modal__header">
-        <h2 id="rental-search-title">Арендовать площадку</h2>
+        <h2 id="rental-search-title">{{ $venue->isCourtPage ? (($venue->selectedCourt['environment'] ?? null) === 'outdoor' ? 'Арендовать корт' : 'Арендовать зал') : 'Арендовать площадку' }}</h2>
         <button type="button" class="icon-button" data-rental-search-close aria-label="Закрыть">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12M6 6l12 12"/></svg>
         </button>

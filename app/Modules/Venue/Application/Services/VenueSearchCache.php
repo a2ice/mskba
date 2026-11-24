@@ -18,7 +18,7 @@ final class VenueSearchCache
         $version = $this->version();
 
         return $this->repository()->remember(
-            "venue-search:index:environment-v1:v{$version}",
+            "venue-search:index:court-features-v2:v{$version}",
             (int) config('venue_search.index_ttl_seconds', 3600),
             fn (): array => $this->buildDocuments(),
         );
@@ -31,7 +31,8 @@ final class VenueSearchCache
             'tags:id,venue_id,name,slug',
             'location.address.cityDirectory',
             'location.metroStations:id,name',
-            'courts',
+            'courts.amenities' => fn ($query) => $query->where('is_active', true),
+            'amenities' => fn ($query) => $query->where('is_active', true),
         ])->orderBy('id')->get();
 
         $policies = VenueBookingPolicy::query()
@@ -54,6 +55,20 @@ final class VenueSearchCache
 
                     return [
                         'court_access' => $courtAccess,
+                        'court_features' => $venue->courts->mapWithKeys(fn ($court): array => [
+                            (int) $court->id => [
+                                'surface' => $court->surface_type?->value,
+                                // A half-court flag is not evidence of an
+                                // exact hoop count; preserve unknown values.
+                                'hoops' => $court->hoops_count === null
+                                    ? null : (int) $court->hoops_count,
+                                'dimensions' => $court->length_meters !== null && $court->width_meters !== null
+                                    ? [(float) $court->length_meters, (float) $court->width_meters] : null,
+                                'amenities' => $venue->amenities->pluck('id')
+                                    ->concat($court->amenities->pluck('id'))
+                                    ->map(fn ($id): int => (int) $id)->unique()->sort()->values()->all(),
+                            ],
+                        ])->all(),
                         'court_environments' => $venue->courts->mapWithKeys(
                             fn ($court): array => [(int) $court->id => $court->environment?->value],
                         )->all(),
@@ -97,7 +112,7 @@ final class VenueSearchCache
         $hash = sha1(json_encode($parameters, JSON_THROW_ON_ERROR));
 
         return $this->repository()->remember(
-            "venue-search:result:environment-v1:v{$version}:{$hash}",
+            "venue-search:result:court-features-v2:v{$version}:{$hash}",
             (int) config('venue_search.result_ttl_seconds', 60),
             $resolver,
         );

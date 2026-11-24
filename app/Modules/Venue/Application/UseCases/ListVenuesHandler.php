@@ -33,7 +33,7 @@ final class ListVenuesHandler
 
     /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
     /** @param Collection<int, PlayIntent>|null $matchingInterests */
-    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null): array
+    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -41,10 +41,11 @@ final class ListVenuesHandler
         $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
         $actorOwnedVenueIds = $this->accessResolver->actorOwnedVenueIdsFor($actor);
 
-        $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters): void {
+        $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters, $onlyVenueIds): void {
             // Hidden venues are managed through Filament/account rather than
             // published in cards, map pins or search, even for their owners.
-            $query->where('is_published', true)->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
+            $query->when($onlyVenueIds !== null, fn ($subset) => $subset->whereIn('id', $onlyVenueIds))
+                ->where('is_published', true)->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
                 $visible->where('status', VenueStatusEnum::CONFIRMED->value)
                     ->orWhereIn('id', $contractViewableVenueIds)
                     ->orWhereIn('id', $bootstrapOwnedVenueIds)

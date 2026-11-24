@@ -93,6 +93,14 @@
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                                 </span>
                             </label>
+                            <label class="field-group" for="court-{{ $court->id }}-length">
+                                <span>Длина игровой зоны, м</span>
+                                <input id="court-{{ $court->id }}-length" type="number" name="length_meters" step="0.01" min="1" max="200" value="{{ $court->length_meters }}">
+                            </label>
+                            <label class="field-group" for="court-{{ $court->id }}-width">
+                                <span>Ширина игровой зоны, м</span>
+                                <input id="court-{{ $court->id }}-width" type="number" name="width_meters" step="0.01" min="1" max="200" value="{{ $court->width_meters }}">
+                            </label>
                             <label class="field-group" for="court-{{ $court->id }}-environment">
                                 <span>Тип зала</span>
                                 <span class="select-control">
@@ -239,6 +247,12 @@
                     </label>
                     <label class="field-group" for="new-court-hoops">
                         <span>Количество колец</span><select id="new-court-hoops" name="hoops_count"><option value="1">1</option><option value="2" selected>2</option></select>
+                    </label>
+                    <label class="field-group" for="new-court-length">
+                        <span>Длина зоны, м</span><input id="new-court-length" type="number" name="length_meters" min="1" max="200" step="0.01">
+                    </label>
+                    <label class="field-group" for="new-court-width">
+                        <span>Ширина зоны, м</span><input id="new-court-width" type="number" name="width_meters" min="1" max="200" step="0.01">
                     </label>
                     <label class="field-group" for="new-court-surface">
                         <span>Покрытие</span><select id="new-court-surface" name="surface_type"><option value="">Не указано</option>

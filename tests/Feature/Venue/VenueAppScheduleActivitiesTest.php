@@ -91,13 +91,16 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $this->assertStringContainsString('<h2>Расписание</h2>', $scheduleSection);
         $this->assertStringNotContainsString('<h2>Часы работы</h2>', $scheduleSection);
         $this->assertStringContainsString('09:00–21:00', $scheduleSection);
-        // Day cards show only first opening to last closing, even with breaks.
-        $this->assertStringContainsString('12:00–20:00', $scheduleSection);
-        $this->assertStringNotContainsString('12:00–14:00', $scheduleSection);
-        $this->assertStringNotContainsString('17:00–20:00', $scheduleSection);
+        // Informational hours preserve breaks when online rental is disabled.
+        $this->assertStringNotContainsString('12:00–20:00', $scheduleSection);
+        $this->assertStringContainsString('12:00–14:00', $scheduleSection);
+        $this->assertStringContainsString('17:00–20:00', $scheduleSection);
         $this->assertStringNotContainsString('Исключение:', $scheduleSection);
         $this->assertStringNotContainsString('19:00–21:00', $scheduleSection);
         $this->assertStringNotContainsString('data-venue-slot-open', $scheduleSection);
+        $this->assertStringNotContainsString('data-venue-day-open', $scheduleSection);
+        $this->assertStringNotContainsString('data-venue-rental-open', $scheduleSection);
+        $this->assertStringNotContainsString('data-day-occupancy', $scheduleSection);
         $this->assertStringNotContainsString('Слоты', $scheduleSection);
         $response->assertSee('Открытая тренировка');
     }
@@ -137,7 +140,7 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $this->assertStringNotContainsString('15:00–22:00', $firstGroup);
         $this->assertStringContainsString('15:00–22:00', $secondGroup);
         $this->assertStringNotContainsString('08:00–12:00', $secondGroup);
-        $this->assertStringContainsString('data-court-id="'.$second->id.'"', $secondGroup);
+        $this->assertStringNotContainsString('data-venue-day-open', $secondGroup);
 
         $detail = $this->get(route('venues.courts.show', [
             $venue->routeIdentifier(), $second->routeIdentifier(),

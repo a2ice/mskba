@@ -21,6 +21,7 @@ use App\Modules\Identity\Domain\Models\UserPrivacySetting;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleException;
@@ -146,10 +147,24 @@ final class EventWorkflowTest extends TestCase
         $slotEnd = $event->booking->ends_at->setTimezone('Europe/Moscow');
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Занятые слоты')
-            ->assertSee('data-day-date="'.$slotStart->format('Y-m-d').'"', false)
-            ->assertSee($slotStart->format('H:i').'–'.$slotEnd->format('H:i'))
-            ->assertSee('Тренировка · ✅ Подтверждено');
+            ->assertSee('Игры и мероприятия')
+            ->assertSee('Онлайн-бронирование через портал недоступно.')
+            ->assertDontSee('data-venue-occupancy-day', false)
+            ->assertDontSee('data-venue-occupancy-modal', false)
+            ->assertDontSee('venue-booking-action__icon', false);
+
+        // Published events and confirmed legacy bookings remain discoverable;
+        // a free event's booking does not enable online venue rental by itself.
+        $days = app(ShowVenueHandler::class)->handle($venue->routeIdentifier(), null)->occupancyDays;
+        $day = collect($days)->firstWhere('date', $slotStart->format('Y-m-d'));
+        $this->assertNotNull($day);
+        $slot = collect($day['slots'])->first(fn (array $entry): bool =>
+            $entry['timeLabel'] === $slotStart->format('H:i').'–'.$slotEnd->format('H:i'));
+        $this->assertNotNull($slot);
+        $this->assertSame('Тренировка', $slot['eventTypeLabel']);
+        $this->assertSame('Подтверждено', $slot['statusLabel']);
+        $this->assertSame('✅', $slot['statusIcon']);
+        $this->assertSame(route('events.show', $event->routeIdentifier()), $slot['eventUrl']);
     }
 
     public function test_booking_that_requires_approval_without_rental_policy_does_not_create_legacy_draft(): void

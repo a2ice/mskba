@@ -1,7 +1,7 @@
 @php
     $buttonClass = $buttonClass ?? 'button primary';
 @endphp
-<section class="venue-favorite-follow" data-venue-favorite-follow data-state="unknown" aria-label="Интерес к площадке">
+<section class="venue-favorite-follow" data-venue-favorite-follow data-state="unknown" aria-label="Интерес к площадке" @if(!empty($eventUrl)) data-create-event-url="{{ $eventUrl }}" @endif>
     <p class="venue-favorite-follow__message" data-venue-favorite-follow-message role="status" aria-live="polite">Проверяем избранное…</p>
     <button type="button" class="{{ $buttonClass }} venue-favorite-follow__action"
         data-venue-favorite-follow-action aria-pressed="false" disabled>
