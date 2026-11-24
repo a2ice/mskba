@@ -674,8 +674,12 @@ jobs:
             echo 'Dev deployment completed with verified frontend assets; production untouched'
 
             # Capture only a successful, exact checkout after the rollback guard is disarmed.
-            install -d -m 2750 -g www-data storage/app/private/environment-checkpoints
+            # Host deploy need not belong to www-data. Use the existing root container
+            # only to prepare this private directory, with the host UID as writer.
+            $COMPOSE exec -T --user 0:0 phpfpm install -d -m 2750 -o "$(id -u)" -g www-data storage/app/private/environment-checkpoints
+            test -w storage/app/private/environment-checkpoints
             python3 scripts/environment-state.py record development "$VERIFIED_SHA" "${{ github.run_id }}"
+            $COMPOSE exec -T --user www-data phpfpm test -r storage/app/private/environment-checkpoints/latest.json
 
 
   activate_dev_rental_cashback:
