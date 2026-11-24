@@ -140,7 +140,10 @@
             <button type="button" class="app-mobile-primary__filter-expand" data-context-filter-expand
                     aria-expanded="false" aria-controls="app-mobile-primary-filter-scroll"
                     aria-label="Развернуть фильтры" title="Развернуть фильтры">
-                <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                <svg aria-hidden="true" viewBox="0 0 24 24" class="app-mobile-primary__filter-expand-icon">
+                    <path d="M4 7h16M7 12h10M10 17h4"/>
+                </svg>
+                <svg aria-hidden="true" class="app-mobile-primary__filter-chevron"><use href="#chevron-down"/></svg>
             </button>
         </div>
         <footer class="app-mobile-primary__filter-footer">
@@ -182,8 +185,9 @@
                 type="button" data-app-mobile-primary-filter-toggle
                 aria-controls="app-mobile-primary-filters" aria-expanded="false"
                 aria-label="Открыть поиск">
-            <svg aria-hidden="true" viewBox="0 0 24 24" class="app-mobile-primary__filter-icon">
-                <path d="M4 7h16M7 12h10M10 17h4"/>
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="app-mobile-primary__search-icon">
+                <circle cx="10.8" cy="10.8" r="6.7"/>
+                <path d="m16 16 5 5"/>
             </svg>
             <span data-app-mobile-primary-filter-label>Поиск</span>
             <span class="app-mobile-primary__filter-badge" data-app-mobile-primary-filter-badge hidden></span>
