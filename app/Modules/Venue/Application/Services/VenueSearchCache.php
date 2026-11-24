@@ -58,8 +58,10 @@ final class VenueSearchCache
                         'court_features' => $venue->courts->mapWithKeys(fn ($court): array => [
                             (int) $court->id => [
                                 'surface' => $court->surface_type?->value,
+                                // A half-court flag is not evidence of an
+                                // exact hoop count; preserve unknown values.
                                 'hoops' => $court->hoops_count === null
-                                    ? ($court->supports_halves ? 2 : 1) : (int) $court->hoops_count,
+                                    ? null : (int) $court->hoops_count,
                                 'dimensions' => $court->length_meters !== null && $court->width_meters !== null
                                     ? [(float) $court->length_meters, (float) $court->width_meters] : null,
                                 'amenities' => $venue->amenities->pluck('id')
