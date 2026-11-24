@@ -69,28 +69,67 @@
 
 /* Target mskba_app help entry point, independent of the appearance mode. */
 .app-context-help-launcher {
+    --app-help-size: 50px;
+    --app-help-expanded-width: 148px; /* JS measures the actual label width before animation. */
     position: fixed;
     z-index: 105;
     right: max(20px, env(safe-area-inset-right, 0px));
     bottom: max(20px, env(safe-area-inset-bottom, 0px));
-    display: grid;
-    place-items: center;
-    width: 50px;
-    height: 50px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    box-sizing: border-box;
+    width: var(--app-help-size);
+    height: var(--app-help-size);
     padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
     border: 1px solid color-mix(in srgb, var(--accent) 80%, var(--surface));
-    border-radius: 50%;
+    border-radius: 999px;
     color: #fff;
     background: var(--accent);
     box-shadow: 0 12px 28px var(--shadow-menu);
     font: inherit;
-    font-size: 27px;
-    font-weight: 600;
     line-height: 1;
     cursor: pointer;
 }
+.app-context-help-launcher__mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 calc(var(--app-help-size) - 2px);
+    height: 100%;
+    font-size: 27px;
+    font-weight: 600;
+}
+.app-context-help-launcher__label {
+    display: block;
+    flex: 0 0 auto;
+    padding: 0 12px 0 16px;
+    font-size: 16px;
+    font-weight: 650;
+    line-height: 1.2;
+}
+/* The right-anchored pill reveals its left-hand label from right to left. */
+.app-context-help-launcher.is-pending-intro {
+    opacity: 0;
+    pointer-events: none;
+}
+.app-context-help-launcher.is-introducing {
+    animation: app-help-intro 2.5s ease-in-out both;
+}
+/* First the original round ?, then the Help pill for 0.5s, then round again. */
+@keyframes app-help-intro {
+    0% { width: var(--app-help-size); opacity: 0; transform: translateY(6px) scale(.94); }
+    12%, 24% { width: var(--app-help-size); opacity: 1; transform: none; }
+    44%, 64% { width: var(--app-help-expanded-width); opacity: 1; transform: none; }
+    84%, 100% { width: var(--app-help-size); opacity: 1; transform: none; }
+}
 .app-context-help-launcher:hover { background: var(--accent-hover, var(--accent)); }
 .app-context-help-launcher:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+    .app-context-help-launcher.is-pending-intro { opacity: 1; pointer-events: auto; }
+    .app-context-help-launcher.is-introducing { animation: none; }
+}
 .app-context-help__page[hidden], [data-help-catalog][hidden] { display: none !important; }
 .app-context-help__page-heading { margin: 0 0 16px; font-size: 17px; }
 .app-context-help__tabs {
@@ -143,6 +182,8 @@
     .app-context-help-launcher { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 639px) {
-    .app-context-help-launcher { right: 12px; width: 46px; height: 46px; font-size: 25px; }
+    .app-context-help-launcher { --app-help-size: 46px; right: 12px; }
+    .app-context-help-launcher__mark { font-size: 25px; }
+    .app-context-help-launcher__label { font-size: 15px; padding: 0 10px 0 14px; }
     .app-context-help__tabs button { font-size: 12px; }
 }
