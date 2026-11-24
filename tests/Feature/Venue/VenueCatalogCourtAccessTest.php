@@ -114,6 +114,22 @@ final class VenueCatalogCourtAccessTest extends TestCase
         $this->assertSame([], $search->handle(null, null, type: VenueTypeEnum::STREET_COURT,
             requiresPayment: false, confirmedOnly: true));
 
+        // Reverse the payment conditions: a free outdoor court must be found
+        // even when a paid indoor hall belongs to the same school.
+        $school->primaryCourt()->firstOrFail()->update(['requires_payment' => true]);
+        $outdoor->update(['requires_payment' => false]);
+        $filters = ['type' => 'street_court', 'access' => 'free'];
+        $free = collect($handler->handle(null, null, $filters))->firstWhere('id', $school->id);
+        $this->assertNotNull($free);
+        $url = route('venues.courts.show', [$school->routeIdentifier(), $outdoor->routeIdentifier()]);
+        $this->assertSame($url, $free->matchedCourtUrl);
+        $this->getJson(route('api.v1.venues.index', $filters))
+            ->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.url', $url)
+            ->assertJsonPath('data.0.matched_court.court_id', $outdoor->id);
+
+        $this->get(route('venues', $filters))->assertOk()->assertSee($url, false);
+
         $outdoor->delete();
         $this->assertNull(collect($handler->handle(null, null, ['type' => 'street_court']))->firstWhere('id', $school->id));
         $this->getJson(route('api.v1.venues.index', ['type' => 'street_court']))->assertOk()->assertJsonCount(0, 'data');
