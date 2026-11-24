@@ -148,7 +148,7 @@ const playerDetailsDialog = document.querySelector('[data-venue-player-details-d
 const slotDialog = document.querySelector('[data-venue-slot-dialog]');
 const createEventDialog = document.querySelector('[data-venue-create-event-dialog]');
 const nearbyCriteriaDialog = document.querySelector('[data-venue-nearby-criteria-dialog]');
-for (const dialog of [playersDialog, playerDetailsDialog, slotDialog, createEventDialog, nearbyCriteriaDialog]) {
+for (const dialog of [playersDialog, playerDetailsDialog, slotDialog, createEventDialog]) {
     if (!dialog) continue;
     dialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
         button.addEventListener('click', () => dialog.close()));
@@ -158,6 +158,19 @@ for (const dialog of [playersDialog, playerDetailsDialog, slotDialog, createEven
 }
 document.querySelector('[data-venue-interests-open]')?.addEventListener('click', () => playersDialog?.showModal());
 document.querySelector('[data-venue-nearby-criteria-open]')?.addEventListener('click', () => nearbyCriteriaDialog?.showModal());
+if (nearbyCriteriaDialog) {
+    nearbyCriteriaDialog.querySelector('[data-venue-overlay-close]')
+        ?.addEventListener('click', () => nearbyCriteriaDialog.close());
+    let downOnBackdrop = false;
+    nearbyCriteriaDialog.addEventListener('pointerdown', event => {
+        downOnBackdrop = event.target === nearbyCriteriaDialog;
+    });
+    nearbyCriteriaDialog.addEventListener('pointerup', event => {
+        if (downOnBackdrop && event.target === nearbyCriteriaDialog) nearbyCriteriaDialog.close();
+        downOnBackdrop = false;
+    });
+    nearbyCriteriaDialog.addEventListener('pointercancel', () => { downOnBackdrop = false; });
+}
 playersList?.addEventListener('click', event => {
     const button = event.target.closest?.('[data-venue-player-details-open]');
     if (!button || !playerDetailsDialog) return;
