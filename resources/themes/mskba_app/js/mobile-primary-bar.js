@@ -79,9 +79,20 @@ if (dock) {
         return count;
     };
 
-    const countSource = () => document.querySelector(
-        '[data-context-result-total], [data-favorites-count], [data-subscriptions-count]'
-    );
+    // Header favourites badge is not the current catalog total. Always prefer
+    // the catalog's server-supplied total; only use AJAX counters scoped to
+    // their respective account pages (never the global header badge).
+    const countSource = () => {
+        const catalogCount = document.querySelector('[data-context-result-total]');
+        if (catalogCount) return catalogCount;
+        if (definition?.selector === '.app-favorites__filter-form') {
+            return document.querySelector('[data-favorites-account] [data-favorites-count]');
+        }
+        if (definition?.selector === '.app-play-interests__filters') {
+            return document.querySelector('[data-play-interests] [data-subscriptions-count]');
+        }
+        return null;
+    };
 
     const updateCount = () => {
         activeCount = definition ? selectedScope() : 0;
@@ -117,7 +128,7 @@ if (dock) {
         mounted = true;
         filterHost.replaceChildren();
         if (definition && original) {
-            filterLabel.textContent = 'Фильтры';
+            filterLabel.textContent = 'Поиск';
             filterTitle.textContent = definition.title;
             globalForm.hidden = true;
             if (definition.ajax) {
@@ -356,7 +367,7 @@ if (dock) {
 
     // AJAX lists update their visible result counter without page navigation.
     // Observe only the counter node (not the dock) to avoid feedback loops.
-    const liveCount = document.querySelector('[data-favorites-count], [data-subscriptions-count]');
+    const liveCount = definition?.ajax ? countSource() : null;
     if (liveCount) {
         new MutationObserver(updateCount).observe(liveCount, {
             childList: true, characterData: true, subtree: true,

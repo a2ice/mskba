@@ -28,15 +28,17 @@
     }
     .app-mobile-primary__panel--filters .app-mobile-primary__panel-header {
         flex: 0 0 auto;
-        padding: 8px 14px;
-        margin: 0 12px;
+        margin: 0;
+        padding: 8px 18px;
     }
     .app-mobile-primary__filter-expand {
-        display: grid;
-        flex: 0 0 54px;
+        display: flex;
+        flex: 0 0 68px;
         align-self: stretch;
-        place-items: center;
-        width: 54px;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        width: 68px;
         min-height: 44px;
         margin: -9px -20px -9px auto;
         padding: 0;
@@ -50,14 +52,23 @@
     .app-mobile-primary__filter-expand:hover,
     .app-mobile-primary__filter-expand:focus-visible { background: var(--surface-raised); }
     .app-mobile-primary__filter-expand svg {
-        width: 21px;
-        height: 21px;
+        display: block;
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
         stroke: currentColor;
         fill: none;
         stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+    .app-mobile-primary__filter-expand .app-mobile-primary__filter-chevron {
+        width: 18px;
+        height: 18px;
+        flex-basis: 18px;
         transition: transform .18s;
     }
-    .app-mobile-primary__panel--filters.is-expanded .app-mobile-primary__filter-expand svg {
+    .app-mobile-primary__panel--filters.is-expanded .app-mobile-primary__filter-chevron {
         transform: rotate(180deg);
     }
     .app-mobile-primary__filter-preview {
@@ -259,5 +270,5 @@
     .app-mobile-primary__search-type { font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .app-mobile-primary__filter-expand svg { transition: none; }
+    .app-mobile-primary__filter-chevron { transition: none; }
 }
