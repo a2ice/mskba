@@ -33,7 +33,7 @@ final class PageFaqContentSeeder extends Seeder
 
             $related = collect($page['related'] ?? [])
                 ->map(function (string $relatedKey): string {
-                    $linked = config('faq-page-types.'.$relatedKey);
+                    $linked = (config('faq-page-types', []))[$relatedKey] ?? null;
                     if (! is_array($linked)) {
                         return '';
                     }
