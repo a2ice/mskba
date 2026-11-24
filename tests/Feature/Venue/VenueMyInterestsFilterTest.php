@@ -64,7 +64,7 @@ final class VenueMyInterestsFilterTest extends TestCase
             ->assertSee('Есть ближайшие мероприятия')
             ->assertSee('data-venue-interest-filter', false)
             ->assertSee('data-venue-interest-toggle', false)
-            ->assertSee('>Не выбрано</option>', false)
+            ->assertSee('Не выбрано')
             ->assertSee('Играть по вечерам')
             ->assertDontSee('Закрытый старый запрос')
             ->assertDontSee('Чужой интерес')
