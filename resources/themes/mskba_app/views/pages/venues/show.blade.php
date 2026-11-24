@@ -441,40 +441,98 @@
                 @php
                     $nearbyHandler = app(\App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler::class);
                     $similarMode = request('nearby') === 'similar';
-                    $criteriaLabels = ['type' => 'Тип площадки', 'environment' => 'Зал или уличный корт', 'payment' => 'Платно или бесплатно', 'requires_booking' => 'Необходимость записи', 'requires_booking_approval' => 'Подтверждение администратором'];
-                    $criteria = array_values(array_intersect(array_keys($criteriaLabels), (array) request('criteria', ['type', 'environment', 'payment'])));
+                    $criteriaLabels = [
+                        'type' => 'Тип площадки',
+                        'environment' => 'Крытый зал или уличный корт',
+                        'payment' => 'Платный или бесплатный доступ',
+                        'requires_booking' => 'Необходимость предварительной записи',
+                        'requires_booking_approval' => 'Подтверждение администратором',
+                        'surface' => 'Тип покрытия',
+                        'amenities' => 'Удобства',
+                        'dimensions' => 'Размеры игровой зоны',
+                        'hoops' => 'Количество баскетбольных колец',
+                    ];
+                    $criteria = array_values(array_intersect(array_keys($criteriaLabels),
+                        (array) request('criteria', ['type', 'environment', 'payment'])));
                     $lat = (float) $venue->address->latitude;
                     $lon = (float) $venue->address->longitude;
                     $nearby = $similarMode
-                        ? $nearbyHandler->similar($venue->id, $lat, $lon, $venue->isCourtPage ? (int) $venue->selectedCourt['id'] : null, $criteria)
+                        ? $nearbyHandler->similar($venue->id, $lat, $lon,
+                            $venue->isCourtPage ? (int) $venue->selectedCourt['id'] : null, $criteria)
                         : $nearbyHandler->handle($venue->id, $lat, $lon, 6, 10);
-                    if (!$similarMode && !$nearby) {
+                    if (! $similarMode && $nearby === []) {
                         $nearby = $nearbyHandler->handle($venue->id, $lat, $lon, 3);
                     }
+                    // Reuse the same DTOs and card partial as the venue catalog.
+                    // Restrict the query to matched IDs, not the full catalog.
+                    $nearbyCards = collect(app(\App\Modules\Venue\Application\UseCases\ListVenuesHandler::class)
+                        ->handle(null, null, [], null, array_column($nearby, 'id')))->keyBy('id');
                 @endphp
                 <section class="panel app-venue-block" id="app-venue-nearby">
                     <header class="app-venue-block__header"><h2>Площадки рядом</h2></header>
-                    <a class="button {{ !$similarMode ? 'primary' : 'secondary' }}" href="{{ request()->fullUrlWithQuery(['nearby' => 'all']) }}#app-venue-nearby">Все</a>
-                    <a class="button {{ $similarMode ? 'primary' : 'secondary' }}" href="{{ request()->fullUrlWithQuery(['nearby' => 'similar']) }}#app-venue-nearby">Похожие</a>
-                    @if($similarMode)
-                        <details>
-                            <summary>Критерии сходства</summary>
-                            <form method="get" action="{{ request()->url() }}#app-venue-nearby">
-                                <input type="hidden" name="nearby" value="similar">
-                                <input type="hidden" name="criteria[]" value="">
-                                @foreach($criteriaLabels as $key => $label)
-                                    <p><label><input type="checkbox" name="criteria[]" value="{{ $key }}" @checked(in_array($key, $criteria, true))> {{ $label }}</label></p>
-                                @endforeach
-                                <button class="button primary" type="submit">Применить</button>
-                            </form>
-                        </details>
+                    <div class="app-venue-nearby__toolbar" aria-label="Режим подбора площадок">
+                        <a class="button {{ ! $similarMode ? 'primary' : 'secondary' }}"
+                            href="{{ request()->fullUrlWithQuery(['nearby' => 'all']) }}#app-venue-nearby"
+                            @if(! $similarMode) aria-current="true" @endif>Все</a>
+                        <a class="button {{ $similarMode ? 'primary' : 'secondary' }}"
+                            href="{{ request()->fullUrlWithQuery(['nearby' => 'similar']) }}#app-venue-nearby"
+                            @if($similarMode) aria-current="true" @endif>Похожие</a>
+                        @if($similarMode)
+                            <button type="button" class="button secondary" data-venue-nearby-criteria-open>
+                                <svg aria-hidden="true" width="18" height="18"><use href="#filter"/></svg>
+                                Критерии сходства
+                            </button>
+                        @endif
+                    </div>
+                    @if($nearby !== [])
+                        <div class="app-venues-catalog__items app-venue-nearby__cards">
+                            @foreach($nearby as $item)
+                                @if($nearbyCards->has($item['id']))
+                                    @include('theme::pages.venues.partials.index-card', [
+                                        'venue' => $nearbyCards->get($item['id']),
+                                        'cardUrl' => $item['url'],
+                                        'distanceMeters' => $item['distance_meters'],
+                                        'cardCourtName' => $item['court_name'] ?? null,
+                                    ])
+                                @endif
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="muted">{{ $similarMode
+                            ? 'Похожие площадки не найдены. Измените критерии сходства.'
+                            : 'Другие площадки не найдены.' }}</p>
                     @endif
-                    @forelse($nearby as $item)
-                        <p><a href="{{ $item['url'] }}">{{ $item['name'] }}</a> · {{ number_format($item['distance_meters'] / 1000, 1, ',', ' ') }} км</p>
-                    @empty
-                        <p>{{ $similarMode ? 'Похожие площадки не найдены. Измените критерии сходства.' : 'Другие площадки не найдены.' }}</p>
-                    @endforelse
                 </section>
+                @if($similarMode)
+                    <dialog class="app-venue-overlay app-venue-nearby-criteria-dialog"
+                        data-venue-nearby-criteria-dialog aria-labelledby="app-venue-nearby-criteria-title">
+                        <div class="app-venue-overlay__header">
+                            <h2 id="app-venue-nearby-criteria-title">Критерии сходства</h2>
+                            <button type="button" class="icon-button" data-venue-overlay-close aria-label="Закрыть">
+                                <svg aria-hidden="true" viewBox="0 0 24 24">
+                                    <path d="M18 6l-12 12"/><path d="M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <form method="get" action="{{ request()->url() }}#app-venue-nearby">
+                            <input type="hidden" name="nearby" value="similar">
+                            <input type="hidden" name="criteria[]" value="">
+                            <div class="app-venue-nearby-criteria__content mskba-scroll">
+                                <p class="muted">Отметь характеристики, которые должны совпадать у одной игровой зоны.</p>
+                                @foreach($criteriaLabels as $key => $label)
+                                    <label class="check-label">
+                                        <input type="checkbox" name="criteria[]" value="{{ $key }}"
+                                            @checked(in_array($key, $criteria, true))>
+                                        <span>{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="app-venue-overlay__actions">
+                                <button class="button primary" type="submit">Применить</button>
+                            </div>
+                        </form>
+                    </dialog>
+                @endif
             @endif
         </div>
         <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
