@@ -12,6 +12,7 @@
         $shortMonths = [1 => 'янв', 2 => 'фев', 3 => 'мар', 4 => 'апр', 5 => 'мая', 6 => 'июн', 7 => 'июл', 8 => 'авг', 9 => 'сен', 10 => 'окт', 11 => 'ноя', 12 => 'дек'];
         $placeholderDateLabel = static fn ($date) => $date->format('d') . ' ' . $shortMonths[(int) $date->month];
         $placeholderWeekdayLabel = static fn ($date) => $shortWeekdays[(int) $date->dayOfWeekIso];
+        $legacyBookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
         $favoritesCount = \App\Modules\Favorites\Domain\Models\Favorite::query()
             ->where('entity_type', 'venue')->where('entity_id', $venue->id)
             ->whereNull('trashed_at')->count();
@@ -172,10 +173,14 @@
                     <span>{{ number_format($venue->about->rating ?? 0, 1, '.', ' ') }}</span>
                 </span>
             </div>
-            <button type="button" class="btn btn--primary btn--sm venue-booking-action" aria-label="Забронировать" disabled>
-                <i class="ti ti-player-play venue-booking-action__icon" aria-hidden="true"></i>
-                <span class="venue-booking-action__label">Забронировать</span>
-            </button>
+            @if($legacyBookableCourtIds !== [])
+                <a href="#schedule" class="btn btn--primary btn--sm venue-booking-action">
+                    <i class="ti ti-player-play venue-booking-action__icon" aria-hidden="true"></i>
+                    <span class="venue-booking-action__label">{{ $venue->isCourtPage
+                        ? ($venue->selectedCourt['environment'] === 'outdoor' ? 'Арендовать корт' : 'Арендовать зал')
+                        : 'Арендовать площадку' }}</span>
+                </a>
+            @endif
         </div>
     @endif
 @endsection
@@ -610,17 +615,54 @@
                 <div class="venue-show-section__heading">
                     <div>
                         <h2>Расписание</h2>
-                        <p class="venue-show-section__caption">Нажмите на день, чтобы посмотреть интервалы.</p>
+                        <p class="venue-show-section__caption">{{ $venue->isCourtPage && $legacyBookableCourtIds !== []
+                            ? 'Нажмите на день, чтобы посмотреть интервалы.'
+                            : 'Режим работы залов и кортов с учётом исключений.' }}</p>
                     </div>
                     <div class="venue-management-actions">
-                        @if(isset($rentalUrl))
+                        @if(isset($rentalUrl) && $legacyBookableCourtIds !== [])
                             <a href="{{ $rentalUrl }}" class="btn btn--primary btn--sm">Рассчитать аренду</a>
                         @endif
                         <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
                     </div>
                 </div>
 
-                @if($venue->about->scheduleDays !== [])
+                @if(! $venue->isCourtPage || $legacyBookableCourtIds === [])
+                    @forelse($venue->courtSchedules as $scheduleGroup)
+                        <div class="venue-show-section__court">
+                            @unless($venue->isCourtPage)
+                                <h3>{{ $scheduleGroup['name'] }}</h3>
+                            @endunless
+                            @if($scheduleGroup['bookingEnabled'])
+                                <p>Онлайн-бронирование доступно.</p>
+                                <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}" class="btn btn--secondary btn--sm">Расписание и аренда</a>
+                            @else
+                                <p>Онлайн-бронирование через портал недоступно.</p>
+                                @forelse(collect($scheduleGroup['weeklyHours'] ?? [])->groupBy(fn ($day) => json_encode($day['intervals'])) as $days)
+                                    @php($hours = $days->first()['intervals'])
+                                    <p><strong>{{ $days->pluck('weekday')->implode(', ') }}</strong> —
+                                        @if($hours === null)Режим работы не указан
+                                        @elseif($hours === [])Не работает
+                                        @else{{ collect($hours)->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') }}
+                                        @endif
+                                    </p>
+                                @empty
+                                    <p>Режим работы не указан.</p>
+                                @endforelse
+                                @if(!empty($scheduleGroup['exceptions']))
+                                    <h4>Изменения графика</h4>
+                                    @foreach($scheduleGroup['exceptions'] as $exception)
+                                        <p><strong>{{ $exception['label'] }} ({{ $exception['weekday'] }})</strong> —
+                                            {{ collect($exception['intervals'])->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') ?: 'Не работает' }}
+                                        </p>
+                                    @endforeach
+                                @endif
+                            @endif
+                        </div>
+                    @empty
+                        <p>Режим работы не указан.</p>
+                    @endforelse
+                @elseif($venue->about->scheduleDays !== [])
                     <div class="venue-schedule-preview">
                         @foreach($venue->about->scheduleDays as $day)
                             <button
