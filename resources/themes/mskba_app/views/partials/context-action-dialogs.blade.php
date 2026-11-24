@@ -20,7 +20,7 @@
     <div class="mskba-modal__body mskba-scroll app-context-help__body">
         <section class="app-context-help__page" data-help-page hidden aria-label="Справка по текущей странице">
             <h3 class="app-context-help__page-heading" data-help-page-title></h3>
-            <div class="app-context-help__tabs" role="tablist" aria-label="Разделы справки">
+            <div class="app-context-help__tabs" data-help-page-tabs aria-label="Разделы справки">
                 <button type="button" role="tab" aria-selected="true" aria-controls="context-page-help-panel" data-help-page-tab="about">Что это за страница</button>
                 <button type="button" role="tab" aria-selected="false" aria-controls="context-page-help-panel" data-help-page-tab="features" tabindex="-1">Возможности</button>
                 <button type="button" role="tab" aria-selected="false" aria-controls="context-page-help-panel" data-help-page-tab="related" tabindex="-1">Связанные материалы</button>
