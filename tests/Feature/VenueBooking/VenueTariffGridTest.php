@@ -19,6 +19,8 @@ use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandl
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
+use App\Presentation\Theming\ThemeResolver;
 use Tests\TestCase;
 
 final class VenueTariffGridTest extends TestCase
@@ -29,6 +31,107 @@ final class VenueTariffGridTest extends TestCase
     {
         parent::setUp();
         config()->set('features.venue_rental.rental_flow', true);
+    }
+
+    public function test_app_schedule_embeds_venue_grid_before_collapsible_court_grids_and_returns_to_schedule(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        [$owner, $venue] = $this->ownedVenue();
+        $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $this->actingAs($owner);
+
+        $url = route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'schedule']);
+        $response = $this->get($url)->assertOk()
+            ->assertSee('Тарифная сетка площадки')
+            ->assertSee('Тарифы залов и кортов')
+            ->assertSee('venue-tariff-panel-venue', false)
+            ->assertSee('venue-tariff-panel-court-'.$court->id, false)
+            ->assertSee('data-venue-court-tariffs', false)
+            ->assertSee('return_to_schedule', false);
+        $body = $response->getContent();
+        $this->assertLessThan(
+            strpos($body, 'Тарифы залов и кортов'),
+            strpos($body, 'Тарифная сетка площадки'),
+        );
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id,
+            'return_to_schedule' => 1,
+            'mode' => 'weekly',
+            'ranges' => [
+                [
+                    'days' => [1], 'starts_at' => '07:00', 'ends_at' => '08:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+            ],
+        ])->assertRedirect(
+            route('account.venues.edit', [
+                'alias' => $venue->routeIdentifier(),
+                'tab' => 'schedule',
+                'court' => $court->id,
+                'mode' => 'weekly',
+            ]).'#venue-tariff-panel-court-'.$court->id,
+        )->assertSessionHas('status');
+
+        $reopened = $this->get($url.'&court='.$court->id)
+            ->assertOk()->assertSee('Понедельник');
+        $this->assertMatchesRegularExpression(
+            '/id="venue-tariff-panel-court-'.$court->id.'"\\s+open\\b/',
+            $reopened->getContent(),
+        );
+    }
+
+    public function test_court_inherits_both_parent_time_ranges_and_restores_them_after_override_reset(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $policy = $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $this->actingAs($owner);
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'mode' => 'weekly',
+            'ranges' => [
+                [
+                    'days' => [1],
+                    'starts_at' => '07:00', 'ends_at' => '16:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+                [
+                    'days' => [1],
+                    'starts_at' => '16:00', 'ends_at' => '23:30',
+                    'operation' => 'set', 'whole_price_per_step' => '1500',
+                ],
+            ],
+        ])->assertRedirect();
+
+        $quote = fn (): array => app(VenueSlotPricing::class)->calculate(
+            $venue, $policy,
+            CarbonImmutable::parse('2026-11-30 15:30:00', 'Europe/Moscow'),
+            60, VenueBookingScopeEnum::WHOLE, $court,
+            ['time_step_minutes' => 30, 'requires_payment' => true],
+        )['prices_per_step_minor'];
+        $this->assertSame([100000, 150000], $quote());
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly',
+            'days' => [1], 'starts_at' => '16:00', 'ends_at' => '16:30',
+            'operation' => 'set', 'whole_price_per_step' => '1900',
+        ])->assertRedirect();
+        $this->assertSame([100000, 190000], $quote());
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly',
+            'days' => [1], 'starts_at' => '16:00', 'ends_at' => '16:30',
+            'operation' => 'clear',
+        ])->assertRedirect();
+
+        $this->assertSame([100000, 150000], $quote());
+        $this->assertSame(0, DB::table('venue_court_manual_slot_prices')
+            ->where('venue_court_id', $court->id)->count());
     }
 
     public function test_two_non_overlapping_ranges_save_together_with_a_day_specific_exception(): void

@@ -31,7 +31,7 @@
         @if($policy)
             <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">Условия площадки</a>
             <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
-            <a class="button secondary" href="{{ route('account.venues.tariff-grid.edit', $venue->id) }}">Единая тарифная сетка</a>
+            <a class="button secondary" href="{{ route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'schedule']).'#venue-tariff-panel-venue' }}">Единая тарифная сетка</a>
         @endif
     </div>
 
@@ -222,7 +222,7 @@
                 <section class="panel app-rental-pricing__panel">
                     <h3>Тарифная сетка зала</h3>
                     <p>Недельные и календарные цены, исключения по шагам и данные интеграции редактируются в одном интерфейсе.</p>
-                    <a class="button secondary" href="{{ route('account.venues.tariff-grid.edit', ['venue' => $venue->id, 'court' => $court->id]) }}">Открыть тарифы зала</a>
+                    <a class="button secondary" href="{{ route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'schedule', 'court' => $court->id]).'#venue-tariff-panel-court-'.$court->id }}">Открыть тарифы зала</a>
                 </section>
             @endif
         </article>

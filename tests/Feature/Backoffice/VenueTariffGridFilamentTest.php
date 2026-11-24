@@ -3,6 +3,8 @@
 namespace Tests\Feature\Backoffice;
 
 use App\Filament\Backoffice\Resources\Venues\Pages\EditVenueTariffs;
+use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -23,6 +25,28 @@ final class VenueTariffGridFilamentTest extends TestCase
     {
         parent::setUp();
         config()->set('features.venue_rental.rental_flow', true);
+    }
+
+    public function test_venue_schedule_and_court_table_offer_native_tariff_popups_instead_of_external_links(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $admin->createProfile([]);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venue = Venue::factory()->create(['requires_payment' => true]);
+        $this->get(VenueResource::getUrl('edit', ['record' => $venue]))
+            ->assertOk()
+            ->assertSee('Тарифы площадки по времени')
+            ->assertSee('Тарифная сетка площадки');
+
+        Livewire::test(CourtsRelationManager::class, [
+            'ownerRecord' => $venue,
+            'pageClass' => EditVenue::class,
+        ])->assertSuccessful()->assertSee('Тарифная сетка');
     }
 
     public function test_filament_has_its_own_tariff_page_and_saves_two_ranges_without_public_routes(): void

@@ -3,6 +3,7 @@
 namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
+use App\Filament\Backoffice\Resources\Venues\Support\VenueTariffModal;
 use App\Filament\Backoffice\Resources\Venues\Support\VenueCourtConditionFormState;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
@@ -309,14 +310,7 @@ final class CourtsRelationManager extends RelationManager
                     $this->syncNotification($result);
                 }),
         ])->recordActions([
-            Action::make('unifiedTariffGrid')->label('Тарифная сетка')
-                ->icon('heroicon-o-table-cells')
-                ->url(fn (VenueCourt $record): string => VenueResource::getUrl('tariffs', [
-                    'record' => $this->getOwnerRecord()->getKey(),
-                    'court' => $record->id,
-                ]))
-                ->openUrlInNewTab()
-                ->visible(fn (): bool => VenueResource::authorized()),
+            VenueTariffModal::forCourt($this->getOwnerRecord(), 'unifiedTariffGrid'),
             EditAction::make()
                 ->label('Редактировать')
                 ->modalHeading(fn (VenueCourt $record): string => 'Редактировать: '.$record->name)
