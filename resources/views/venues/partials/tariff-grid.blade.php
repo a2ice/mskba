@@ -1,6 +1,8 @@
-<div class="app-rental-pricing venue-tariff-grid" data-tariff-grid>
+@php($embedded = (bool) ($embedded ?? false))
+<div class="app-rental-pricing venue-tariff-grid {{ $embedded ? 'venue-tariff-grid--embedded' : '' }}" data-tariff-grid>
     <style>
         .venue-tariff-grid{max-width:1160px;margin:0 auto;padding:1.25rem 0 3rem}
+        .venue-tariff-grid--embedded{max-width:none;padding:1rem 0 0}
         .venue-tariff-grid [hidden]{display:none!important}
         .venue-tariff-grid__panel{margin-bottom:1rem;padding:1.25rem;border:1px solid var(--border-color,#d6d6d6);border-radius:12px}
         .venue-tariff-grid__fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.9rem;align-items:end}
@@ -24,7 +26,7 @@
     </style>
 
     <div class="venue-tariff-grid__panel">
-        <h2>Единая тарифная сетка</h2>
+        <h2>{{ $embedded ? ($court ? 'Тарифы зала: '.$court->publicName() : 'Общие тарифы площадки') : 'Единая тарифная сетка' }}</h2>
         <p class="venue-tariff-grid__help">
             Диапазоны формируются из последовательных шагов с одинаковой стоимостью. Источник, ручной тариф и исключения показываются в одной сетке.
             Все цены указаны за один шаг {{ $step }} мин, {{ $policy->currency }}.
@@ -32,7 +34,14 @@
         @if(session('status'))<p role="status">{{ session('status') }}</p>@endif
         @if($errors->any())<p role="alert" class="app-rental-pricing__error">{{ $errors->first() }}</p>@endif
 
-        <form method="GET" action="{{ route('account.venues.tariff-grid.edit', $venue->id) }}" class="venue-tariff-grid__fields" data-tariff-filter>
+        <form method="GET" action="{{ $embedded
+                ? route('account.venues.edit', ['alias' => $venue->routeIdentifier()])
+                : route('account.venues.tariff-grid.edit', $venue->id) }}" class="venue-tariff-grid__fields" data-tariff-filter>
+            @if($embedded)
+                <input type="hidden" name="tab" value="schedule">
+                <input type="hidden" name="court" value="{{ $court?->id }}">
+            @endif
+            @unless($embedded)
             <label>Объект
                 <select name="court">
                     <option value="">Вся площадка</option>
@@ -41,6 +50,7 @@
                     @endforeach
                 </select>
             </label>
+            @endunless
             <label>Тип тарифа
                 <select name="mode" data-tariff-mode>
                     <option value="weekly" @selected($mode === 'weekly')>Недельный шаблон</option>
@@ -97,8 +107,9 @@
         @endforeach
     </div>
 
-    <section class="venue-tariff-grid__panel" id="tariff-range-editor">
-        <h3>Назначить тарифные диапазоны</h3>
+    <section class="venue-tariff-grid__panel" id="tariff-range-editor-{{ $court?->id ?? 'venue' }}">
+        <h3>{{ $court ? 'Диапазоны зала' : 'Диапазоны площадки' }}</h3>
+        <p class="venue-tariff-grid__help">{{ $court ? 'Пусто — наследовать цену площадки. Сброс возвращает цену источника или наследование.' : 'Пусто — наследовать базовый тариф площадки. Установленные здесь цены наследуются залами без своих тарифов.' }}</p>
         <p class="venue-tariff-grid__help">
             Можно задать несколько диапазонов за один раз — например 07:00–16:00 и 16:00–23:30,
             каждому назначить собственную цену и исключения. Все цены сохраняются атомарно по шагам {{ $step }} мин.
@@ -106,6 +117,7 @@
         </p>
         <form method="POST" action="{{ route('account.venues.tariff-grid.store', $venue->id) }}" data-tariff-range-form>
             @csrf
+            @if($embedded)<input type="hidden" name="return_to_schedule" value="1">@endif
             <input type="hidden" name="court_id" value="{{ $court?->id }}">
             <input type="hidden" name="mode" value="{{ $mode }}">
             <input type="hidden" name="date" value="{{ $date }}">
@@ -118,14 +130,15 @@
             <div class="venue-tariff-grid__actions">
                 <button class="button secondary" type="button" data-tariff-add-range>Добавить диапазон</button>
                 <button class="button primary" type="submit">Сохранить все диапазоны</button>
-                <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">К условиям аренды</a>
+                @unless($embedded)<a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">К условиям аренды</a>@endunless
             </div>
         </form>
     </section>
 
-    <dialog class="venue-tariff-grid__dialog" data-tariff-slot-dialog aria-labelledby="tariff-slot-title">
-        <h3 id="tariff-slot-title">Изменить отдельный шаг</h3>
+    <dialog class="venue-tariff-grid__dialog" data-tariff-slot-dialog aria-labelledby="tariff-slot-title-{{ $court?->id ?? 'venue' }}">
+        <h3 id="tariff-slot-title-{{ $court?->id ?? 'venue' }}">Изменить отдельный шаг</h3>
         <form method="POST" action="{{ route('account.venues.tariff-grid.store', $venue->id) }}" data-tariff-slot-form>
+            @if($embedded)<input type="hidden" name="return_to_schedule" value="1">@endif
             @csrf
             <input type="hidden" name="court_id" value="{{ $court?->id }}">
             <input type="hidden" name="mode" value="{{ $mode }}">
@@ -149,8 +162,8 @@
     </dialog>
     <script>
         (() => {
-            const root = document.querySelector('[data-tariff-grid]');
-            if (!root) return;
+            document.querySelectorAll('[data-tariff-grid]:not([data-tariff-grid-ready])').forEach(root => {
+            root.setAttribute('data-tariff-grid-ready', '1');
             const filter = root.querySelector('[data-tariff-filter]');
             const syncFilter = () => {
                 const date = root.querySelector('[data-tariff-date-filter]');
@@ -228,6 +241,7 @@
                         return;
                     }
                 }
+            });
             });
         })();
     </script>
