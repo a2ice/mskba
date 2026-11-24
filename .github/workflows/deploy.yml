@@ -501,8 +501,13 @@ jobs:
             cd /var/www/mskba
             grep -Fxq 'APP_ENV=production' .env
             grep -Fxq 'APP_URL=https://mskba.ru' .env
-            install -d -m 2750 -g www-data storage/app/private/environment-checkpoints
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            # Host deploy need not belong to www-data. Use the existing root container
+            # only to prepare this private directory, with the host UID as writer.
+            $COMPOSE exec -T --user 0:0 phpfpm install -d -m 2750 -o "$(id -u)" -g www-data storage/app/private/environment-checkpoints
+            test -w storage/app/private/environment-checkpoints
             python3 scripts/environment-state.py record production "$VERIFIED_SHA" "$CHECKPOINT_RUN"
+            $COMPOSE exec -T --user www-data phpfpm test -r storage/app/private/environment-checkpoints/latest.json
 
 
   publish-first-system-update:
