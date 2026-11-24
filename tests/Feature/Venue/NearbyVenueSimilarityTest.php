@@ -4,7 +4,7 @@ namespace Tests\Feature\Venue;
 
 use App\Modules\Venue\Application\Services\VenueSearchCache;
 use App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler;
-use Mockery;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 final class NearbyVenueSimilarityTest extends TestCase
@@ -72,10 +72,12 @@ final class NearbyVenueSimilarityTest extends TestCase
 
     private function handler(array $documents): FindNearbyVenuesHandler
     {
-        $cache = Mockery::mock(VenueSearchCache::class);
-        $cache->shouldReceive('documents')->once()->andReturn($documents);
+        // Seed the same cache consumed in production; VenueSearchCache is final.
+        config()->set('venue_search.store', 'array');
+        Cache::store('array')->put('venue-search:version', 1);
+        Cache::store('array')->put('venue-search:index:court-features-v2:v1', $documents, 60);
 
-        return new FindNearbyVenuesHandler($cache);
+        return new FindNearbyVenuesHandler(new VenueSearchCache());
     }
 
     private function court(int $id, string $payment, string $environment, ?string $surface = null,
