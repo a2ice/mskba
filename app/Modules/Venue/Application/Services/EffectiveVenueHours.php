@@ -14,14 +14,14 @@ use Illuminate\Support\Collection;
 final class EffectiveVenueHours
 {
     /** @return Collection<int, object>|null Null means opening hours are unrestricted/unknown. */
-    public function intervals(Venue $venue, ?VenueCourt $court, CarbonInterface $date): ?Collection
+    public function intervals(Venue $venue, ?VenueCourt $court, CarbonInterface $date, bool $includeExceptions = true): ?Collection
     {
         $parent = $venue->relationLoaded('schedule') ? $venue->schedule
             : $venue->schedule()->with(['intervals', 'exceptions.intervals'])->first();
 
-        $parentException = $parent?->exceptions->first(
+        $parentException = $includeExceptions ? $parent?->exceptions->first(
             fn ($item): bool => $item->date->toDateString() === $date->toDateString()
-        );
+        ) : null;
         $parentHasHours = $parent?->intervals->isNotEmpty() ?? false;
         $parentControlsDate = $parentHasHours || $parentException !== null;
         if ($parentException?->is_closed) {
@@ -48,7 +48,7 @@ final class EffectiveVenueHours
         }
 
         $dateString = $date->toDateString();
-        $exceptionRows = collect($courtSchedule->exceptions ?? [])
+        $exceptionRows = collect($includeExceptions ? ($courtSchedule->exceptions ?? []) : [])
             ->filter(fn ($row): bool => ($row['date'] ?? null) === $dateString);
         if ($exceptionRows->isNotEmpty()
             && $exceptionRows->contains(fn ($row): bool => (bool) ($row['is_closed'] ?? false))) {
