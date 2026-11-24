@@ -2,7 +2,8 @@
 .app-message-toast-region {
     position: fixed;
     right: 24px;
-    bottom: 24px;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    bottom: auto;
     z-index: 115;
     width: min(320px, calc(100vw - 20px));
     max-height: min(65dvh, 600px);
@@ -79,7 +80,7 @@
 .app-message-toast__link { color: var(--accent); font-size: .75rem; font-weight: 650; }
 .app-message-toast__error { color: var(--danger); font-size: .75rem; }
 @media (max-width: 1023px) {
-    .app-message-toast-region { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+    .app-message-toast-region { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
 }
 @media (max-width: 639px) {
     .app-message-toast-region {
