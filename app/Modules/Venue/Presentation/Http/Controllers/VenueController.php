@@ -96,7 +96,7 @@ class VenueController extends Controller
         // An empty selection filters against ANY active, non-expired interest.
         $viewer = $request->user()?->canonical();
         $interestsQuery = $viewer
-            ? PlayIntent::query()->where('user_id', $viewer->id)
+            ? PlayIntent::query()->with('venue')->where('user_id', $viewer->id)
                 ->where('status', 'active')
                 ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
                 ->where('favorite_generated', false)
