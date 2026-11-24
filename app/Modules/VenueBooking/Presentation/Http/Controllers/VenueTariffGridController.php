@@ -53,6 +53,7 @@ final class VenueTariffGridController extends Controller
     ): RedirectResponse {
         $input = $request->validate([
             'court_id' => ['nullable', 'integer', 'min:1'],
+            'return_to_schedule' => ['nullable', 'boolean'],
             'mode' => ['required', Rule::in(['weekly', 'date'])],
             'date' => ['required_if:mode,date', 'nullable', 'date_format:Y-m-d'],
             'days' => ['nullable', 'array', 'max:7'],
@@ -93,6 +94,22 @@ final class VenueTariffGridController extends Controller
                 array_values($input['ranges']), $request->user()?->id,
             )
             : $grid->apply($venue, $policy, $court, $input, $request->user()?->id);
+
+        if (! empty($input['return_to_schedule'])
+            && app(ThemeResolver::class)->active() === 'mskba_app') {
+            $url = route('account.venues.edit', array_filter([
+                'alias' => $venue->routeIdentifier(),
+                'tab' => 'schedule',
+                'court' => $court?->id,
+                'mode' => $input['mode'],
+                'date' => $input['mode'] === 'date' ? ($input['date'] ?? null) : null,
+            ], fn ($value) => $value !== null && $value !== ''));
+            $anchor = $court === null ? 'venue-tariff-panel-venue'
+                : 'venue-tariff-panel-court-'.$court->id;
+
+            return redirect()->to($url.'#'.$anchor)
+                ->with('status', 'Тарифы сохранены: '.$count.' временных шагов.');
+        }
 
         return redirect()->route('account.venues.tariff-grid.edit', array_filter([
             'venue' => $venue->id,
