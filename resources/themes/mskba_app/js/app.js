@@ -14,6 +14,7 @@ initActionToasts();
 import './operator-presence.js';
 import './context-bar.js';
 import './context-dialogs.js';
+import './help-launcher-intro.js';
 import './privacy-distribution.js';
 import './privacy-onboarding-dialog.js';
 import './distribution-consent-document-dialog.js';
