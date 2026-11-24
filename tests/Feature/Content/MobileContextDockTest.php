@@ -94,8 +94,9 @@ final class MobileContextDockTest extends TestCase
         $response = $this->get(route('venues'))->assertOk()
             ->assertSee('data-context-filter-expand', false)
             ->assertSee('aria-label="Развернуть фильтры"', false)
-            ->assertSee('Кол-во результатов:')
+            ->assertSee('Найдено:')
             ->assertSee('data-context-filter-result-value', false)
+            ->assertDontSee('Кол-во результатов:')
             ->assertSee('data-context-result-total="', false);
 
         $html = $response->getContent();
