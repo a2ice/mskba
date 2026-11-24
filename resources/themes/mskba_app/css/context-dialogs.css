@@ -65,3 +65,84 @@
 .app-context-help__mail { margin: 0; color: var(--muted); font-size: 13px; }
 .app-context-help__ask [hidden] { display: none !important; }
 @media (max-width: 639px) { .app-context-dialog__header { padding: 14px 16px; } .app-context-dialog__content, .app-context-help__body { padding: 16px; } }
+
+
+/* Target mskba_app help entry point, independent of the appearance mode. */
+.app-context-help-launcher {
+    position: fixed;
+    z-index: 105;
+    right: max(20px, env(safe-area-inset-right, 0px));
+    bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--accent) 80%, var(--surface));
+    border-radius: 50%;
+    color: #fff;
+    background: var(--accent);
+    box-shadow: 0 12px 28px var(--shadow-menu);
+    font: inherit;
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+}
+.app-context-help-launcher:hover { background: var(--accent-hover, var(--accent)); }
+.app-context-help-launcher:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+.app-context-help__page[hidden], [data-help-catalog][hidden] { display: none !important; }
+.app-context-help__page-heading { margin: 0 0 16px; font-size: 17px; }
+.app-context-help__tabs {
+    display: flex;
+    gap: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0 0 10px;
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: thin;
+}
+.app-context-help__tabs button {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.app-context-help__tabs button[aria-selected="true"] {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--text);
+}
+.app-context-help__tabs button:focus-visible, .app-context-help__catalog-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.app-context-help__page-content { min-height: 104px; padding: 16px 2px 8px; }
+.app-context-help__page-content ul { padding-left: 22px; }
+.app-context-help__page-content li { margin-bottom: 8px; }
+.app-context-help__catalog-link {
+    min-height: 38px;
+    margin: 0 0 16px;
+    padding: 6px 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    text-decoration: underline;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+@media (max-width: 1023px) {
+    .app-context-help-launcher { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 639px) {
+    .app-context-help-launcher { right: 12px; width: 46px; height: 46px; font-size: 25px; }
+    .app-context-help__tabs button { font-size: 12px; }
+}

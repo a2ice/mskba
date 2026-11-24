@@ -208,6 +208,10 @@ jobs:
             $COMPOSE run -T --rm phpfpm php artisan storage:link </dev/null
             $COMPOSE run -T --rm phpfpm php artisan migrate --force </dev/null
             $COMPOSE run -T --rm phpfpm php artisan db:seed --class='Database\Seeders\GeographySeeder' --force </dev/null
+            # Load the new catalog before seeding, even when an older config cache exists.
+            $COMPOSE run -T --rm phpfpm php artisan config:clear </dev/null
+            # Publish initial page-specific FAQ material; never overwrite existing edits.
+            $COMPOSE run -T --rm phpfpm php artisan db:seed --class='Database\Seeders\PageFaqContentSeeder' --force </dev/null
             $COMPOSE run -T --rm phpfpm php artisan telegram:sync-profile-avatars --missing </dev/null
             $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null

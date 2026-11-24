@@ -2,7 +2,8 @@
 .app-message-toast-region {
     position: fixed;
     right: 24px;
-    bottom: 24px;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    bottom: auto;
     z-index: 115;
     width: min(320px, calc(100vw - 20px));
     max-height: min(65dvh, 600px);
@@ -79,7 +80,7 @@
 .app-message-toast__link { color: var(--accent); font-size: .75rem; font-weight: 650; }
 .app-message-toast__error { color: var(--danger); font-size: .75rem; }
 @media (max-width: 1023px) {
-    .app-message-toast-region { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+    .app-message-toast-region { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
 }
 @media (max-width: 639px) {
     .app-message-toast-region {
@@ -114,6 +115,8 @@
 /* Compact presentation also applies to standalone design-system toasts
    (for example, the privacy onboarding reminder). */
 .toast:not(.app-message-toast) {
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    bottom: auto;
     width: min(320px, calc(100vw - 20px));
     padding: 8px 10px;
     gap: 8px;
@@ -126,7 +129,7 @@
 .toast:not(.app-message-toast) strong { font-size: .8rem; line-height: 1.3; }
 .toast:not(.app-message-toast) p { font-size: .75rem; line-height: 1.35; margin-top: 0; }
 @media (max-width: 639px) {
-    .toast:not(.app-message-toast) { padding: 7.2px 9px; gap: 7.2px; font-size: .72rem; }
+    .toast:not(.app-message-toast) { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; padding: 7.2px 9px; gap: 7.2px; font-size: .72rem; }
     .toast:not(.app-message-toast) strong { font-size: .72rem; }
     .toast:not(.app-message-toast) p { font-size: .675rem; margin-top: 0; }
 }

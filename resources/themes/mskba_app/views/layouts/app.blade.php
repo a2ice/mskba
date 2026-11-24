@@ -33,6 +33,7 @@
         </main>
         @include('theme::partials.footer')
         @include('theme::partials.mobile-primary-bar')
+        @include('theme::partials.help-launcher')
         @include('partials.privacy.cookie-banner')
         @auth
             <section class="app-message-toast-region" data-message-toast-region hidden
