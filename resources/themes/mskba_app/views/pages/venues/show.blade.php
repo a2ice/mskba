@@ -281,9 +281,12 @@
                     </div>
                 </div>
             </section>
+            @php($bookableCourtIds = collect($venue->courtSchedules)->where("bookingEnabled", true)->pluck("id")->all())
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Расписание</h2>
-                    <button type="button" class="button secondary" data-venue-rental-open>Арендовать площадку</button>
+                    @if(count($bookableCourtIds))
+                    <button type="button" class="button secondary" data-venue-rental-open>{{ $venue->isCourtPage ? "Забронировать" : "Арендовать площадку" }}</button>
+                    @endif
                 </header>
                 @foreach($venue->courtSchedules as $scheduleGroup)
                     <div class="app-venue-schedule__court" data-venue-schedule-court="{{ $scheduleGroup['id'] }}"
@@ -294,7 +297,14 @@
                                 <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">Подробнее</a>
                             </div>
                         @endunless
-                        @if(count($scheduleGroup['days']))
+                        @if(!($scheduleGroup['bookingEnabled'] ?? false))
+                            <p class="muted">Онлайн-бронирование недоступно.</p>
+                            @forelse(collect($scheduleGroup['days'])->groupBy(fn ($day) => json_encode($day['intervals'] ?? [])) as $days)
+                                <p><strong>{{ $days->pluck('label')->implode(', ') }}</strong> — {{ collect($days->first()['intervals'])->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') ?: 'Не работает' }}</p>
+                            @empty
+                                <p>Режим работы не указан.</p>
+                            @endforelse
+                        @elseif(count($scheduleGroup['days']))
                             <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}">
                                 @foreach($scheduleGroup['days'] as $day)
                                     @php
@@ -412,7 +422,7 @@
 @include('components.venue-play-funnel', ['venuePlayDirectEvents' => $plannedVenueEvents])
 @include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
 @php
-    $rentalSearchCourts = collect($venue->courts)->when($venue->isCourtPage,
+    $rentalSearchCourts = collect($venue->courts)->whereIn('id', $bookableCourtIds)->when($venue->isCourtPage,
         fn ($courts) => $courts->where('id', $venue->selectedCourt['id']))->values()->map(
         fn ($court) => ['id' => $court['id'], 'name' => $court['name']])->all();
     $rentalSearchPolicy = $venue->isCourtPage
@@ -433,12 +443,12 @@
             <label for="app-venue-choice-court">Зал или корт</label>
             <span class="select-control">
                 <select id="app-venue-choice-court" data-venue-choice-court required aria-describedby="app-venue-choice-error">
-                    @if(!$venue->isCourtPage && count($venue->courts) > 1)
+                    @if(count($rentalSearchCourts) > 1)
                         <option value="">Выберите зал или корт</option>
                     @endif
-                    @foreach($venue->courts as $court)
+                    @foreach($rentalSearchCourts as $court)
                         <option value="{{ $court['id'] }}"
-                            @selected(($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) || count($venue->courts) === 1)>{{ $court['name'] }}</option>
+                            @selected(($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) || count($rentalSearchCourts) === 1)>{{ $court['name'] }}</option>
                     @endforeach
                 </select>
                 <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#chevron-down"/></svg>
