@@ -134,6 +134,54 @@ final class VenueTariffGridTest extends TestCase
             ->where('venue_court_id', $court->id)->count());
     }
 
+    public function test_public_schedule_renders_real_saved_prices_in_editable_fields_after_reload(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        [$owner, $venue] = $this->ownedVenue();
+        $this->policy($venue, $owner);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $this->actingAs($owner);
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [
+                [
+                    'days' => [1, 2], 'starts_at' => '07:00', 'ends_at' => '16:00',
+                    'operation' => 'set', 'whole_price_per_step' => '1000',
+                ],
+                [
+                    'days' => [1, 2], 'starts_at' => '16:00', 'ends_at' => '23:30',
+                    'operation' => 'set', 'whole_price_per_step' => '1500',
+                ],
+            ],
+        ])->assertRedirect();
+
+        $schedule = route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'schedule']);
+        $this->get($schedule)->assertOk()
+            ->assertSee('name="ranges[0][starts_at]"', false)
+            ->assertSee('name="ranges[1][starts_at]"', false)
+            ->assertSee('name="ranges[0][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="1000"', false)
+            ->assertSee('name="ranges[1][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="1500"', false)
+            ->assertSee('data-tariff-range-item', false);
+
+        $this->post(route('account.venues.tariff-grid.store', $venue->id), [
+            'court_id' => $court->id, 'mode' => 'weekly', 'replace_existing' => '1',
+            'ranges' => [[
+                'days' => [1], 'starts_at' => '16:00', 'ends_at' => '18:00',
+                'operation' => 'set', 'whole_price_per_step' => '1800',
+            ]],
+        ])->assertRedirect();
+
+        $courtResponse = $this->get($schedule.'&court='.$court->id)->assertOk();
+        $courtResponse->assertSee('name="ranges[0][whole_price_per_step]" inputmode="decimal" placeholder="Наследовать" value="1800"', false);
+        $this->assertStringContainsString(
+            'id="venue-tariff-panel-court-'.$court->id.'"',
+            $courtResponse->getContent(),
+        );
+    }
+
     public function test_saved_venue_bands_are_reloaded_into_editor_and_deleting_one_removes_only_its_price_steps(): void
     {
         [$owner, $venue] = $this->ownedVenue();
