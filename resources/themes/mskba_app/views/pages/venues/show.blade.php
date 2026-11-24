@@ -479,7 +479,7 @@
                             @if($similarMode) aria-current="true" @endif>Похожие</a>
                         @if($similarMode)
                             <button type="button" class="button secondary" data-venue-nearby-criteria-open>
-                                <svg aria-hidden="true" width="18" height="18"><use href="#filter"/></svg>
+                                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5z"/></svg>
                                 Критерии сходства
                             </button>
                         @endif
@@ -539,7 +539,7 @@
             <strong>Хочешь здесь играть?</strong>
             <p>Посмотри ближайшие игры и присоединяйся к участникам или создай своё мероприятие.</p>
             <button type="button" class="button primary full" data-venue-play-open>Хочу здесь играть</button>
-            <a class="button secondary full" href="#app-venue-schedule">Расписание и аренда</a>
+            <a class="button secondary full" href="#app-venue-schedule">{{ count($bookableCourtIds) ? 'Расписание и аренда' : 'Режим работы' }}</a>
         </aside>
     </div>
 </section>
