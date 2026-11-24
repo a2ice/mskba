@@ -68,15 +68,15 @@
         .ui-kit-mobile-dock { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
         .ui-kit-mobile-dock span { min-height: 52px; display: grid; place-items: center; text-align: center; font-size: 12px; font-weight: 750; color: var(--muted); }
         .ui-kit-mobile-dock span.is-active { color: var(--accent); }
-        .ui-kit-mobile-gap { min-height: 22px; margin-top: -12px; background-color: rgba(0,0,0,.1); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); pointer-events: none; }
+        .ui-kit-mobile-shell { padding: 5px 0 22px; background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,.1)); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
         .ui-kit-context-preview { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: 16px; display: grid; gap: 12px; }
         .ui-kit-context-preview > header,.ui-kit-context-preview > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .ui-kit-context-preview .ui-kit-context-search { width: 100%; min-height: 44px; border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: 10px 12px; background: var(--field); color: var(--text); }
         .ui-kit-context-preview footer .button { flex: 1; }
         .ui-kit-context-preview p { font-size: 12px; color: var(--muted); }
         .ui-kit-context-preview .ui-kit-context-total { border-top:1px solid var(--line);padding:10px 2px 0;display:flex;align-items:center;gap:8px; }
-        .ui-kit-context-preview .ui-kit-context-total strong { color:var(--text);font-size:15px;margin-left:auto; }
-        .ui-kit-context-preview .ui-kit-context-chevron { display:grid;place-items:center;align-self:stretch;width:48px;border-left:1px solid var(--line);font-size:20px;color:var(--text); }
+        .ui-kit-context-preview .ui-kit-context-total strong { color:var(--text);font-size:15px;margin-left:0; }
+        .ui-kit-context-preview .ui-kit-context-chevron { display:grid;place-items:center;align-self:stretch;width:48px;margin-left:auto;border-left:1px solid var(--line);font-size:20px;color:var(--text); }
     </style>
 </head>
 <body class="ui-kit-body">
@@ -305,13 +305,14 @@
                         <label class="check-label"><input type="checkbox"> Есть ближайшие мероприятия</label>
                         <label class="check-label"><input type="checkbox"> Мои интересы <span title="Подбор площадок по сохранённым интересам">ⓘ</span></label>
                         <label>Интерес <span class="select-control"><select><option>Не выбрано</option><option>Мой вечерний баскетбол</option></select></span></label>
-                        <p class="ui-kit-context-total">Кол-во результатов: <strong>128</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">⌄</span></p>
+                        <p class="ui-kit-context-total">Найдено: <strong>128</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">⌄</span></p>
                         <footer><button class="button secondary" type="button">Сбросить</button><button class="button primary" type="button">Применить</button></footer>
                     </div>
-                    <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели">
-                        <span>Играть</span><span>Площадки</span><span>●</span><span>Меню</span><span class="is-active">Фильтры</span>
+                    <div class="ui-kit-mobile-shell">
+                        <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели">
+                            <span>Играть</span><span>Площадки</span><span>●</span><span>Меню</span><span class="is-active">Фильтры</span>
+                        </div>
                     </div>
-                    <div class="ui-kit-mobile-gap" aria-hidden="true"></div>
                 </div>
             </article>
             <article class="panel ui-kit-panel">
@@ -320,13 +321,14 @@
                     <div class="ui-kit-context-preview">
                         <header><strong>Поиск по MSKBA</strong><span>⌃</span></header>
                         <input class="ui-kit-context-search" aria-label="Поиск MSKBA" placeholder="Что хотите найти?">
-                        <p class="ui-kit-context-total">Кол-во результатов: <strong>—</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">⌄</span></p>
+                        <p class="ui-kit-context-total">Найдено: <strong>—</strong> <span class="ui-kit-context-chevron" aria-label="Развернуть фильтры">⌄</span></p>
                         <footer><button class="button secondary" type="button">Сбросить</button><button class="button primary" type="button">Найти</button></footer>
                     </div>
-                    <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели поиска">
-                        <span>Играть</span><span>Площадки</span><span class="is-active">●</span><span>Меню</span><span>Поиск</span>
+                    <div class="ui-kit-mobile-shell">
+                        <div class="ui-kit-mobile-dock" aria-label="Пример мобильной панели поиска">
+                            <span>Играть</span><span>Площадки</span><span class="is-active">●</span><span>Меню</span><span>Поиск</span>
+                        </div>
                     </div>
-                    <div class="ui-kit-mobile-gap" aria-hidden="true"></div>
                 </div>
             </article>
         </div>

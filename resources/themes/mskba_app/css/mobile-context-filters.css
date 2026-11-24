@@ -38,7 +38,7 @@
         place-items: center;
         width: 54px;
         min-height: 44px;
-        margin: -9px -20px -9px 4px;
+        margin: -9px -20px -9px auto;
         padding: 0;
         border: 0;
         border-left: 1px solid var(--line);
@@ -105,8 +105,8 @@
         display: flex;
         flex: 0 0 auto;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+        justify-content: flex-start;
+        gap: 6px;
         min-height: 44px;
         padding: 9px 20px;
         border-top: 1px solid var(--line);
@@ -117,7 +117,7 @@
         font-variant-numeric: tabular-nums;
     }
     .app-mobile-primary__result-strip strong {
-        margin-left: auto;
+        margin-left: 0;
         color: var(--text);
         font-size: 15px;
         font-weight: 800;

@@ -135,7 +135,7 @@
             </form>
         </div>
         <div class="app-mobile-primary__result-strip" data-context-result-strip role="status" aria-live="polite">
-            <span>Кол-во результатов:</span>
+            <span>Найдено:</span>
             <strong data-context-filter-result-value>—</strong>
             <button type="button" class="app-mobile-primary__filter-expand" data-context-filter-expand
                     aria-expanded="false" aria-controls="app-mobile-primary-filter-scroll"
