@@ -45,15 +45,16 @@ import { addFavorite } from './favorite-action.js';
             const message=section.querySelector('[data-venue-favorite-follow-message]');
             const label=section.querySelector('[data-venue-favorite-follow-label]');
             const action=section.querySelector('[data-venue-favorite-follow-action]');
+            const canCreateEvent=saved&&Boolean(section.dataset.createEventUrl);
             section.dataset.state=saved?'active':loading?'loading':failed?'error':'none';
             message.textContent=saved
-                ? 'Площадка в избранном — следите здесь за новыми играми.'
+                ? (canCreateEvent ? 'Площадка уже в избранном. Создайте здесь игру и пригласите участников.' : 'Площадка в избранном — следите здесь за новыми играми.')
                 : loading?'Проверяем, сохранена ли площадка…'
                 : failed?'Не удалось проверить избранное. Попробуйте ещё раз.'
                 : 'Добавьте площадку в избранное, чтобы следить за новыми играми.';
-            label.textContent=saved?'В избранном':loading?'Проверяем избранное…'
+            label.textContent=saved?(canCreateEvent?'Создать мероприятие':'В избранном'):loading?'Проверяем избранное…'
                 : failed?'Повторить':'Добавить в избранное';
-            action.disabled=busy||saved||loading;
+            action.disabled=busy||(saved&&!canCreateEvent)||loading;
             action.setAttribute('aria-pressed',String(saved));
         }
     };
@@ -108,7 +109,12 @@ import { addFavorite } from './favorite-action.js';
     };
     followSections.forEach(section=>section.querySelector('[data-venue-favorite-follow-action]')
         ?.addEventListener('click',async event=>{
-            if(busy||state==='active')return;
+            if(busy)return;
+            if(state==='active'){
+                const url=section.dataset.createEventUrl;
+                if(url)window.location.assign(url);
+                return;
+            }
             if(state==='error'&&isAuthenticated()){
                 try{await ensureStatus(true);}
                 catch(error){window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message:error.message,failed:true}}));}
