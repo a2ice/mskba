@@ -113,7 +113,7 @@ final class VenueTariffModal
                 ->defaultItems(1)
                 ->minItems(1)
                 ->maxItems(16)
-                ->itemLabel(fn (array $state): string => trim((string) ($state['starts_at'] ?? '')).' — '.trim((string) ($state['ends_at'] ?? '')))
+                ->itemLabel(fn (?array $state): string => trim((string) ($state['starts_at'] ?? '')).' — '.trim((string) ($state['ends_at'] ?? '')))
                 ->schema([
                     CheckboxList::make('days')
                         ->label('Дни недели')
