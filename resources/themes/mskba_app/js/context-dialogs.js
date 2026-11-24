@@ -7,6 +7,8 @@ let faq = null;
 let faqSection = null;
 let faqArticle = null;
 let waitingForAuth = false;
+let pageHelp = null;
+let activeHelpTab = 'about';
 
 function showDialog(dialog, trigger) {
     lastTrigger = trigger;
@@ -40,6 +42,11 @@ if (actions && placeholder) {
 
 if (help) {
     const articleList = help.querySelector('[data-help-articles]');
+    const pagePanel = help.querySelector('[data-help-page]');
+    const catalogPanel = help.querySelector('[data-help-catalog]');
+    const pageTitle = help.querySelector('[data-help-page-title]');
+    const pageContent = help.querySelector('[data-help-page-content]');
+    const pageTabs = [...help.querySelectorAll('[data-help-page-tab]')];
     const lookup = help.querySelector('[data-help-search]');
     const options = help.querySelector('[data-help-options]');
     const toggle = help.querySelector('[data-help-toggle]');
@@ -113,8 +120,55 @@ if (help) {
         toggle.setAttribute('aria-expanded', 'true');
         highlight(visibleSections.length ? 0 : -1);
     }
+    function renderPageHelp() {
+        if (!pageHelp) return;
+        pagePanel.hidden = false;
+        catalogPanel.hidden = true;
+        pageTitle.textContent = pageHelp.title;
+        pageContent.replaceChildren();
+        for (const tab of pageTabs) {
+            const current = tab.dataset.helpPageTab === activeHelpTab;
+            tab.setAttribute('aria-selected', String(current));
+            tab.tabIndex = current ? 0 : -1;
+        }
+        if (activeHelpTab === 'about') {
+            pageContent.append(node('p', pageHelp.about));
+            return;
+        }
+        // HTML is sanitized by ContentBodyRenderer on the server.
+        // Editable H2 headings delimit the two other tab bodies.
+        const rendered = node('div');
+        rendered.innerHTML = pageHelp.html || '';
+        const heading = [...rendered.children].find(element =>
+            element.tagName === 'H2' && element.textContent.trim() ===
+                (activeHelpTab === 'features' ? 'Возможности' : 'Связанные материалы'));
+        for (let element = heading?.nextElementSibling; element && element.tagName !== 'H2'; element = element.nextElementSibling) {
+            pageContent.append(element.cloneNode(true));
+        }
+        if (!pageContent.childElementCount) {
+            pageContent.append(node('p', 'Материалы для этого раздела ещё готовятся.'));
+        }
+    }
+    for (const tab of pageTabs) {
+        tab.addEventListener('click', () => {
+            activeHelpTab = tab.dataset.helpPageTab;
+            renderPageHelp();
+        });
+        tab.addEventListener('keydown', event => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            const index = pageTabs.indexOf(tab);
+            const next = pageTabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + pageTabs.length) % pageTabs.length];
+            next.click();
+            next.focus();
+        });
+    }
+    pagePanel.querySelector('[data-help-page-catalog]')?.addEventListener('click', () => load());
+
     function render() {
         if (!faq) return;
+        pagePanel.hidden = true;
+        catalogPanel.hidden = false;
         const groups = faq.sections || [];
         const isFaqRoot = !faqSection;
         const sectionSelector = lookup.closest('[data-help-combobox]');
@@ -192,6 +246,7 @@ if (help) {
         articleList.replaceChildren(node('p', 'Загружаем ответы…'));
         const url = new URL(help.dataset.helpUrl, location.origin);
         if (usePageContext && helpContext) url.searchParams.set('context', helpContext);
+        if (usePageContext && help.dataset.helpPageKey) url.searchParams.set('page_key', help.dataset.helpPageKey);
         if (section) url.searchParams.set('section', section);
         if (article) url.searchParams.set('article', article);
         try {
@@ -203,7 +258,13 @@ if (help) {
             faqSection = data.section;
             faqArticle = data.article?.alias || null;
             updateAuth(data.authenticated, data.csrf_token);
-            render();
+            pageHelp = usePageContext ? data.page_help : null;
+            if (pageHelp) {
+                activeHelpTab = 'about';
+                renderPageHelp();
+            } else {
+                render();
+            }
         } catch {
             if (id === requestId) articleList.replaceChildren(node('p', 'Не удалось загрузить FAQ. Попробуйте ещё раз.'));
         }
@@ -246,6 +307,12 @@ if (help) {
     clear.addEventListener('click', () => { closeOptions(); load(); lookup.focus({ preventScroll: true }); });
     document.addEventListener('pointerdown', event => {
         if (!options.hidden && !event.target.closest('[data-help-combobox]')) closeOptions();
+    });
+    document.querySelector('[data-help-launcher]')?.addEventListener('click', (event) => {
+        helpContext = '';
+        waitingForAuth = false;
+        showDialog(help, event.currentTarget);
+        load(null, null, true);
     });
     actions?.querySelector('[data-context-help]')?.addEventListener('click', (event) => {
         helpContext = event.currentTarget.dataset.helpContext || '';
@@ -295,7 +362,8 @@ if (help) {
         waitingForAuth = false;
         showDialog(help, lastTrigger);
         help.querySelector('[data-help-ask]').open = true;
-        load(faqSection, faqArticle);
+        if (pageHelp) load(null, null, true);
+        else load(faqSection, faqArticle);
     });
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
