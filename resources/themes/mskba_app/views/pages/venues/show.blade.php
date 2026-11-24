@@ -302,7 +302,7 @@
                         @if(!($scheduleGroup['bookingEnabled'] ?? false))
                             <p class="muted">Онлайн-бронирование недоступно.</p>
                             @forelse(collect($scheduleGroup['days'])->groupBy(fn ($day) => json_encode($day['intervals'] ?? [])) as $days)
-                                <p><strong>{{ $days->pluck('label')->implode(', ') }}</strong> — {{ collect($days->first()['intervals'])->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') ?: 'Не работает' }}</p>
+                                <p aria-label="Часы работы"><svg aria-hidden="true" width="16" height="16"><use href="#clock"/></svg> <strong>{{ $days->pluck('label')->implode(', ') }}</strong> — {{ collect($days->first()['intervals'])->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') ?: 'Не работает' }}</p>
                             @empty
                                 <p>Режим работы не указан.</p>
                             @endforelse
