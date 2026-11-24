@@ -673,6 +673,11 @@ jobs:
             ROLLBACK_ARMED=0
             echo 'Dev deployment completed with verified frontend assets; production untouched'
 
+            # Capture only a successful, exact checkout after the rollback guard is disarmed.
+            install -d -m 2750 -g www-data storage/app/private/environment-checkpoints
+            python3 scripts/environment-state.py record development "$VERIFIED_SHA" "${{ github.run_id }}"
+
+
   activate_dev_rental_cashback:
     needs: [test, deploy_dev]
     # One-time guarded activation on a specially named merge commit; manual dispatch
