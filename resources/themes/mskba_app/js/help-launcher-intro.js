@@ -52,4 +52,4 @@ export function initHelpLauncherIntro(doc = document, host = window) {
     return launcher;
 }
 
-initHelpLauncherIntro();
+if (typeof document !== 'undefined' && typeof window !== 'undefined') initHelpLauncherIntro();
