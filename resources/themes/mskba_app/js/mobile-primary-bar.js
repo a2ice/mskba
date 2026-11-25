@@ -65,7 +65,13 @@ if (dock) {
             'has_upcoming_events', 'my_interests', 'interest_id', 'rental_configured', 'latitude', 'longitude', 'radius_km', 'scope', 'role']);
         const defaults = { period: ['upcoming', 'all'], status: ['not_cancelled'] };
         let count = 0;
-        for (const [key, val] of url.searchParams) {
+        let venueTypeCounted = false;
+        for (const [rawKey, val] of url.searchParams) {
+            const key = /^type\[(?:\d*)\]$/.test(rawKey) && /^\/venues(?:\/|$)/.test(url.pathname) ? 'type' : rawKey;
+            if (key === 'type' && /^\/venues(?:\/|$)/.test(url.pathname) && val) {
+                if (venueTypeCounted) continue;
+                venueTypeCounted = true;
+            }
             if (!keys.has(key) || !val || defaults[key]?.includes(val)) continue;
             if (key === 'rental_configured' && val !== '1') continue;
             if (key === 'role' && /\/(players|coaches)$/.test(url.pathname)) continue;
