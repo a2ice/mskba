@@ -130,13 +130,7 @@
                 </div>
                 @endauth
                 </div>
-                <label><span>Тип площадки</span>
-                    <span class="select-control"><select name="type"><option value="">Все типы</option>
-                        @foreach($types as $type)
-                            <option value="{{ $type->value }}" @selected(($filters['type'] ?? '') === $type->value)>{{ $type->label() }}</option>
-                        @endforeach
-                    </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
-                </label>
+                @include('components.venue-catalog-type-filter', ['typeFilterTheme' => 'app'])
                 <label><span>Состояние</span>
                     <span class="select-control"><select name="operational_status"><option value="">Любое</option>
                         @foreach($operationalStatuses as $status)
