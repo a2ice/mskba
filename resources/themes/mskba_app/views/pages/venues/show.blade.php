@@ -436,7 +436,7 @@
                     $nearbyCards = collect(app(\App\Modules\Venue\Application\UseCases\ListVenuesHandler::class)
                         ->handle(null, null, [], null, array_column($nearby, 'id')))->keyBy('id');
                 @endphp
-                <section class="panel app-venue-block" id="app-venue-nearby">
+                <section class="panel app-venue-block" id="app-venue-nearby" data-venue-map-reference-id="{{ $venue->id }}">
                     <header class="app-venue-block__header"><h2>Площадки рядом</h2></header>
                     <div class="app-venue-nearby__toolbar" aria-label="Режим подбора площадок">
                         <a class="button {{ ! $similarMode ? 'primary' : 'secondary' }}"
@@ -460,6 +460,7 @@
                                         'venue' => $nearbyCards->get($item['id']),
                                         'cardUrl' => $item['url'],
                                         'distanceMeters' => $item['distance_meters'],
+                                        'distanceOriginName' => $venue->name,
                                         'cardCourtName' => $item['court_name'] ?? null,
                                     ])
                                 @endif
