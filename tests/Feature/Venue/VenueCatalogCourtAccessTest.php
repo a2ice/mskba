@@ -69,10 +69,31 @@ final class VenueCatalogCourtAccessTest extends TestCase
         $mixed = collect($handler->handle(null))->firstWhere('id', $venue->id);
         $this->assertSame(['free', 'paid'], $mixed->paymentBadgeStates());
         $this->assertSame(2, $mixed->cardCourtCount());
+        $this->assertSame(['active', 'temporarily_closed'], $mixed->cardOperationalStates());
+        $this->assertSame(['active'], $free->cardOperationalStates());
+        $this->get(route('venues', ['search' => '1794']))
+            ->assertOk()
+            ->assertSee('class="venue-catalog-card-top"', false)
+            ->assertSee('data-venue-icon-group="payment"', false)
+            ->assertSee('data-venue-icon-group="status"', false)
+            ->assertSee('data-venue-card-tooltip="Бесплатно"', false)
+            ->assertSee('data-venue-card-tooltip="Платно"', false)
+            ->assertSee('data-venue-card-tooltip="Работает"', false)
+            ->assertSee('data-venue-card-tooltip="Временно закрыта"', false)
+            ->assertSee('data-venue-card-tooltip="Игровых зон: 2"', false);
         $this->assertSame(['paid'], $mixed->paymentBadgeStates($paid->matchedCourtUrl));
         $closedPaid = collect($handler->handle(null, null, ['access' => 'paid']))->firstWhere('id', $venue->id);
         $this->assertSame($paid->matchedCourtUrl, $closedPaid->matchedCourtUrl);
         $this->assertSame('temporarily_closed', $closedPaid->cardCourt()['operational_status']);
+        $this->assertSame(['temporarily_closed'], $closedPaid->cardOperationalStates());
+        $this->assertSame(['temporarily_closed'], $mixed->cardOperationalStates($closedPaid->cardCourt()));
+        $this->get(route('venues', ['search' => '1794', 'access' => 'paid']))
+            ->assertOk()
+            ->assertSee('data-venue-card-tooltip="Платно"', false)
+            ->assertSee('data-venue-card-tooltip="Временно закрыта"', false)
+            ->assertDontSee('data-venue-card-tooltip="Бесплатно"', false)
+            ->assertDontSee('data-venue-card-tooltip="Работает"', false)
+            ->assertDontSee('data-venue-card-tooltip="Игровых зон:', false);
         $this->getJson(route('api.v1.venues.index', ['access' => 'paid']))
             ->assertOk()->assertJsonPath('data.0.matched_court.court_id', $indoor->id)
             ->assertJsonPath('data.0.matched_court.operational_status', 'temporarily_closed')
