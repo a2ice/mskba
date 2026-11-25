@@ -15,7 +15,9 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 final class RentalSeoInventoryTest extends TestCase
@@ -27,7 +29,7 @@ final class RentalSeoInventoryTest extends TestCase
         config(['features.venue_rental.rental_flow' => false]);
         $city = City::factory()->create(['alias' => 'seo-test-city']);
         $district = District::factory()->for($city)->create(['alias' => 'seo-test-district']);
-        $address = Address::factory()->create(['city_id' => $city->id, 'district_id' => $district->id]);
+        $address = Address::factory()->create(['city_id' => $city->id, 'district_id' => $district->id, 'latitude' => 55.75, 'longitude' => 37.62]);
         $location = Location::factory()->create(['address_id' => $address->id]);
 
         $make = function (array $overrides = []) use ($location): Venue {
@@ -137,7 +139,30 @@ final class RentalSeoInventoryTest extends TestCase
             $configured->routeIdentifier(), $second->routeIdentifier(),
         ]), $data['venues'][0]->matchedCourtUrl);
 
+        $this->withoutVite();
+        config(['themes.active' => 'mskba_app']);
+        $this->app->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $catalogUrl = route('venues', ['rental_configured' => 1]);
+        $this->get($catalogUrl)->assertOk()
+            ->assertSee('data-context-result-total="1"', false)
+            ->assertSee(route('venues.courts.show', [$configured->routeIdentifier(), $second->routeIdentifier()]), false);
+        $this->getJson(route('venues', [
+            'rental_configured' => 1, 'city_id' => $city->id, 'district_id' => $district->id,
+            'type' => 'sports_hall', 'fragment' => 'items',
+        ]))->assertOk()->assertJsonPath('total', 1)->assertJsonPath('has_more', false);
+        $this->get(route('venues', ['rental_configured' => 1, 'view' => 'map']))
+            ->assertOk()->assertSee('data-context-result-total="1"', false)
+            ->assertSee('Configured secondary hall');
+        $this->getJson(route('venues', ['rental_configured' => 0, 'fragment' => 'items']))
+            ->assertOk()->assertJsonPath('total', 5);
+        $this->getJson(route('venues', ['rental_configured' => 'invalid']))
+            ->assertUnprocessable()->assertJsonValidationErrors('rental_configured');
+
         $second->update(['rental_enabled' => false]);
+        $this->getJson(route('venues', ['rental_configured' => 1, 'fragment' => 'items']))
+            ->assertOk()->assertJsonPath('total', 0);
         $this->assertSame(0, $landing->forGeography($city->alias)['venue_count']);
     }
 }
