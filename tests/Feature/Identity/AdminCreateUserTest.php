@@ -2,14 +2,18 @@
 
 namespace Tests\Feature\Identity;
 
+use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
+use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\ListBackofficeUsers;
 use App\Modules\Identity\Application\UseCases\AdminCreateUserHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum as Role;
 use App\Modules\Identity\Domain\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminCreateUserTest extends TestCase
@@ -88,6 +92,21 @@ final class AdminCreateUserTest extends TestCase
             }
         }
         $this->assertDatabaseCount('users', 3);
+    }
+
+    public function test_filament_action_creates_and_redirects_to_existing_editor(): void
+    {
+        $actor = $this->actor(Role::SUPERADMIN);
+        $this->actingAs($actor);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $component = Livewire::test(ListBackofficeUsers::class)
+            ->callAction('createUser', data: ['username' => 'filament_new_user'])
+            ->assertHasNoFormErrors();
+
+        $user = User::query()->where('username', 'filament_new_user')->firstOrFail();
+        $component->assertRedirect(BackofficeUserResource::getUrl('edit', ['record' => $user]));
+        $this->assertSame(UserStatusEnum::UNCONFIRMED, $user->status);
     }
 
     private function actor(Role $role): User
