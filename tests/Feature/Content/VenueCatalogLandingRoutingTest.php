@@ -42,6 +42,10 @@ final class VenueCatalogLandingRoutingTest extends TestCase
         $city = City::factory()->create();
         $other = City::factory()->create();
         $landing = $this->landing($city);
+        $landing->update([
+            'intro_text' => '<p>Unique editorial intro</p>',
+            'body_text' => '<h2>Unique editorial body</h2><p><a href="/venues">All venues</a></p>',
+        ]);
         PageSeoSetting::query()->create([
             'entity_type' => 'venue_catalog_landing', 'entity_id' => $landing->id,
             'meta_title' => 'Landing title', 'meta_description' => 'Landing description',
@@ -56,6 +60,9 @@ final class VenueCatalogLandingRoutingTest extends TestCase
             ->assertRedirect($this->url(['sort' => 'name_asc']));
         $this->get($this->url())->assertOk()
             ->assertSee($landing->h1)->assertSee('MatchingHall01')->assertDontSee('MatchingHall05')
+            ->assertSee('data-venue-landing-editorial="intro"', false)
+            ->assertSee('data-venue-landing-editorial="body"', false)
+            ->assertSeeInOrder(['Unique editorial intro', 'MatchingHall01', 'Unique editorial body'])
             ->assertDontSee('OtherCityHall')->assertDontSee('HiddenHall')
             ->assertSee('<title>Landing title</title>', false)
             ->assertSee('name="description" content="Landing description"', false)
@@ -63,13 +70,15 @@ final class VenueCatalogLandingRoutingTest extends TestCase
             ->assertSee('noindex, nofollow, noarchive')
             ->assertSee(e($this->url(['page' => 2])), false);
         $this->get($this->url(['page' => 2]))->assertOk()->assertSee('MatchingHall05')
+            ->assertDontSee('Unique editorial intro')->assertDontSee('Unique editorial body')
             ->assertDontSee('MatchingHall01')->assertSee('<link rel="canonical" href="'.$this->url(['page' => 2]).'">', false);
         $this->getJson($this->url(['page' => 2, 'fragment' => 'items']))->assertOk()
             ->assertJsonPath('total', 5)->assertJsonPath('has_more', false);
         $this->get($this->url(['view' => 'map']))->assertOk()->assertSee('MatchingHall05')->assertDontSee('OtherCityHall');
 
         $this->get(route('venues', ['city_id' => $city->id, 'search' => 'MatchingHall01']))
-            ->assertOk()->assertDontSee($landing->h1);
+            ->assertOk()->assertDontSee($landing->h1)
+            ->assertDontSee('Unique editorial intro')->assertDontSee('Unique editorial body');
         $this->get($this->url(['city_id' => $other->id]))
             ->assertRedirect(route('venues', ['city_id' => $other->id]));
         $this->get($this->url(['unknown_filter' => '1']))
@@ -79,7 +88,8 @@ final class VenueCatalogLandingRoutingTest extends TestCase
 
         $this->theme('mskba_dark');
         $this->get($this->url())->assertOk()->assertSee($landing->h1)
-            ->assertSee('MatchingHall01')->assertDontSee('OtherCityHall')->assertDontSee('HiddenHall');
+            ->assertSee('MatchingHall01')->assertDontSee('OtherCityHall')->assertDontSee('HiddenHall')
+            ->assertSeeInOrder(['Unique editorial intro', 'MatchingHall01', 'Unique editorial body']);
     }
 
     public function test_existing_venue_and_court_routes_are_not_captured(): void
