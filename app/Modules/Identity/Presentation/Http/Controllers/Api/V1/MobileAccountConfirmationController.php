@@ -48,7 +48,11 @@ final class MobileAccountConfirmationController extends Controller
             'status' => $user->status->value,
             'can_confirm' => $user->status === UserStatusEnum::UNCONFIRMED && $steps->every(fn (array $step): bool => $step['completed']),
             'requirements' => $steps,
-            'primary_contact' => $primary === null ? null : $this->contactData($primary),
+            'primary_contact' => $primary === null ? null : [
+                'id' => (int) $primary->id,
+                'type' => $primary->type->value,
+                'is_verified' => $primary->hasBeenVerified(),
+            ],
         ]]);
     }
 

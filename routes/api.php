@@ -89,38 +89,38 @@ Route::middleware(['auth:sanctum', EnsureActiveMobileApiUser::class])->group(fun
         ->name('api.v1.me');
 
     Route::get('/v1/account/confirmation', [MobileAccountConfirmationController::class, 'status'])
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:60,1,mobile-confirm-status')
         ->name('api.v1.account.confirmation.show');
 
     Route::patch('/v1/me/profile', [MobileAccountConfirmationController::class, 'updateProfile'])
-        ->middleware('throttle:20,1')
+        ->middleware('throttle:20,1,mobile-profile-update')
         ->name('api.v1.me.profile.update');
 
     Route::get('/v1/me/contacts', [MobileAccountConfirmationController::class, 'contacts'])
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:60,1,mobile-contacts-index')
         ->name('api.v1.me.contacts.index');
 
     Route::post('/v1/me/contacts', [MobileAccountConfirmationController::class, 'createContact'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:10,1,mobile-contacts-store')
         ->name('api.v1.me.contacts.store');
 
     Route::post('/v1/me/contacts/{contact}/verification', [MobileAccountConfirmationController::class, 'sendCode'])
         ->whereNumber('contact')
-        ->middleware('throttle:5,1')
+        ->middleware('throttle:5,1,mobile-contact-send')
         ->name('api.v1.me.contacts.verification.store');
 
     Route::post('/v1/me/contacts/{contact}/verification/confirm', [MobileAccountConfirmationController::class, 'confirmCode'])
         ->whereNumber('contact')
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:10,1,mobile-contact-confirm')
         ->name('api.v1.me.contacts.verification.confirm');
 
     Route::patch('/v1/me/contacts/{contact}/primary', [MobileAccountConfirmationController::class, 'setPrimary'])
         ->whereNumber('contact')
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:10,1,mobile-contact-primary')
         ->name('api.v1.me.contacts.primary');
 
     Route::post('/v1/account/confirmation', [MobileAccountConfirmationController::class, 'confirm'])
-        ->middleware('throttle:5,1')
+        ->middleware('throttle:5,1,mobile-account-confirm')
         ->name('api.v1.account.confirmation.complete');
 
     Route::delete('/v1/me', MobileDeleteAccountController::class)

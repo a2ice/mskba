@@ -65,6 +65,8 @@ final class MobileAccountConfirmationApiTest extends TestCase
         $this->postJson('/api/v1/account/confirmation', $this->profile())->assertOk()->assertJsonPath('data.status', 'confirmed');
         $this->assertTrue($user->refresh()->isConfirmed());
         $this->freshGuard();
+        $this->patchJson('/api/v1/me/profile', ['first_name' => 'Другое имя'])->assertForbidden();
+        $this->freshGuard();
         $this->postJson('/api/v1/account/confirmation', $this->profile())->assertUnprocessable();
         $this->freshGuard();
         $this->getJson('/api/v1/me/contacts')->assertOk()->assertJsonPath('data.0.id', $id)->assertJsonMissingPath('data.0.code_hash');
@@ -72,8 +74,9 @@ final class MobileAccountConfirmationApiTest extends TestCase
 
     public function test_read_only_token_cannot_modify_or_list_private_contacts(): void
     {
-        $this->account(['profile:read']);
-        $this->getJson('/api/v1/account/confirmation')->assertOk();
+        $user = $this->account(['profile:read']);
+        $user->contacts()->create(['type' => 'email', 'value' => 'private-mobile@example.org', 'is_primary' => true]);
+        $this->getJson('/api/v1/account/confirmation')->assertOk()->assertJsonMissingPath('data.primary_contact.value');
         $this->freshGuard();
         $this->patchJson('/api/v1/me/profile', $this->profile())->assertForbidden();
         $this->freshGuard();
