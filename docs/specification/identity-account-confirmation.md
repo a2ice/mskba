@@ -3,6 +3,7 @@
 ## Оглавление
 
 - [Назначение](#назначение)
+- [Mobile REST API (task 1047)](#mobile-rest-api-task-1047)
 - [Условия](#условия)
 - [Роли участия](#роли-участия)
 - [Интерфейс](#интерфейс)
@@ -56,7 +57,7 @@
 до отдельного подтверждения в списке. Email использует существующий код,
 телефон можно сохранить, но SMS-подтверждение пока не реализовано.
 
-В письме с шестизначным Email-кодом срок действия (15 минут) отображается
+В письме с шестизначным Email-кодом срок действия (60 минут) отображается
 в часовом поясе Europe/Moscow с явной отметкой «МСК» независимо от
 часового пояса Carbon-даты, возвращённой из БД. Это только форматирование
 для получателя: сохранённое значение expires_at, сравнение с now() и
@@ -168,3 +169,7 @@ FAQ-материалы хранятся как ContentItem в БД соотве�
 условию и количество остальных условий. Ссылка на поле ставит в него фокус.
 Все контактные модальные окна используют Modal 1.1, шапку-eyebrow «Добавить
 контакт» и icon-button #close без дублирующего H2 и вводного текста.
+
+## Mobile REST API (task 1047)
+
+The same confirmation and contact handlers are exposed through the Bearer-only [mobile account confirmation API](../api/mobile-account-confirmation.md). The web and mobile profile update share the current permission/audit checks. The mobile flow supports email verification; phone is stored without SMS, and social contacts require the existing official provider flow. The actual email strategy TTL is 60 minutes.

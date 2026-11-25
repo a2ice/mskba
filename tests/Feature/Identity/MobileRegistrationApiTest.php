@@ -63,7 +63,7 @@ final class MobileRegistrationApiTest extends TestCase
         $this->assertDatabaseHas('player_profile_positions', ['position' => 'point_guard']);
         $token = $user->tokens()->sole();
         $this->assertSame('mskba-client:ios-dev', $token->name);
-        $this->assertSame(['profile:read', 'auth:logout', 'account:delete'], $token->abilities);
+        $this->assertSame(['profile:read', 'auth:logout', 'account:delete', 'profile:write', 'contacts:read', 'contacts:write', 'account:confirm'], $token->abilities);
         $this->assertTrue($token->expires_at->greaterThan(now()->addDays(29)));
 
         $this->withToken($json['access_token'])->getJson(route('api.v1.me'))

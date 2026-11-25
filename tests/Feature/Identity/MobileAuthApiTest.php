@@ -50,7 +50,7 @@ final class MobileAuthApiTest extends TestCase
 
         $stored = $user->tokens()->sole();
         $this->assertSame('mskba-client:test-ios', $stored->name);
-        $this->assertSame(['profile:read', 'auth:logout', 'account:delete'], $stored->abilities);
+        $this->assertSame(['profile:read', 'auth:logout', 'account:delete', 'profile:write', 'contacts:read', 'contacts:write', 'account:confirm'], $stored->abilities);
         $this->assertNotSame($result['access_token'], $stored->token);
         $this->assertNotNull($stored->expires_at);
         $this->assertTrue($stored->expires_at->greaterThan(now()->addDays(29)));
