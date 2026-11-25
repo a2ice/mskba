@@ -313,7 +313,8 @@ final class EditBackofficeUser extends EditRecord
                 ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
                 ->action(function (array $data): void {
                     $actor = auth('web')->user()?->canonical();
-                    abort_unless($actor?->system_role === UserSystemRoleEnum::SUPERADMIN, 403);
+                    abort_unless($actor?->system_role === UserSystemRoleEnum::SUPERADMIN
+                        && BackofficeUserResource::canEdit($this->getRecord()), 403);
                     $status = UserStatusEnum::tryFrom((string) ($this->form->getState()['account_status'] ?? ''));
                     if ($status === null) {
                         throw ValidationException::withMessages(['account_status' => 'Неизвестный статус пользователя.']);
@@ -324,15 +325,15 @@ final class EditBackofficeUser extends EditRecord
                     }
                     try {
                         DB::transaction(function () use ($actor, $status, $before, $data): void {
-                            app(AdminUpdateUserStatusHandler::class)->handle($actor, $this->getRecord()->id, $status);
+                            $updated = app(AdminUpdateUserStatusHandler::class)->handle($actor, $this->getRecord()->id, $status);
                             AuditLog::query()->create([
-                                'actor_id' => $actor->id,
+                                'actor_id' => app(CurrentActorResolver::class)->resolve($actor, null)?->id,
                                 'auditable_type' => User::class,
-                                'auditable_id' => $this->getRecord()->id,
+                                'auditable_id' => $updated->id,
                                 'event' => 'admin_user_status_changed',
                                 'old_values' => ['status' => $before->value],
                                 'new_values' => ['status' => $status->value],
-                                'metadata' => ['reason' => (string) $data['reason']],
+                                'metadata' => ['reason' => (string) $data['reason'], 'actor_user_id' => $actor->id],
                             ]);
                         });
                     } catch (UserCannotBeChangedException $exception) {
@@ -345,6 +346,7 @@ final class EditBackofficeUser extends EditRecord
                         return;
                     }
                     $this->getRecord()->refresh();
+                    Notification::make()->success()->title('Статус аккаунта изменён')->send();
                 }),
             Action::make('savePersonalInline')
                 ->label('Сохранить профиль')

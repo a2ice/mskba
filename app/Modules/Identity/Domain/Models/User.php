@@ -264,19 +264,37 @@ class User extends Authenticatable implements FilamentUser, HasName
      */
     public function assertAccountConfirmationRequirements(): void
     {
-        if (! $this->hasVerifiedPrimaryContact()) {
+        $missing = $this->missingAccountConfirmationRequirements();
+        if (in_array('primary_verified_contact', $missing, true)) {
             throw new UserCannotBeChangedException('Для подтверждения аккаунта нужен подтвержденный основной контакт.');
         }
 
-        $profile = $this->profile()->first();
-        if ($profile === null
-            || blank(trim((string) $profile->first_name))
-            || blank(trim((string) $profile->last_name))
-            || $profile->birth_date === null
-            || $profile->birth_date->greaterThanOrEqualTo(today())
-            || $profile->gender === null) {
+        if ($missing !== []) {
             throw new UserCannotBeChangedException('Заполни имя, фамилию, дату рождения и пол перед подтверждением аккаунта.');
         }
+    }
+
+    /** @return list<string> */
+    public function missingAccountConfirmationRequirements(): array
+    {
+        $profile = $this->profile()->first();
+        $missing = [];
+        if (! $this->hasVerifiedPrimaryContact()) {
+            $missing[] = 'primary_verified_contact';
+        }
+        foreach (['first_name', 'last_name'] as $field) {
+            if (blank(trim((string) $profile?->$field))) {
+                $missing[] = $field;
+            }
+        }
+        if ($profile?->birth_date === null || $profile->birth_date->greaterThanOrEqualTo(today())) {
+            $missing[] = 'birth_date';
+        }
+        if ($profile?->gender === null) {
+            $missing[] = 'gender';
+        }
+
+        return $missing;
     }
 
     /**

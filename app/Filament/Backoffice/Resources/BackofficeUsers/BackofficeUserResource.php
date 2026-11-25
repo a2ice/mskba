@@ -210,7 +210,8 @@ final class BackofficeUserResource extends Resource
                                         Placeholder::make('vk_info')->label('VK')
                                             ->content(fn (?User $record): string => $record?->vkAccount ? 'Подключён' : 'Не подключён'),
                                     ])->columns(2),
-                                View::make('filament.backoffice.user-save-general'),
+                                View::make('filament.backoffice.user-save-general')
+                                     ->viewData(['editedUser' => $record]),
                             ]),
                         Tab::make('Контакты')
                             ->icon('heroicon-o-identification')
