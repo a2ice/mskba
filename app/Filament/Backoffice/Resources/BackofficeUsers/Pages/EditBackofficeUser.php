@@ -66,6 +66,8 @@ use Illuminate\Support\Str;
 
 final class EditBackofficeUser extends EditRecord
 {
+    use Concerns\ManagesUserContacts;
+
     protected static string $resource = BackofficeUserResource::class;
 
     public ?int $selectedParticipationRoleId = null;
@@ -100,6 +102,7 @@ final class EditBackofficeUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ...$this->contactManagementActions(),
             Action::make('setUserPassword')
                 ->label('Установить пароль')
                 ->icon('heroicon-o-key')
