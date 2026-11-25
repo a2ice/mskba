@@ -375,7 +375,7 @@ jobs:
             # Staging may use real provider credentials for supervised integration tests.
             # A shared Telegram bot cannot have two independent webhook URLs:
             # changing its webhook here would divert production updates.
-            check 'MAIL_MAILER' grep -Eq '^MAIL_MAILER=(log|smtp)
+            check 'MAIL_MAILER' grep -Eq '^MAIL_MAILER=(log|smtp)$' .env
             check 'TELEGRAM_UPDATES_TRANSPORT' grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
             # Never auto-configure a Telegram webhook or start consumers from deploy.
             test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
@@ -392,22 +392,6 @@ jobs:
             check 'existing frontend manifest' test -f public/build/manifest.json
             check 'storage writable' test -w storage
             check 'bootstrap/cache writable' test -w bootstrap/cache
- .env
-            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
-            # Never auto-configure a Telegram webhook or start consumers from deploy.
-            test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
-            case "$VERIFIED_SHA" in *[!0-9a-f]*|'') exit 1;; esac
-            test "${#VERIFIED_SHA}" -eq 40
-            ASSET_STAGE="/home/deploy/mskba-dev-assets/$VERIFIED_SHA"
-            test -f "$ASSET_STAGE/manifest.json" || { echo 'Verified frontend manifest missing'; exit 1; }
-            test -d "$ASSET_STAGE/assets" || { echo 'Verified frontend assets missing'; exit 1; }
-            # Verify essential local resources before any tracked file is replaced.
-            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
-            docker image inspect mskbanew-phpfpm:latest >/dev/null
-            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
-            $COMPOSE config --quiet
-            test -f public/build/manifest.json
-            test -w storage && test -w bootstrap/cache
             git fetch origin dev
             test "$(git rev-parse origin/dev)" = "$VERIFIED_SHA" || {
               echo 'Verified commit no longer matches dev HEAD; skip older deployment'; exit 0;
