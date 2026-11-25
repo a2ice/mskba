@@ -4,7 +4,6 @@
     $court = $venue->cardCourt($venueUrl);
     $paymentStates = $venue->paymentBadgeStates($court !== null ? $venueUrl : null);
     $conditions = $venue->cardConditions($court);
-    $courtName = $court['name'] ?? $cardCourtName ?? $venue->matchedCourtName;
     $description = \App\Modules\Venue\Application\DTO\VenueListItemDTO::catalogDescription($court !== null ? ($court['short_description'] ?? null) : $venue->shortDescription);
     $courtCount = $court !== null || !empty($cardCourtName) ? 0 : $venue->courtCount();
 @endphp
@@ -30,9 +29,6 @@
 
         @if(isset($distanceMeters))
             <p class="venue-catalog-item__distance"><i class="ti ti-map-pin" aria-hidden="true"></i>{{ number_format($distanceMeters / 1000, 1, ',', ' ') }} км от этой площадки</p>
-        @endif
-        @if($courtName !== null)
-            <p class="venue-catalog-item__match"><i class="ti ti-layout-grid" aria-hidden="true"></i>Подходящий зал: {{ $courtName }}</p>
         @endif
 
         @if($description !== '')

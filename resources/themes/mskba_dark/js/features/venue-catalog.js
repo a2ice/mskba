@@ -66,7 +66,6 @@ function initCatalogMap(catalog, getPromise, setPromise) {
                     hintContent: point.name,
                     balloonContentHeader: point.name,
                     balloonContentBody: `${escapeHtml(point.address || '')}`
-                        + (point.matched_court ? `<br>Подходящий зал: ${escapeHtml(point.matched_court)}` : '')
                         + (court ? (court.type_label ? '<br>' + escapeHtml(court.type_label) : '') + (court.operational_status_label ? '<br>' + escapeHtml(court.operational_status_label) : '') + '<br>' + (court.requires_payment === true ? 'Платно' : court.requires_payment === false ? 'Бесплатно' : 'Условия уточняются') : '')
                         + (!court && point.free_courts ? '<br>Есть бесплатные зоны' : '')
                         + (!court && point.paid_courts ? '<br>Есть платные зоны' : '')
