@@ -112,7 +112,9 @@ final class VenueMyInterestsFilterTest extends TestCase
         auth()->logout();
         $this->getJson(route('venues', ['my_interests' => 1]))->assertForbidden();
         $this->get(route('venues'))->assertOk()
-            ->assertSee('Войдите, чтобы подобрать площадки по своим интересам');
+            ->assertDontSee('data-venue-interest-filter', false)
+            ->assertDontSee('data-venue-interest-toggle', false)
+            ->assertDontSee('Войдите, чтобы подобрать площадки по своим интересам');
     }
 
     public function test_interest_filter_restricts_map_and_infinite_scroll_count_consistently(): void
