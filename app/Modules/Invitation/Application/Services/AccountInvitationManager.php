@@ -281,7 +281,7 @@ final class AccountInvitationManager
         return DB::transaction(function () use ($invitation, $user): AccountInvitation {
             $venue = Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
-            $user = $user->canonical()->fresh();
+            $user = $this->lockCanonicalUser($user);
 
             if ($user === null || $user->trashed() || $user->isBlocked()
                 || $record->status !== 'pending' || $record->accepted_user_id === null
@@ -313,7 +313,7 @@ final class AccountInvitationManager
                 return $record->refresh();
             }
 
-            $issuer = User::query()->find($record->created_by_user_id)?->canonical()->fresh();
+            $issuer = $this->lockCanonicalUser(User::query()->find($record->created_by_user_id));
             if (! $this->canAuthorizeMembership($issuer, $venue)) {
                 $this->progress($record, 'awaiting_authorization', [
                     'issuer_id' => $record->created_by_user_id,
@@ -337,12 +337,13 @@ final class AccountInvitationManager
         return DB::transaction(function () use ($invitation, $reviewer, $reason): AccountInvitation {
             $venue = Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
-            $reviewer = $reviewer->canonical()->fresh();
-            abort_unless($this->canAuthorizeMembership($reviewer, $venue), 403);
+            $reviewer = $this->lockCanonicalUser($reviewer);
+            abort_unless($reviewer?->system_role === UserSystemRoleEnum::SUPERADMIN
+                && $this->canAuthorizeMembership($reviewer, $venue), 403);
             abort_unless($record->status === 'pending' && $record->progress === 'awaiting_authorization'
                 && $record->scope_type === 'venue' && in_array($record->role, ['staff', 'manager', 'booking_operator'], true), 409);
 
-            $user = User::query()->find($record->accepted_user_id)?->canonical()->fresh();
+            $user = $this->lockCanonicalUser(User::query()->find($record->accepted_user_id));
             abort_unless($user !== null && ! $reviewer->isSameIdentity($user), 403);
             if (! $this->recipientReady($record, $user)) {
                 throw ValidationException::withMessages(['reason' => 'Получатель должен выполнить условия подтверждения аккаунта и сохранить подтверждённый email приглашения.']);
@@ -356,6 +357,17 @@ final class AccountInvitationManager
 
             return $this->grantAndComplete($record, $venue, $user, $reviewer);
         }, 3);
+    }
+
+    private function lockCanonicalUser(?User $user): ?User
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        $canonical = User::query()->whereKey($user->canonical()->id)->lockForUpdate()->first();
+
+        return $canonical !== null && $canonical->canonical_user_id === null ? $canonical : null;
     }
 
     private function recipientReady(AccountInvitation $record, User $user): bool
