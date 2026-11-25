@@ -24,6 +24,8 @@
                 'registered' => 'Аккаунт создан',
                 'contact_verified' => 'Контакт подтверждён',
                 'awaiting_account' => 'Ожидается подтверждение аккаунта',
+                'awaiting_authorization' => 'Ожидается согласование полномочий: права отправителя изменились',
+                'authorization_reviewed' => 'Завершение согласовано',
                 'awaiting_ownership' => 'Ожидается проверка владения',
                 'completed' => 'Процедура завершена',
                 default => $event->event,
@@ -31,8 +33,11 @@
                 @if(in_array($event->event, ['link_renewed', 'restored'], true))
                     · {{ data_get($event->details, 'previous_expires_at', '—') }} → {{ data_get($event->details, 'expires_at', '—') }}
                 @endif
-                @if($event->event === 'restored')
+                @if(in_array($event->event, ['restored', 'authorization_reviewed'], true))
                     · Причина: {{ data_get($event->details, 'reason', '—') }}
+                @endif
+                @if(data_get($event->details, 'reviewer_id'))
+                    · ID согласовавшего сотрудника: {{ data_get($event->details, 'reviewer_id') }}
                 @endif
                 @if(data_get($event->details, 'issuer_id'))
                     · ID сотрудника: {{ data_get($event->details, 'issuer_id') }}
