@@ -9,6 +9,9 @@ use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -143,6 +146,52 @@ final class VenueCatalogLandingRoutingTest extends TestCase
         $this->theme('mskba_dark');
         $this->get($preview())->assertOk()->assertSeeInOrder(['Draft editorial intro', 'PreviewHall01', 'Draft editorial body'])
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    }
+
+    public function test_multi_type_catalogue_unions_discovery_branches_without_duplicates(): void
+    {
+        $this->theme('mskba_app');
+        config(['features.venue_catalog_landings.enabled' => true]);
+        $city = City::factory()->create();
+        $make = function (string $name, VenueTypeEnum $type, VenueCourtEnvironmentEnum $environment) use ($city): Venue {
+            $address = Address::factory()->create(['city_id' => $city->id, 'latitude' => 55.75, 'longitude' => 37.62]);
+            $location = Location::factory()->create(['address_id' => $address->id]);
+            $venue = Venue::factory()->create([
+                'name' => $name, 'type' => $type, 'location_id' => $location->id,
+                'status' => VenueStatusEnum::CONFIRMED, 'is_published' => true,
+                'operational_status' => VenueOperationalStatusEnum::ACTIVE,
+            ]);
+            $venue->primaryCourt()->firstOrFail()->update([
+                'environment' => $environment, 'operational_status' => VenueOperationalStatusEnum::ACTIVE,
+            ]);
+
+            return $venue;
+        };
+        $make('IndoorSchoolMatch', VenueTypeEnum::SCHOOL, VenueCourtEnvironmentEnum::INDOOR);
+        $make('IndoorComplexMatch', VenueTypeEnum::SPORTS_COMPLEX, VenueCourtEnvironmentEnum::INDOOR);
+        $make('OutdoorComplexMatch', VenueTypeEnum::SPORTS_COMPLEX, VenueCourtEnvironmentEnum::OUTDOOR);
+        $make('OutdoorSchoolExcluded', VenueTypeEnum::SCHOOL, VenueCourtEnvironmentEnum::OUTDOOR);
+        $filters = ['city_id' => $city->id, 'type' => ['sports_hall', 'sports_complex']];
+        $landing = $this->landing($city);
+        $landing->update(['type' => $filters['type']]);
+
+        $this->get(route('venues', $filters))->assertRedirect($this->url());
+        $this->get($this->url())->assertOk()
+            ->assertSee('IndoorSchoolMatch')->assertSee('IndoorComplexMatch')->assertSee('OutdoorComplexMatch')
+            ->assertDontSee('OutdoorSchoolExcluded')
+            ->assertSee('data-context-result-total="3"', false);
+        $this->getJson($this->url(['fragment' => 'items']))->assertOk()->assertJsonPath('total', 3);
+        $this->get($this->url(['view' => 'map']))->assertOk()->assertSee('data-context-result-total="3"', false);
+        $this->getJson(route('venues', ['city_id' => $city->id, 'type' => 'sports_hall', 'fragment' => 'items']))
+            ->assertOk()->assertJsonPath('total', 2);
+        $this->getJson(route('venues', ['city_id' => $city->id, 'fragment' => 'items']))
+            ->assertOk()->assertJsonPath('total', 4);
+        $this->getJson(route('venues', ['type' => ['sports_hall', 'invalid'], 'fragment' => 'items']))
+            ->assertUnprocessable()->assertJsonValidationErrors('type.1');
+
+        $this->theme('mskba_dark');
+        $this->get($this->url())->assertOk()->assertSee('IndoorSchoolMatch')->assertSee('OutdoorComplexMatch')
+            ->assertDontSee('OutdoorSchoolExcluded')->assertSee('name="type[]"', false);
     }
 
     public function test_existing_venue_and_court_routes_are_not_captured(): void

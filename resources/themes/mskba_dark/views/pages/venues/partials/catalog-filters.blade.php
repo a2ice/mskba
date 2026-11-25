@@ -29,15 +29,7 @@
     @include('components.venue-catalog-nearby-filter', ['scope' => $scope])
     @include('components.venue-catalog-rental-filter')
 
-    <label class="default-category-filter__field">
-        <span>Тип площадки</span>
-        <select name="type" class="form-select">
-            <option value="">Все типы</option>
-            @foreach($types as $type)
-                <option value="{{ $type->value }}" @selected(($filters['type'] ?? '') === $type->value)>{{ $type->label() }}</option>
-            @endforeach
-        </select>
-    </label>
+    @include('components.venue-catalog-type-filter', ['typeFilterTheme' => 'dark'])
 
     <label class="default-category-filter__field">
         <span>Состояние</span>

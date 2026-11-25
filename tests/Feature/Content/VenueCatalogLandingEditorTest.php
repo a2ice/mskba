@@ -56,6 +56,18 @@ final class VenueCatalogLandingEditorTest extends TestCase
         ]);
     }
 
+    public function test_editor_saves_multiple_types_and_can_clear_the_filter(): void
+    {
+        $this->actingAs(User::factory()->create());
+        Gate::define('manage-content', fn (User $user): bool => true);
+        $editor = app(VenueCatalogLandingEditor::class);
+        $landing = $editor->save(array_replace($this->data(), ['type' => ['sports_hall', 'sports_complex']]));
+        $this->assertSame(['sports_complex', 'sports_hall'], $landing->fresh()->criteria()['type']);
+        $editor->save(array_replace($this->data(), ['type' => []]), $landing);
+        $this->assertArrayNotHasKey('type', $landing->fresh()->criteria());
+        $this->assertTrue($landing->fresh()->rental_configured);
+    }
+
     public function test_duplicate_active_combination_is_reported_as_validation_error(): void
     {
         $this->actingAs(User::factory()->create());

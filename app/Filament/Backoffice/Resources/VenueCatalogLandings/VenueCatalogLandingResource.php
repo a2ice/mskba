@@ -64,7 +64,7 @@ final class VenueCatalogLandingResource extends Resource
                 Select::make('district_id')->label('Округ или район')
                     ->options(fn (Get $get) => filled($get('city_id')) ? District::query()->where('city_id', $get('city_id'))->orderBy('name')->pluck('name', 'id')->all() : [])
                     ->searchable()->disabled(fn (Get $get) => blank($get('city_id')))->dehydrated(),
-                Select::make('type')->label('Тип площадки')->options(collect(VenueTypeEnum::cases())->mapWithKeys(fn ($type) => [$type->value => $type->label()])->all()),
+                Select::make('type')->label('Типы площадок')->multiple()->default([])->placeholder('Все типы')->helperText('Если ничего не выбрано, ограничение по типу не применяется.')->options(collect(VenueTypeEnum::cases())->mapWithKeys(fn ($type) => [$type->value => $type->label()])->all()),
                 Select::make('operational_status')->label('Состояние')->options(collect(VenueOperationalStatusEnum::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()])->all()),
                 Select::make('access')->label('Условия доступа')->options(['free' => 'Бесплатно', 'paid' => 'Платно', 'approval' => 'По подтверждению']),
                 Toggle::make('rental_configured')->label('Аренда настроена')->default(false),

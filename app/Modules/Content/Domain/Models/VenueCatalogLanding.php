@@ -5,6 +5,7 @@ namespace App\Modules\Content\Domain\Models;
 use App\Modules\Content\Application\Services\VenueCatalogLandingCriteria;
 use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
 use App\Modules\Location\Domain\Models\District;
+use App\Modules\Venue\Application\Services\VenueTypeFilter;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
@@ -26,6 +27,7 @@ final class VenueCatalogLanding extends Model
     protected function casts(): array
     {
         return [
+            'type_choices' => 'array',
             'city_id' => 'integer',
             'district_id' => 'integer',
             'rental_configured' => 'boolean',
@@ -33,6 +35,18 @@ final class VenueCatalogLanding extends Model
             'allow_indexing' => 'boolean',
             'include_in_sitemap' => 'boolean',
         ];
+    }
+
+    public function getTypeAttribute(?string $value): string|array|null
+    {
+        return $this->type_choices ?? $value;
+    }
+
+    public function setTypeAttribute(mixed $value): void
+    {
+        $type = VenueTypeFilter::canonical($value);
+        $this->attributes['type'] = is_array($type) ? null : $type;
+        $this->type_choices = is_array($type) ? $type : null;
     }
 
     protected static function booted(): void
@@ -58,7 +72,7 @@ final class VenueCatalogLanding extends Model
         });
     }
 
-    /** @return array<string, int|string> */
+    /** @return array<string, int|string|array> */
     public function criteria(): array
     {
         return VenueCatalogLandingCriteria::normalize($this->only(VenueCatalogLandingCriteria::KEYS));

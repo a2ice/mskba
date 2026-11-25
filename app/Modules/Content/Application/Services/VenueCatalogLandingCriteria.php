@@ -3,7 +3,7 @@
 namespace App\Modules\Content\Application\Services;
 
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
-use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Application\Services\VenueTypeFilter;
 use InvalidArgumentException;
 
 /** Exact identity of an editorial catalogue subset, not presentation state. */
@@ -11,7 +11,7 @@ final class VenueCatalogLandingCriteria
 {
     public const KEYS = ['city_id', 'district_id', 'type', 'operational_status', 'access', 'rental_configured'];
 
-    /** @return array<string, int|string> */
+    /** @return array<string, int|string|array> */
     public static function normalize(array $filters): array
     {
         if (array_diff(array_keys($filters), self::KEYS) !== []) {
@@ -33,6 +33,14 @@ final class VenueCatalogLandingCriteria
                 continue;
             }
 
+            if ($key === 'type') {
+                $type = VenueTypeFilter::canonical($value);
+                if ($type !== null) {
+                    $normalized[$key] = $type;
+                }
+                continue;
+            }
+
             if ($key === 'rental_configured') {
                 if (in_array($value, [true, 1, '1'], true)) {
                     $normalized[$key] = 1;
@@ -43,7 +51,6 @@ final class VenueCatalogLandingCriteria
             }
 
             if (! is_string($value) || ! match ($key) {
-                'type' => VenueTypeEnum::tryFrom($value) !== null,
                 'operational_status' => VenueOperationalStatusEnum::tryFrom($value) !== null,
                 'access' => in_array($value, ['free', 'paid', 'approval'], true),
                 default => false,
