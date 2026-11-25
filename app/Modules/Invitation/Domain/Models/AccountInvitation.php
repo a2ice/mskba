@@ -65,6 +65,27 @@ class AccountInvitation extends Model
         return $this->status === 'pending' && $this->accepted_user_id === null;
     }
 
+    public function canRestoreLink(): bool
+    {
+        return $this->status === 'revoked' && $this->accepted_user_id === null;
+    }
+
+    public function systemStatusLabel(): string
+    {
+        if ($this->status === 'revoked') {
+            return 'Аннулировано';
+        }
+
+        $restored = $this->getAttribute('has_restoration');
+        if ($restored === null) {
+            $restored = $this->relationLoaded('events')
+                ? $this->events->contains('event', 'restored')
+                : $this->events()->where('event', 'restored')->exists();
+        }
+
+        return $restored ? 'Восстановлено' : 'Активно';
+    }
+
     public function invitationStatusLabel(): string
     {
         return match (true) {
