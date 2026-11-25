@@ -75,10 +75,10 @@ class VenueController extends Controller
         ]);
     }
 
-    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors, ?string $landingSlug = null): Response|JsonResponse|RedirectResponse
+    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse|RedirectResponse
     {
         $navigation = app(VenueCatalogLandingNavigation::class);
-        $requestedLanding = $navigation->prepare($request, $landingSlug);
+        $requestedLanding = $navigation->prepare($request, $request->route('landingSlug'));
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'city_id' => ['nullable', 'integer', 'min:1', 'exists:cities,id'],
