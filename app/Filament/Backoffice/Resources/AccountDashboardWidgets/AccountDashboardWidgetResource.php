@@ -208,10 +208,7 @@ final class AccountDashboardWidgetResource extends Resource
                             ->nullable()->regex('/^#[0-9a-fA-F]{6}$/D')
                             ->helperText('Пустое поле — текущий фирменный оранжевый градиент. Цвет применяется к мягкому свечению в правом нижнем углу, остальной фон не меняется.')
                             ->columnSpanFull(),
-                        Toggle::make('enabled')->label('Публиковать')->default(true)
-                            ->disabled(fn (Get $get): bool => $get('kind') === 'dynamic')
-                            ->helperText(fn (Get $get): ?string => $get('kind') === 'dynamic'
-                                ? 'Динамический виджет сохраняется как черновик до подключения пользовательского интерфейса.' : null),
+                        Toggle::make('enabled')->label('Публиковать')->default(true),
                         Toggle::make('can_hide')->label('Можно скрыть пользователю')->default(true)
                             ->helperText('Обязательные виджеты нельзя будет скрывать в настройках аккаунта.'),
                         Toggle::make('can_move')->label('Можно перемещать пользователю')->default(true)
@@ -307,8 +304,7 @@ final class AccountDashboardWidgetResource extends Resource
                 }
                 $data['source_settings'] = ['limit' => $limit];
             }
-            // Publication is deliberately blocked until the accepted UI is integrated.
-            $data['enabled'] = false;
+
         } else {
             $data['source_key'] = null;
             $data['source_settings'] = null;
