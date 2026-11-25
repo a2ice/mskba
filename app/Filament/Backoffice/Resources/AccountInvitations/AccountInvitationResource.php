@@ -59,6 +59,7 @@ final class AccountInvitationResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordAction('details')
             ->columns([
                 TextColumn::make('id')->label('№')->sortable(),
                 TextColumn::make('title')->label('Название')->searchable()->wrap(),
@@ -71,11 +72,17 @@ final class AccountInvitationResource extends Resource
                         'staff' => 'Сотрудник', 'booking_operator' => 'Оператор бронирований',
                         default => $state,
                     }),
-                TextColumn::make('status')->label('Статус')->badge()
+                TextColumn::make('invitation_status')->label('Приглашение')->badge()
+                    ->state(fn (AccountInvitation $record): string => $record->invitationStatusLabel()),
+                TextColumn::make('status')->label('Процедура')->badge()
                     ->formatStateUsing(fn ($state, AccountInvitation $record): string => $record->statusLabel()),
                 TextColumn::make('progress')->label('Этап')
                     ->formatStateUsing(fn ($state, AccountInvitation $record): string => $record->progressLabel()),
-                TextColumn::make('views_count')->label('Просмотры'),
+                TextColumn::make('issuer.username')->label('Отправитель')->placeholder('—'),
+                TextColumn::make('sent_at')->label('Отправлено')->dateTime('d.m.Y H:i')->sortable()->placeholder('—'),
+                TextColumn::make('viewed_at')->label('Открыто')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('contact_verified_at')->label('Принято / контакт подтверждён')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('views_count')->label('Открытия')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('expires_at')->label('Ссылка до')->dateTime('d.m.Y H:i')->sortable(),
                 TextColumn::make('acceptedUser.username')->label('Аккаунт')->placeholder('Не создан'),
             ])
@@ -144,8 +151,8 @@ final class AccountInvitationResource extends Resource
                         'filament.backoffice.account-invitation-history',
                         ['invitation' => $record->load(['events', 'acceptedUser', 'issuer'])],
                     )),
-                Action::make('renew')->label('Обновить ссылку')->icon('heroicon-o-arrow-path')
-                    ->visible(fn (AccountInvitation $record): bool => $record->status === 'pending')
+                Action::make('renew')->label('Продлить / обновить ссылку')->icon('heroicon-o-arrow-path')
+                    ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
                     ->schema([
                         Select::make('days')->label('Новый срок')->required()->default(7)
                             ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
@@ -163,8 +170,8 @@ final class AccountInvitationResource extends Resource
                             Notification::make()->danger()->title('Не удалось отправить новую ссылку')->send();
                         }
                     }),
-                Action::make('revoke')->label('Отозвать')->color('danger')
-                    ->visible(fn (AccountInvitation $record): bool => $record->status === 'pending')
+                Action::make('revoke')->label('Аннулировать')->color('danger')
+                    ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
                     ->requiresConfirmation()
                     ->action(function (AccountInvitation $record): void {
                         app(AccountInvitationManager::class)->revoke($record, auth('web')->user());
