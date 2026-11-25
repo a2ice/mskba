@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\DTO\VenueSearchResultDTO;
 use App\Modules\Venue\Application\Services\VenueSearchCache;
+use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -110,6 +111,9 @@ final readonly class SearchVenuesHandler
         $venues = collect($this->cache->documents());
         $environment = VenueTypeEnum::tryFrom((string) ($parameters['type'] ?? ''))?->discoveryEnvironment();
 
+        $zoneMode = $environment !== null || $parameters['requires_payment'] !== null || $parameters['requires_booking_approval'] !== null;
+        $timeSearch = $parameters['starts_at'] !== null && $parameters['duration_minutes'] !== null;
+
         if ($parameters['confirmed_only']) {
             $venues = $venues->where('status_slug', VenueStatusEnum::CONFIRMED->value)
                 ->where('is_published', true);
@@ -127,46 +131,26 @@ final readonly class SearchVenuesHandler
                 : $items->filter(fn (array $venue): bool =>
                     in_array($environment->value, $venue['court_environments'] ?? [], true)))
             ->when($parameters['status'], fn (Collection $items, string $value) => $items->where('status_slug', $value))
-            ->when($parameters['operational_status'], fn (Collection $items, string $value) => $items->where('operational_status', $value))
+            ->when(! $zoneMode && $parameters['operational_status'], fn (Collection $items) => $items->where('operational_status', $parameters['operational_status']))
             ->when($parameters['metro_station_id'], fn (Collection $items, int $value) => $items->filter(
                 fn (array $venue): bool => in_array($value, $venue['metro_station_ids'], true),
             ))
-            // Both conditions must match the *same* available hall, not two
-            // unrelated courts of one venue.
-            ->when(
-                $parameters['requires_payment'] !== null || $parameters['requires_booking_approval'] !== null,
-                fn (Collection $items): Collection => $items
-                    ->map(function (array $venue) use ($parameters, $environment): array {
-                        $courtAccess = $venue['court_access'] ?? [];
-                        $courts = collect(array_merge(
-                            $courtAccess['free'] ?? [],
-                            $courtAccess['paid'] ?? [],
-                            $courtAccess['unknown'] ?? [],
-                        ))->unique('court_id');
+            // Catalogue searches include closed courts; availability searches retain open-only eligibility.
+            ->map(function (array $venue) use ($parameters, $environment, $zoneMode, $timeSearch): array {
+                if (! $timeSearch) {
+                    $venue['court_access'] = $venue['catalog_court_access'] ?? $venue['court_access'];
+                }
+                $venue['matched_court'] = $zoneMode ? VenueCourtDiscoveryAccess::select(
+                    $venue['court_access'],
+                    $environment?->value,
+                    $parameters['requires_payment'],
+                    $parameters['requires_booking_approval'],
+                    $parameters['operational_status'],
+                ) : null;
 
-                        $matched = $courts->first(function (array $court) use ($courtAccess, $parameters, $environment, $venue): bool {
-                            if ($environment !== null && ($venue['court_environments'][$court['court_id']] ?? null) !== $environment->value) {
-                                return false;
-                            }
-
-                            $payment = $parameters['requires_payment'];
-                            $approval = $parameters['requires_booking_approval'];
-                            $paidCourtIds = array_column($courtAccess['paid'] ?? [], 'court_id');
-                            $freeCourtIds = array_column($courtAccess['free'] ?? [], 'court_id');
-
-                            return ($payment === null || in_array(
-                                $court['court_id'],
-                                $payment ? $paidCourtIds : $freeCourtIds,
-                                true,
-                            )) && ($approval === null || $court['requires_booking_approval'] === $approval);
-                        });
-
-                        $venue['matched_court'] = $matched;
-
-                        return $venue;
-                    })
-                    ->filter(fn (array $venue): bool => $venue['matched_court'] !== null),
-            )
+                return $venue;
+            })
+            ->filter(fn (array $venue): bool => ! $zoneMode || $venue['matched_court'] !== null)
             ->when($parameters['query'] !== '', fn (Collection $items) => $items->filter(
                 fn (array $venue): bool => str_contains($venue['search_text'], $parameters['query']),
             ));

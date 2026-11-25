@@ -37,8 +37,8 @@ if (venueSummary) {
     window.addEventListener('mskba:play-intent:saved', event => {
         if (event.detail?.id) void refreshAudience();
     });
-    window.addEventListener('mskba:venue-favorite:updated', event => {
-        const id = Number(document.querySelector('[data-venue-favorite-dialog]')?.dataset.venueId);
-        if (id > 0 && Number(event.detail?.venueId) === id) void refreshAudience();
-    });
+    // Favorites and play-interest subscriptions are separate. Refreshing the
+    // subscription HTML after a favorite toggle would replace an already bound
+    // favorite button, losing its listeners and synchronized saved state.
+    // The shared favorite controller repaints every visible favorite CTA.
 }

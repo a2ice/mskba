@@ -1,0 +1,21 @@
+/* #1025: preserve dark theme cards/buttons and surface tokens. */
+.venue-nearby__toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:20px}
+.venue-nearby__toolbar .btn{display:inline-flex;align-items:center;gap:8px}
+.venue-nearby__cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.venue-nearby__cards .venue-catalog-item{min-width:0}
+.venue-nearby__cards :is(.venue-catalog-item__distance,.venue-catalog-item__match){display:flex;align-items:center;gap:7px;margin:0 0 10px;font-size:13px;color:var(--muted)}
+.venue-nearby__cards .venue-catalog-item__match{color:var(--accent-text,var(--accent));font-weight:700}
+.venue-nearby__interest-avatars{display:flex;align-items:center;padding-left:8px;margin:12px 0}
+.venue-nearby__avatar{display:inline-grid;place-items:center;width:42px;height:42px;overflow:hidden;margin-left:-8px;border:2px solid var(--page);border-radius:50%;background:var(--surface);color:var(--text);font-size:15px;font-weight:700}
+.venue-nearby__avatar img{width:100%;height:100%;object-fit:cover}
+.venue-nearby__dialog{width:min(540px,calc(100vw - 24px));max-height:85dvh;overflow:auto;margin:auto;border:1px solid var(--line);border-radius:18px;padding:22px;background:var(--surface);color:var(--text);box-shadow:0 28px 70px #0008}
+.venue-nearby__dialog::backdrop{background:rgb(0 0 0 / 60%);backdrop-filter:blur(3px)}
+.venue-nearby__dialog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.venue-nearby__dialog-header h2{margin:0;font-size:21px}
+.venue-nearby__dialog .venue-nearby__criteria{display:grid;gap:12px;max-height:50dvh;overflow-y:auto}
+.venue-nearby__check{display:flex;align-items:center;gap:12px;min-height:36px;cursor:pointer}
+.venue-nearby__check input{width:18px;height:18px;accent-color:var(--accent)}
+.venue-nearby__dialog-actions{display:flex;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.venue-nearby__interest-list{max-height:55dvh;overflow-y:auto;display:grid;gap:5px}
+.venue-nearby__interest-list p{padding:9px 0;margin:0;border-bottom:1px solid var(--line)}
+@media(max-width:720px){.venue-nearby__cards{grid-template-columns:minmax(0,1fr)}.venue-nearby__toolbar .btn{flex:1 1 auto;justify-content:center}.venue-nearby__dialog{padding:16px}.venue-nearby__dialog-actions .btn{width:100%}}

@@ -23,6 +23,7 @@ final class ListVenuesBuilder
     {
         return Venue::query()->with([
             'location.address',
+            'location.metroStations.line',
             'media' => fn ($query) => $query
                 ->where('collection', 'gallery')
                 ->orderByDesc('is_featured')

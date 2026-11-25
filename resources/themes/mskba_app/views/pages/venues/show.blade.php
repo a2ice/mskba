@@ -70,14 +70,9 @@
         ->filter(fn (array $day): bool => count($day['slots']) > 0)
         ->values();
     $venuePromotionResolver = app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class);
-    $venuePromotions = $venuePromotionResolver->forPlacement('venue_page', (int) $venue->id);
-    $venueSlotPromotions = $venuePromotionResolver->forPlacement('venue_slots', (int) $venue->id);
-    // Show each active offer once, inside the venue details rather than the
-    // compact day picker. Prefer venue-page copy over slot-specific copy.
-    $venueAboutPromotions = collect($venuePromotions)
-        ->concat($venueSlotPromotions)
-        ->unique('promotion_code')
-        ->values();
+    $venueAboutPromotions = collect($venuePromotionResolver->forVenueDetails(
+        (int) $venue->id, $venue->courtSchedules,
+    ));
 @endphp
 @php
     $bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
@@ -177,6 +172,9 @@
         <a href="#app-venue-interest">Интересы игроков</a>
         <a href="#app-venue-schedule">Расписание</a>
         <a href="#app-venue-about">О площадке</a>
+        @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
+            <a href="#app-venue-nearby">Площадки рядом</a>
+        @endif
     </nav>
 
     <div class="app-venue-page__columns">
@@ -260,7 +258,10 @@
             </section>
             @endif
             <section class="panel app-venue-block" id="app-venue-interest">
-                <header class="app-venue-block__header"><h2>Площадкой интересуются</h2></header>
+                <header class="app-venue-block__header"><h2>{{ $activeVenueInterestCount > 0 ? "Площадкой интересуются" : "Играй здесь" }}</h2></header>
+                @if($activeVenueInterestCount === 0)
+                    @include('components.venue-favorite-follow', ['buttonClass' => 'button primary', 'eventUrl' => $createEventUrl])
+                @else
                 <div class="app-venue-interest-summary" data-play-venue-interest-summary>
                     <div class="app-venue-interest-summary__profiles">
                         <div class="app-venue-interest-summary__avatars" aria-label="Игроки с подписками на площадку">
@@ -280,10 +281,16 @@
                         <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
                     </div>
                 </div>
+                @endif
             </section>
+            @php
+                $bookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
+            @endphp
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Расписание</h2>
-                    <button type="button" class="button secondary" data-venue-rental-open>Арендовать площадку</button>
+                    @if(count($bookableCourtIds))
+                    <button type="button" class="button secondary" data-venue-rental-open>{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'Арендовать корт' : 'Арендовать зал') : 'Арендовать площадку' }}</button>
+                    @endif
                 </header>
                 @foreach($venue->courtSchedules as $scheduleGroup)
                     <div class="app-venue-schedule__court" data-venue-schedule-court="{{ $scheduleGroup['id'] }}"
@@ -294,7 +301,10 @@
                                 <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">Подробнее</a>
                             </div>
                         @endunless
-                        @if(count($scheduleGroup['days']))
+                        @if(!($scheduleGroup['bookingEnabled'] ?? false))
+                            <p class="muted">Онлайн-бронирование недоступно.</p>
+                            @include('venues.partials.informational-hours', ['scheduleGroup' => $scheduleGroup])
+                        @elseif(count($scheduleGroup['days']))
                             <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}">
                                 @foreach($scheduleGroup['days'] as $day)
                                     @php
@@ -399,12 +409,109 @@
                     <p>Оценка игроков: {{ $venue->about->rating }} · отзывов: {{ $venue->about->ratingCount ?? 0 }}</p>
                 @endif
             </section>
+            @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
+                @php
+                    $nearbyHandler = app(\App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler::class);
+                    $similarMode = request('nearby') === 'similar';
+                    $criteriaLabels = [
+                        'type' => 'Тип площадки',
+                        'environment' => 'Крытый зал или уличный корт',
+                        'payment' => 'Платный или бесплатный доступ',
+                        'requires_booking' => 'Необходимость предварительной записи',
+                        'requires_booking_approval' => 'Подтверждение администратором',
+                        'surface' => 'Тип покрытия',
+                        'amenities' => 'Удобства',
+                        'dimensions' => 'Размеры игровой зоны',
+                        'hoops' => 'Количество баскетбольных колец',
+                    ];
+                    $criteria = array_values(array_intersect(array_keys($criteriaLabels),
+                        (array) request('criteria', ['type', 'environment', 'payment'])));
+                    $lat = (float) $venue->address->latitude;
+                    $lon = (float) $venue->address->longitude;
+                    $nearby = $similarMode
+                        ? $nearbyHandler->similar($venue->id, $lat, $lon,
+                            $venue->isCourtPage ? (int) $venue->selectedCourt['id'] : null, $criteria)
+                        : $nearbyHandler->handle($venue->id, $lat, $lon, 6, 10);
+                    if (! $similarMode && $nearby === []) {
+                        $nearby = $nearbyHandler->handle($venue->id, $lat, $lon, 3);
+                    }
+                    // Reuse the same DTOs and card partial as the venue catalog.
+                    // Restrict the query to matched IDs, not the full catalog.
+                    $nearbyCards = collect(app(\App\Modules\Venue\Application\UseCases\ListVenuesHandler::class)
+                        ->handle(null, null, [], null, array_column($nearby, 'id')))->keyBy('id');
+                @endphp
+                <section class="panel app-venue-block" id="app-venue-nearby">
+                    <header class="app-venue-block__header"><h2>Площадки рядом</h2></header>
+                    <div class="app-venue-nearby__toolbar" aria-label="Режим подбора площадок">
+                        <a class="button {{ ! $similarMode ? 'primary' : 'secondary' }}"
+                            href="{{ request()->fullUrlWithQuery(['nearby' => 'all']) }}#app-venue-nearby"
+                            @if(! $similarMode) aria-current="true" @endif>Все</a>
+                        <a class="button {{ $similarMode ? 'primary' : 'secondary' }}"
+                            href="{{ request()->fullUrlWithQuery(['nearby' => 'similar']) }}#app-venue-nearby"
+                            @if($similarMode) aria-current="true" @endif>Похожие</a>
+                        @if($similarMode)
+                            <button type="button" class="button secondary" data-venue-nearby-criteria-open>
+                                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5z"/></svg>
+                                Критерии сходства
+                            </button>
+                        @endif
+                    </div>
+                    @if($nearby !== [])
+                        <div class="app-venues-catalog__items app-venue-nearby__cards">
+                            @foreach($nearby as $item)
+                                @if($nearbyCards->has($item['id']))
+                                    @include('theme::pages.venues.partials.index-card', [
+                                        'venue' => $nearbyCards->get($item['id']),
+                                        'cardUrl' => $item['url'],
+                                        'distanceMeters' => $item['distance_meters'],
+                                        'cardCourtName' => $item['court_name'] ?? null,
+                                    ])
+                                @endif
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="muted">{{ $similarMode
+                            ? 'Похожие площадки не найдены. Измените критерии сходства.'
+                            : 'Другие площадки не найдены.' }}</p>
+                    @endif
+                </section>
+                @if($similarMode)
+                    <dialog class="app-venue-overlay app-venue-nearby-criteria-dialog"
+                        data-venue-nearby-criteria-dialog aria-labelledby="app-venue-nearby-criteria-title">
+                        <div class="app-venue-overlay__header">
+                            <h2 id="app-venue-nearby-criteria-title">Критерии сходства</h2>
+                            <button type="button" class="icon-button" data-venue-overlay-close aria-label="Закрыть">
+                                <svg aria-hidden="true" viewBox="0 0 24 24">
+                                    <path d="M18 6l-12 12"/><path d="M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <form method="get" action="{{ request()->url() }}#app-venue-nearby">
+                            <input type="hidden" name="nearby" value="similar">
+                            <input type="hidden" name="criteria[]" value="">
+                            <div class="app-venue-nearby-criteria__content mskba-scroll">
+                                <p class="muted">Отметь характеристики, которые должны совпадать у одной игровой зоны.</p>
+                                @foreach($criteriaLabels as $key => $label)
+                                    <label class="check-label">
+                                        <input type="checkbox" name="criteria[]" value="{{ $key }}"
+                                            @checked(in_array($key, $criteria, true))>
+                                        <span>{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="app-venue-overlay__actions">
+                                <button class="button primary" type="submit">Применить</button>
+                            </div>
+                        </form>
+                    </dialog>
+                @endif
+            @endif
         </div>
         <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
             <strong>Хочешь здесь играть?</strong>
             <p>Посмотри ближайшие игры и присоединяйся к участникам или создай своё мероприятие.</p>
             <button type="button" class="button primary full" data-venue-play-open>Хочу здесь играть</button>
-            <a class="button secondary full" href="#app-venue-schedule">Расписание и аренда</a>
+            <a class="button secondary full" href="#app-venue-schedule">{{ count($bookableCourtIds) ? 'Расписание и аренда' : 'Режим работы' }}</a>
         </aside>
     </div>
 </section>
@@ -412,7 +519,7 @@
 @include('components.venue-play-funnel', ['venuePlayDirectEvents' => $plannedVenueEvents])
 @include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
 @php
-    $rentalSearchCourts = collect($venue->courts)->when($venue->isCourtPage,
+    $rentalSearchCourts = collect($venue->courts)->whereIn('id', $bookableCourtIds)->when($venue->isCourtPage,
         fn ($courts) => $courts->where('id', $venue->selectedCourt['id']))->values()->map(
         fn ($court) => ['id' => $court['id'], 'name' => $court['name']])->all();
     $rentalSearchPolicy = $venue->isCourtPage
@@ -424,7 +531,7 @@
 @include('theme::pages.venues.partials.rental-search-dialog')
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog aria-labelledby="app-venue-choice-title">
     <div class="app-venue-overlay__header">
-        <h2 id="app-venue-choice-title">Арендовать площадку</h2>
+        <h2 id="app-venue-choice-title">{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'Арендовать корт' : 'Арендовать зал') : 'Арендовать площадку' }}</h2>
         <button type="button" class="icon-button" data-venue-choice-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
     </div>
     <div class="app-venue-choice-dialog__body mskba-scroll">
@@ -433,12 +540,12 @@
             <label for="app-venue-choice-court">Зал или корт</label>
             <span class="select-control">
                 <select id="app-venue-choice-court" data-venue-choice-court required aria-describedby="app-venue-choice-error">
-                    @if(!$venue->isCourtPage && count($venue->courts) > 1)
+                    @if(count($rentalSearchCourts) > 1)
                         <option value="">Выберите зал или корт</option>
                     @endif
-                    @foreach($venue->courts as $court)
+                    @foreach($rentalSearchCourts as $court)
                         <option value="{{ $court['id'] }}"
-                            @selected(($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) || count($venue->courts) === 1)>{{ $court['name'] }}</option>
+                            @selected(($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) || count($rentalSearchCourts) === 1)>{{ $court['name'] }}</option>
                     @endforeach
                 </select>
                 <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#chevron-down"/></svg>
@@ -451,8 +558,8 @@
 @include('components.venue-main-favorite-dialog')
 <dialog class="app-venue-overlay app-venue-day-dialog" data-venue-day-dialog
     data-day-url="{{ route('venues.schedule.day', $venue->id) }}"
-    data-court-id="{{ $venue->isCourtPage ? $venue->selectedCourt['id'] : (count($venue->courts) === 1 ? $venue->courts[0]['id'] : '') }}"
-    data-court-name="{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : (count($venue->courts) === 1 ? $venue->courts[0]['name'] : '') }}"
+    data-court-id="{{ count($rentalSearchCourts) === 1 ? $rentalSearchCourts[0]['id'] : '' }}"
+    data-court-name="{{ count($rentalSearchCourts) === 1 ? $rentalSearchCourts[0]['name'] : '' }}"
     aria-labelledby="app-venue-day-dialog-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-day-dialog-title" data-venue-day-title>Расписание дня</h2>

@@ -38,7 +38,7 @@ final readonly class VenueSearchResultDTO
     public function hasFreeAccess(): bool
     {
         foreach ($this->courtAccess['free'] ?? [] as $court) {
-            if (! $court['requires_booking'] && ! $court['requires_booking_approval']) {
+            if (($court['is_open'] ?? true) && ! $court['requires_booking'] && ! $court['requires_booking_approval']) {
                 return true;
             }
         }

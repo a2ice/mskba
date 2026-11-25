@@ -14,6 +14,8 @@ use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Rewards\Domain\Models\Reward;
+use App\Modules\Promotions\Domain\Models\Promotion;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -91,13 +93,16 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $this->assertStringContainsString('<h2>Расписание</h2>', $scheduleSection);
         $this->assertStringNotContainsString('<h2>Часы работы</h2>', $scheduleSection);
         $this->assertStringContainsString('09:00–21:00', $scheduleSection);
-        // Day cards show only first opening to last closing, even with breaks.
-        $this->assertStringContainsString('12:00–20:00', $scheduleSection);
-        $this->assertStringNotContainsString('12:00–14:00', $scheduleSection);
-        $this->assertStringNotContainsString('17:00–20:00', $scheduleSection);
+        // Informational hours preserve breaks when online rental is disabled.
+        $this->assertStringNotContainsString('12:00–20:00', $scheduleSection);
+        $this->assertStringContainsString('12:00–14:00', $scheduleSection);
+        $this->assertStringContainsString('17:00–20:00', $scheduleSection);
         $this->assertStringNotContainsString('Исключение:', $scheduleSection);
         $this->assertStringNotContainsString('19:00–21:00', $scheduleSection);
         $this->assertStringNotContainsString('data-venue-slot-open', $scheduleSection);
+        $this->assertStringNotContainsString('data-venue-day-open', $scheduleSection);
+        $this->assertStringNotContainsString('data-venue-rental-open', $scheduleSection);
+        $this->assertStringNotContainsString('data-day-occupancy', $scheduleSection);
         $this->assertStringNotContainsString('Слоты', $scheduleSection);
         $response->assertSee('Открытая тренировка');
     }
@@ -137,7 +142,7 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $this->assertStringNotContainsString('15:00–22:00', $firstGroup);
         $this->assertStringContainsString('15:00–22:00', $secondGroup);
         $this->assertStringNotContainsString('08:00–12:00', $secondGroup);
-        $this->assertStringContainsString('data-court-id="'.$second->id.'"', $secondGroup);
+        $this->assertStringNotContainsString('data-venue-day-open', $secondGroup);
 
         $detail = $this->get(route('venues.courts.show', [
             $venue->routeIdentifier(), $second->routeIdentifier(),
@@ -248,7 +253,38 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         // This suite freezes time before the seed migration's default valid_from.
         $reward->currentVersion()->firstOrFail()->update(['valid_from' => Carbon::now()->subDay()]);
         $reward->update(['is_enabled' => true]);
+        // A valid reward cannot make a rental promise while booking is disabled.
+        $this->get($url)->assertOk()->assertDontSee('app-venue-about__promotions', false);
+
+        config()->set('features.venue_rental.rental_flow', true);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $court->update(['allows_whole' => true, 'rental_enabled' => true]);
+        $policy = VenueBookingPolicy::query()->create([
+            'venue_id' => $venue->id,
+            'version' => 1,
+            'is_enabled' => true,
+            'allows_whole' => true,
+            'minimum_duration_minutes' => 60,
+            'maximum_duration_minutes' => 480,
+            'time_step_minutes' => 30,
+            'currency' => 'RUB',
+            'whole_price_per_step_minor' => 10000,
+            'hold_duration_minutes' => 30,
+            'requires_payment' => true,
+            'payment_window_minutes' => 30,
+            'published_by_user_id' => User::factory()->create()->id,
+            'published_at' => now(),
+            'active_marker' => true,
+        ]);
+        $unbookable = $venue->courts()->create([
+            'name' => 'Без аренды', 'alias' => 'no-rental', 'sort_order' => 20,
+            'allows_whole' => true, 'rental_enabled' => false,
+        ]);
         $html = $this->get($url)->assertOk()->getContent();
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]))
+            ->assertOk()->assertSee('app-venue-about__promotions', false);
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $unbookable->routeIdentifier()]))
+            ->assertOk()->assertDontSee('app-venue-about__promotions', false);
         $about = explode('<section class="panel app-venue-block" id="app-venue-about">', $html, 2)[1] ?? '';
         $about = explode('</section>', $about, 2)[0];
         $dialog = explode('<dialog class="app-venue-overlay app-venue-day-dialog"', $html, 2)[1] ?? '';
@@ -263,6 +299,14 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $this->assertStringNotContainsString('<section class="panel app-venue-block app-venue-promotion"', $html);
         $this->assertStringNotContainsString('Рабочие часы площадки и исключения из обычного графика.', $html);
         $this->assertStringNotContainsString('Часы работы не гарантируют доступность бронирования.', $html);
+
+        $promotion = Promotion::query()->where('code', 'reward_venue_rental_completed')->firstOrFail();
+        $promotion->placements()->whereIn('placement_code', ['venue_page', 'venue_slots'])
+            ->update(['title_override' => 'Вознаграждение за бронирование']);
+        $this->get($url)->assertOk()->assertSee('Вознаграждение за бронирование');
+        $policy->update(['is_enabled' => false]);
+        $this->get($url)->assertOk()->assertDontSee('Вознаграждение за бронирование');
+        $policy->update(['is_enabled' => true]);
 
         $reward->update(['is_enabled' => false]);
         $after = $this->get($url)->assertOk()->getContent();

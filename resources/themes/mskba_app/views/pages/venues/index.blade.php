@@ -31,7 +31,10 @@
 @extends('theme::layouts.category')
 
 @section('category-heading-action')
-    <a class="button primary" href="{{ route('venues.create') }}">+ Добавить площадку</a>
+    <a class="button primary app-venues-catalog__create" href="{{ route('venues.create') }}" aria-label="Добавить площадку" title="Добавить площадку">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Добавить площадку</span>
+    </a>
 @endsection
 
 @section('category-sidebar')
@@ -172,4 +175,8 @@
             </div>
         @endif
     </section>
+@endsection
+
+@section('category-before-items')
+    @include('theme::partials.venue-map-dialog', ['mapShowCurrentVenueLink' => true])
 @endsection

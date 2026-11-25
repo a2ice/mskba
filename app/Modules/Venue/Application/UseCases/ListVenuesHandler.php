@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
+use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
@@ -33,7 +34,7 @@ final class ListVenuesHandler
 
     /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
     /** @param Collection<int, PlayIntent>|null $matchingInterests */
-    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null): array
+    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -41,10 +42,11 @@ final class ListVenuesHandler
         $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
         $actorOwnedVenueIds = $this->accessResolver->actorOwnedVenueIdsFor($actor);
 
-        $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters): void {
+        $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters, $onlyVenueIds): void {
             // Hidden venues are managed through Filament/account rather than
             // published in cards, map pins or search, even for their owners.
-            $query->where('is_published', true)->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
+            $query->when($onlyVenueIds !== null, fn ($subset) => $subset->whereIn('id', $onlyVenueIds))
+                ->where('is_published', true)->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
                 $visible->where('status', VenueStatusEnum::CONFIRMED->value)
                     ->orWhereIn('id', $contractViewableVenueIds)
                     ->orWhereIn('id', $bootstrapOwnedVenueIds)
@@ -64,7 +66,6 @@ final class ListVenuesHandler
                     }
                 })
                 ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->whereDiscoveryType($type))
-                ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status))
                 ->when((bool) ($filters['has_upcoming_events'] ?? false), function ($filtered) use ($filters): void {
                     $now = now();
                     $until = $now->copy()->addDays((int) ($filters['event_days'] ?? 7));
@@ -113,24 +114,25 @@ final class ListVenuesHandler
 
         $accessFilter = $filters['access'] ?? null;
         $environment = VenueTypeEnum::tryFrom((string) ($filters['type'] ?? ''))?->discoveryEnvironment();
+        $statusFilter = $filters['operational_status'] ?? null;
+        $zoneMode = $environment !== null || filled($accessFilter);
 
         return $venues
-            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment): array {
-                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id));
-                $eligible = $access[$accessFilter ?? ''] ?? [];
+            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment, $statusFilter, $zoneMode): array {
+                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id), includeClosed: true);
+                $matched = VenueCourtDiscoveryAccess::select(
+                    $access,
+                    $environment?->value,
+                    VenueCourtDiscoveryAccess::paymentFilter($accessFilter),
+                    $accessFilter === 'approval' ? true : null,
+                    $statusFilter,
+                );
 
-                if ($environment !== null) {
-                    $ids = $venue->courts->filter(fn ($court): bool => $court->environment === $environment)
-                        ->pluck('id')->map(fn ($id): int => (int) $id)->all();
-                    $eligible = array_values(array_filter($eligible, fn (array $court): bool =>
-                        in_array($court['court_id'], $ids, true)));
-                }
-
-                return ['venue' => $venue, 'access' => $access, 'matched' => $eligible[0] ?? null];
+                return ['venue' => $venue, 'access' => $access, 'matched' => $matched];
             })
-            ->filter(fn (array $row): bool => $accessFilter === null
-                || $accessFilter === ''
-                || $row['matched'] !== null)
+            ->filter(fn (array $row): bool => $zoneMode
+                ? $row['matched'] !== null
+                : ($statusFilter === null || $row['venue']->operational_status->value === $statusFilter))
             ->map(function (array $row) use (
                 $contractViewableVenueIds, $contractEditableVenueIds,
                 $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds,
@@ -176,6 +178,17 @@ final class ListVenuesHandler
                     matchedCourtName: $matched['name'] ?? null,
                     matchedRequiresBooking: $matched['requires_booking'] ?? null,
                     matchedRequiresApproval: $matched['requires_booking_approval'] ?? null,
+                    metroStations: ($venue->location?->metroStations ?? collect())
+                        ->map(fn ($station) => new VenueMetroStationDTO(
+                            id: (int) $station->id,
+                            name: $station->name,
+                            lineName: $station->line?->name,
+                            lineColor: $station->line?->color,
+                            latitude: $station->latitude === null ? null : (string) $station->latitude,
+                            longitude: $station->longitude === null ? null : (string) $station->longitude,
+                            distanceMeters: $station->pivot?->distance_meters === null ? null : (int) $station->pivot->distance_meters,
+                            walkingTimeMinutes: $station->pivot?->walking_time_minutes === null ? null : (int) $station->pivot->walking_time_minutes,
+                        ))->values()->all(),
                 );
             })
             ->all();

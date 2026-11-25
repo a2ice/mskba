@@ -469,7 +469,7 @@
             "name": "type",
             "in": "query",
             "required": false,
-            "description": "Тип площадки (те же значения, что на сайте).",
+            "description": "Тип площадки; sports_hall и street_court сопоставляются с окружением игровой зоны.",
             "schema": {
               "type": "string",
               "enum": [
@@ -487,7 +487,7 @@
             "name": "operational_status",
             "in": "query",
             "required": false,
-            "description": "Текущее состояние: работает либо временно закрыта. Не является статусом модерации (публикуются только confirmed).",
+            "description": "Текущее состояние: работает либо временно закрыта. При фильтрах игровой зоны относится к той же зоне; без них — к площадке. Не является статусом модерации.",
             "schema": {
               "type": "string",
               "enum": [
@@ -501,7 +501,7 @@
             "name": "access",
             "in": "query",
             "required": false,
-            "description": "Условия доступа: free = без оплаты и предварительного подтверждения; paid = требует оплаты; approval = требует подтверждения. paid и approval могут пересекаться.",
+            "description": "Условия зоны: free = без оплаты; paid = требует оплаты; approval = требует подтверждения. Стоимость независима от состояния и подтверждения. Закрытые зоны включаются, если состояние не ограничено.",
             "schema": {
               "type": "string",
               "enum": [
@@ -1678,7 +1678,7 @@
               "boolean",
               "null"
             ],
-            "description": "null = не установлено, поэтому не считается бесплатной или платной площадкой"
+            "description": "Обобщённая стоимость площадки: null при смешанных или неизвестных условиях. Стоимость конкретной зоны — matched_court.requires_payment."
           },
           "requires_booking_approval": {
             "type": "boolean",
@@ -1686,7 +1686,83 @@
           },
           "has_free_access": {
             "type": "boolean",
-            "description": "true только если requires_payment=false и requires_booking_approval=false"
+            "description": "true если есть открытая бесплатная зона без предварительной записи и подтверждения"
+          },
+          "court_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Количество неудалённых игровых зон, включая временно закрытые."
+          },
+          "venue_url": {
+            "type": "string",
+            "description": "Ссылка на общую страницу площадки."
+          },
+          "matched_court": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Зона, соответствующая всем выбранным фильтрам зоны; null для общей карточки.",
+            "properties": {
+              "court_id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "environment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type_label": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "operational_status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "temporarily_closed"
+                ]
+              },
+              "operational_status_label": {
+                "type": "string"
+              },
+              "is_open": {
+                "type": "boolean"
+              },
+              "requires_payment": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "requires_booking": {
+                "type": "boolean"
+              },
+              "requires_booking_approval": {
+                "type": "boolean"
+              },
+              "image_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "short_description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           }
         },
         "required": [

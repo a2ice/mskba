@@ -195,6 +195,7 @@ final class ShowVenueHandler
         // Venue-level schedules are not court availability. Keep each
         // court's effective hours and booked percentage independent.
         $courtSchedules = [];
+        $publicSchedule = app(\App\Modules\Venue\Application\Services\PublicVenueDaySchedule::class);
         foreach ($courts as $court) {
             if ($courtIdentifier !== null && $court->id !== $selectedCourt->id) {
                 continue;
@@ -212,11 +213,35 @@ final class ShowVenueHandler
                 }
                 unset($courtDay);
             }
+            // Informational schedules are a canonical seven-day week, not
+            // a grouping of the next nine calendar dates. Exceptional dates
+            // are listed separately and never redefine the weekly template.
+            $weeklyHours = [];
+            $weekStart = CarbonImmutable::now(
+                (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'))
+            )->startOfWeek(CarbonInterface::MONDAY);
+            for ($weekdayOffset = 0; $weekdayOffset < 7; $weekdayOffset++) {
+                $weekday = $weekStart->addDays($weekdayOffset);
+                $regular = $this->hours->intervals($venue, $court, $weekday, false);
+                $weeklyHours[] = [
+                    'weekday' => $this->russianWeekdayLabel($weekday),
+                    'intervals' => $regular?->map(fn ($period): array => [
+                        'startsAt' => $this->formatTime($period->starts_at),
+                        'endsAt' => $this->formatTime($period->ends_at),
+                    ])->values()->all(),
+                ];
+            }
+            $exceptions = collect($this->scheduleDays($venue, $court))
+                ->filter(fn (array $day): bool => $day['isException'])
+                ->values()->all();
             $courtSchedules[] = [
                 'id' => (int) $court->id,
                 'name' => $court->publicName(),
                 'routeIdentifier' => $court->routeIdentifier(),
                 'days' => $courtDays,
+                'weeklyHours' => $weeklyHours,
+                'exceptions' => $exceptions,
+                'bookingEnabled' => $publicSchedule->bookingEnabled($venue, $court),
             ];
         }
         $openingState = $this->openingState($venue, $scheduleContextCourt);

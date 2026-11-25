@@ -14,9 +14,11 @@
             'address' => $venue->displayAddress,
             'url' => $venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()),
             'matched_court' => $venue->matchedCourtName,
-            'free_courts' => count($venue->courtAccessSummary['free'] ?? []),
-            'paid_courts' => count($venue->courtAccessSummary['paid'] ?? []),
-            'approval_courts' => count($venue->courtAccessSummary['approval'] ?? []),
+                    'matched_court_details' => $venue->cardCourt(),
+                    'court_count' => $venue->cardCourtCount(),
+            'free_courts' => $venue->cardPaymentCount('free'),
+            'paid_courts' => $venue->cardPaymentCount('paid'),
+            'approval_courts' => ($venue->matchedCourtUrl !== null ? (int) $venue->matchedRequiresApproval : count($venue->courtAccessSummary['approval'] ?? [])),
         ])->values();
 @endphp
 
@@ -97,6 +99,7 @@
 @endsection
 
 @section('category-mobile-filters')
+    @include('venues.partials.map-dialog', ['mapShowCurrentVenueLink' => true])
     @component('theme::partials.modal.layout', ['id' => 'venue-catalog-filters', 'dialogClass' => 'default-category-mobile-filters__dialog'])
         <h2 class="modal_title" id="modal-title-venue-catalog-filters">Фильтры площадок</h2>
         @include('theme::pages.venues.partials.catalog-filters', ['formId' => 'venue-catalog-filter-form-mobile', 'scope' => 'mobile', 'currentView' => $currentView])

@@ -7,7 +7,7 @@ const source=readFileSync(new URL('../../resources/themes/mskba_app/js/venue-fav
     .replace(/^import .*;\n/m,'');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
-function harness({authenticated=false,status='none',count=3,fetchImpl=null}={}){
+function harness({authenticated=false,status='none',count=3,fetchImpl=null,eventUrl=null}={}){
     const listeners=new Map(), calls=[];
     const hero={dataset:{favoriteCount:String(count)},textContent:'',disabled:false,
         setAttribute(key,value){this[key]=value;},addEventListener(_,handler){this.click=handler;}};
@@ -25,6 +25,7 @@ function harness({authenticated=false,status='none',count=3,fetchImpl=null}={}){
         return {root,message,label,action,dialog};
     }
     const audience=follow(),games=follow();
+    if(eventUrl) audience.root.dataset.createEventUrl=eventUrl;
     const controls={
         '[data-venue-favorite-title]':{textContent:''},
         '[data-venue-favorite-description]':{textContent:''},
@@ -44,7 +45,8 @@ function harness({authenticated=false,status='none',count=3,fetchImpl=null}={}){
         querySelectorAll(selector){if(selector==='[data-venue-favorite-main]')return [hero];
             if(selector==='[data-venue-favorite-follow]')return [audience.root,games.root];return [];}
     };
-    const window={addEventListener(key,handler){if(!listeners.has(key))listeners.set(key,[]);
+    const window={location:{assign(url){calls.push({navigated:url});}},
+        addEventListener(key,handler){if(!listeners.has(key))listeners.set(key,[]);
             listeners.get(key).push(handler);},
         dispatchEvent(event){for(const h of listeners.get(event.type)??[])h(event);}};
     const fetch=fetchImpl??(async()=>({ok:true,json:async()=>({data:{8:{state:status}},counts:{8:count}})}));
@@ -142,4 +144,21 @@ test('both popups use shared favorite prompt; event creation remains an independ
     assert.match(games,/\$upcomingVenueEvents->isEmpty\(\) \? \$secondaryButton : \$primaryButton/);
     assert.match(prompt,/data-venue-favorite-follow-action/);
     assert.match(prompt,/venue-favorite-follow__icon/);
+});
+
+test('saved empty-state CTA creates an event without removing a favorite or affecting the games popup',async()=>{
+    const h=harness({authenticated:true,status:'active',count:4,eventUrl:'/events/wizard?venue_id=8'});
+    await tick();
+    assert.equal(h.audience.label.textContent,'Создать мероприятие');
+    assert.equal(h.audience.action.disabled,false);
+    assert.equal(h.games.label.textContent,'В избранном');
+    assert.equal(h.games.action.disabled,true);
+    await h.audience.action.click();
+    assert.deepEqual(h.calls,[{navigated:'/events/wizard?venue_id=8'}]);
+});
+
+test('favorites status changes do not replace favorite buttons via play-interest refresh',()=>{
+    const summary=readFileSync(new URL('../../resources/themes/mskba_app/js/venue-interest-summary.js',import.meta.url),'utf8');
+    assert.doesNotMatch(summary,/addEventListener\('mskba:venue-favorite:updated'/);
+    assert.match(summary,/addEventListener\('mskba:play-intent:saved'/);
 });

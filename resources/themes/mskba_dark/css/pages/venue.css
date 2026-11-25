@@ -1546,3 +1546,10 @@
 .venue-show-section__description ul{list-style:disc}
 .venue-show-section__description ol{list-style:decimal}
 .venue-show-section__description li+li{margin-top:.3em}
+
+/* Informational hours: one icon beside the complete weekly/exception block. */
+.venue-informational-hours{display:flex;align-items:flex-start;gap:8px;min-width:0}
+.venue-informational-hours__icon{flex:none;width:16px;height:16px;margin-top:3px;color:var(--muted)}
+.venue-informational-hours__rows{display:grid;gap:4px;min-width:0}
+.venue-informational-hours__rows p{margin:0;overflow-wrap:anywhere}
+.venue-informational-hours__rows h4{margin:6px 0 0}

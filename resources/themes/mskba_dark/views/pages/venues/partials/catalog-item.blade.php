@@ -1,11 +1,12 @@
 @php
     $mode = $mode ?? 'card';
-    $showDescription = $mode === 'list';
-    $venueUrl = $venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier());
-    $freeCourts = $venue->courtAccessSummary['free'] ?? [];
-    $paidCourts = $venue->courtAccessSummary['paid'] ?? [];
-    $approvalCourts = $venue->courtAccessSummary['approval'] ?? [];
-    $unknownCourts = $venue->courtAccessSummary['unknown'] ?? [];
+    $venueUrl = $cardUrl ?? ($venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()));
+    $court = $venue->cardCourt($venueUrl);
+    $paymentStates = $venue->paymentBadgeStates($court !== null ? $venueUrl : null);
+    $conditions = $venue->cardConditions($court);
+    $courtName = $court['name'] ?? $cardCourtName ?? $venue->matchedCourtName;
+    $description = \App\Modules\Venue\Application\DTO\VenueListItemDTO::catalogDescription($court !== null ? ($court['short_description'] ?? null) : $venue->shortDescription);
+    $courtCount = $court !== null || !empty($cardCourtName) ? 0 : $venue->courtCount();
 @endphp
 
 <article class="catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}" data-venue-id="{{ $venue->id }}">
@@ -14,52 +15,29 @@
         aria-label="Добавить в избранное" title="Добавить в избранное"
         aria-pressed="false"><svg aria-hidden="true"><use href="#heart"/></svg></button>
     <a class="catalog-card__image venue-catalog-item__image" href="{{ $venueUrl }}">
-        <img src="{{ $venue->imageUrl ?: asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}">
+        <img src="{{ ($court['image_url'] ?? $venue->imageUrl) ?: asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}">
     </a>
 
     <div class="catalog-card__body venue-catalog-item__body">
-        <div class="catalog-card__badges venue-catalog-item__badges">
-            <span class="catalog-card__badge">{{ $venue->type }}</span>
-            <span @class(['catalog-card__badge', 'is-closed' => $venue->operationalStatusSlug !== 'active'])>{{ $venue->operationalStatus }}</span>
+        <div class="venue-catalog-card-top">
+            <div class="catalog-card__badges venue-catalog-item__badges"><span class="catalog-card__badge">{{ $court['type_label'] ?? $venue->type }}</span></div>
+            @include('venues.partials.catalog-payment-row', ['paymentStates' => $paymentStates, 'operationalStates' => $venue->cardOperationalStates($court), 'courtCount' => $courtCount, 'conditions' => $conditions, 'zoneCard' => $court !== null])
         </div>
 
         <h2 class="catalog-card__title"><a href="{{ $venueUrl }}">{{ $venue->name }}</a></h2>
 
-        @if($venue->displayAddress)
-            <p class="venue-catalog-item__address"><i class="ti ti-map-pin" aria-hidden="true"></i><span>{{ $venue->displayAddress }}</span></p>
+        @include('venues.partials.catalog-address', ['venue' => $venue])
+
+        @if(isset($distanceMeters))
+            <p class="venue-catalog-item__distance"><i class="ti ti-map-pin" aria-hidden="true"></i>{{ number_format($distanceMeters / 1000, 1, ',', ' ') }} км от этой площадки</p>
+        @endif
+        @if($courtName !== null)
+            <p class="venue-catalog-item__match"><i class="ti ti-layout-grid" aria-hidden="true"></i>Подходящий зал: {{ $courtName }}</p>
         @endif
 
-        @if($showDescription && $venue->shortDescription)
-            <p class="catalog-card__description venue-catalog-item__description">{{ $venue->shortDescription }}</p>
+        @if($description !== '')
+            <p class="venue-catalog-card-description">{{ $description }}</p>
         @endif
-
-        <div class="venue-catalog-item__access">
-            @if($freeCourts !== [])
-                <span><i class="ti ti-gift" aria-hidden="true"></i>{{ $paidCourts !== [] ? 'Есть бесплатный доступ' : 'Бесплатно' }}</span>
-            @endif
-            @if($paidCourts !== [])
-                <span><i class="ti ti-currency-ruble" aria-hidden="true"></i>{{ $freeCourts !== [] ? 'Есть платные залы' : 'Платно' }}</span>
-            @endif
-            @if($approvalCourts !== [])
-                <span><i class="ti ti-shield-check" aria-hidden="true"></i>Есть залы с подтверждением</span>
-            @endif
-            @if($freeCourts === [] && $paidCourts === [])
-                <span><i class="ti ti-help-circle" aria-hidden="true"></i>{{ $unknownCourts !== [] ? 'Условия уточняются' : 'Нет доступных залов' }}</span>
-            @endif
-            @if($venue->matchedCourtName !== null)
-                <span><i class="ti ti-layout-grid" aria-hidden="true"></i>Подходящий зал: {{ $venue->matchedCourtName }}</span>
-                @if($venue->matchedRequiresBooking)
-                    <span><i class="ti ti-calendar" aria-hidden="true"></i>По предварительной записи</span>
-                @endif
-                @if($venue->matchedRequiresApproval)
-                    <span><i class="ti ti-shield-check" aria-hidden="true"></i>Требуется подтверждение</span>
-                @endif
-            @endif
-        </div>
-    </div>
-
-    <div class="catalog-card__actions venue-catalog-item__actions">
-        <a class="btn btn--secondary btn--sm" href="{{ $venueUrl }}">Подробнее<i class="ti ti-arrow-right" aria-hidden="true"></i></a>
         @if($venue->canEdit)
             <a class="venue-catalog-item__edit" href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}"><i class="ti ti-pencil" aria-hidden="true"></i>Редактировать</a>
         @endif

@@ -1,0 +1,71 @@
+name: MSKBA venue migration parity audit (read only)
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-venue-parity-audit.yml]
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect mapped production venue state without modifications
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+            COMPOSE='docker compose -f compose.yaml -f compose.prod.yaml'
+            sql(){
+              $COMPOSE exec -T db sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; export PGOPTIONS="-c default_transaction_read_only=on"; exec psql -XAtq -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1" -c "$2"' sh mskba_unified_20261117_v2 "$1"
+            }
+            echo PROD_VENUE_MAPPINGS_START
+            sql "SELECT 'MAP|'||v.alias||'|src='||m.source_venue_id||'|dst='||v.id||'|resolution='||m.resolution
+                  ||'|status='||v.status||'|operational='||v.operational_status||'|published='||v.is_published
+                  ||'|active='||(v.deleted_at IS NULL)
+                  ||'|venue_gallery='||(SELECT count(*) FROM media p WHERE p.mediable_type='venue' AND p.mediable_id=v.id AND p.collection='gallery' AND p.deleted_at IS NULL)
+                  ||'|court_gallery='||(SELECT count(*) FROM media p JOIN venue_courts c ON c.id=p.mediable_id WHERE p.mediable_type='venue_court' AND c.venue_id=v.id AND p.collection='gallery' AND p.deleted_at IS NULL)
+                  FROM data_merge_venue_map m JOIN venues v ON v.id=m.target_venue_id ORDER BY m.source_venue_id"
+            echo PROD_VENUE_MAPPINGS_END
+            echo PROD_ALL_VENUES_START
+            sql "SELECT 'VENUE|'||v.id||'|'||v.alias||'|status='||v.status||'|operational='||v.operational_status||'|published='||v.is_published
+                  ||'|venue_gallery='||(SELECT count(*) FROM media p WHERE p.mediable_type='venue' AND p.mediable_id=v.id AND p.collection='gallery' AND p.deleted_at IS NULL)
+                  ||'|court_gallery='||(SELECT count(*) FROM media p JOIN venue_courts c ON c.id=p.mediable_id WHERE p.mediable_type='venue_court' AND c.venue_id=v.id AND p.collection='gallery' AND p.deleted_at IS NULL)
+                  FROM venues v WHERE v.deleted_at IS NULL ORDER BY v.id"
+            echo PROD_ALL_VENUES_END
+  development:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Inspect dev venue state without modifications
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -Fxq 'APP_ENV=staging' .env
+            grep -Fxq 'APP_URL=https://dev.mskba.ru' .env
+            test -f compose.dev.local.yaml
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            DB="$(sed -n 's/^DB_DATABASE=//p' .env | tail -n 1)"
+            [[ "$DB" =~ ^[a-zA-Z_][a-zA-Z_0-9]*$ ]]
+            sql(){
+              $COMPOSE exec -T db sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; export PGOPTIONS="-c default_transaction_read_only=on"; exec psql -XAtq -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1" -c "$2"' sh "$DB" "$1"
+            }
+            echo DEV_VENUES_START
+            sql "SELECT 'VENUE|'||v.id||'|'||v.alias||'|status='||v.status||'|operational='||v.operational_status||'|published='||v.is_published
+                  ||'|active='||(v.deleted_at IS NULL)
+                  ||'|venue_gallery='||(SELECT count(*) FROM media p WHERE p.mediable_type='venue' AND p.mediable_id=v.id AND p.collection='gallery' AND p.deleted_at IS NULL)
+                  ||'|court_gallery='||(SELECT count(*) FROM media p JOIN venue_courts c ON c.id=p.mediable_id WHERE p.mediable_type='venue_court' AND c.venue_id=v.id AND p.collection='gallery' AND p.deleted_at IS NULL)
+                  FROM venues v WHERE v.deleted_at IS NULL ORDER BY v.id"
+            echo DEV_VENUES_END

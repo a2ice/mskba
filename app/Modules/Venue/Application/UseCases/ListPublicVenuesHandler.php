@@ -18,37 +18,39 @@ final class ListPublicVenuesHandler
     {
         $environment = VenueTypeEnum::tryFrom((string) ($filters['type'] ?? ''))?->discoveryEnvironment();
 
+        $access = $filters['access'] ?? null;
+        $status = $filters['operational_status'] ?? null;
+        $zoneMode = $environment !== null || filled($access);
+
         $query = $this->publicQuery()
             ->when($filters['type'] ?? null, fn (Builder $q, string $type): Builder => $q->whereDiscoveryType($type))
-            ->when($filters['operational_status'] ?? null, fn (Builder $q, string $status): Builder => $q->where('operational_status', $status))
-            // Resolve inherited policies in SQL *before* cursor pagination;
-            // a venue can qualify through a single matching open court.
-            ->when($filters['access'] ?? null, fn (Builder $q, string $access): Builder => $q
-                ->where('venues.operational_status', 'active')
-                ->whereHas('courts', function (Builder $courts) use ($access, $environment): void {
+            ->when(! $zoneMode && $status !== null, fn (Builder $q): Builder => $q->where('venues.operational_status', $status))
+            // Resolve inherited policies and all zone criteria before pagination.
+            ->when($zoneMode, fn (Builder $q): Builder => $q
+                ->whereHas('courts', function (Builder $courts) use ($access, $environment, $status): void {
                     if ($environment !== null) {
                         $courts->where('environment', $environment->value);
                     }
-
-                    $courts->where(function (Builder $state): void {
-                        $state->whereNull('operational_status')->orWhere('operational_status', 'active');
-                    });
+                    if ($status !== null) {
+                        $courts->whereRaw(
+                            "CASE WHEN venues.operational_status <> 'active' THEN venues.operational_status ELSE COALESCE(venue_courts.operational_status, venues.operational_status) END = ?",
+                            [$status],
+                        );
+                    }
 
                     if ($access === 'approval') {
                         $courts->whereRaw(
                             'COALESCE(venue_courts.requires_booking_approval, venues.requires_booking_approval, FALSE) = TRUE'
                         );
-
-                        return;
+                    } elseif (in_array($access, ['paid', 'free'], true)) {
+                        $courts->whereRaw(
+                            'COALESCE(venue_courts.requires_payment, '
+                            .'(SELECT p.requires_payment FROM venue_booking_policies p '
+                            .'WHERE p.venue_id = venues.id AND p.active_marker = TRUE AND p.is_enabled = TRUE '
+                            .'ORDER BY p.id DESC LIMIT 1), venues.requires_payment) '
+                            .($access === 'paid' ? 'IS TRUE' : 'IS FALSE'),
+                        );
                     }
-
-                    $courts->whereRaw(
-                        'COALESCE(venue_courts.requires_payment, '
-                        .'(SELECT p.requires_payment FROM venue_booking_policies p '
-                        .'WHERE p.venue_id = venues.id AND p.active_marker = TRUE AND p.is_enabled = TRUE '
-                        .'ORDER BY p.id DESC LIMIT 1), venues.requires_payment) '
-                        .($access === 'paid' ? 'IS TRUE' : 'IS FALSE'),
-                    );
                 }));
 
         // Match the web catalog: all whitespace-separated search terms must match.
@@ -79,7 +81,7 @@ final class ListPublicVenuesHandler
             ->where('is_published', true)
             ->with([
                 'location.address',
-                'courts',
+                'courts.media',
                 'activeBookingPolicy',
                 'media' => fn ($query) => $query
                     ->where('collection', 'gallery')

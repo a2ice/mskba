@@ -49,6 +49,26 @@ final readonly class PublicVenueDaySchedule
         private VenueBookingAuthorization $bookingAuthorization,
     ) {}
 
+    /** Configuration eligibility, independent of a particular day's free slots. */
+    public function bookingEnabled(Venue $venue, VenueCourt $court, int $sourceMinimum = 0, ?VenueBookingPolicy $policy = null): bool
+    {
+        $policy ??= VenueBookingPolicy::query()->where('venue_id', $venue->id)
+            ->where('active_marker', true)->first();
+        $effective = $this->policies->resolve($venue, $court, $policy);
+        $step = (int) ($effective['time_step_minutes'] ?? 30);
+        $minimum = max($step, (int) ($effective['minimum_duration_minutes'] ?? 60), $sourceMinimum);
+        $maximum = (int) ($effective['maximum_duration_minutes'] ?? 480);
+
+        return in_array($step, [30, 60], true)
+            && config('features.venue_rental.rental_flow', false)
+            && $policy !== null && $policy->is_enabled
+            && (bool) $effective['rental_enabled']
+            && $court->allows_whole
+            && $maximum >= $minimum
+            && (int) $policy->time_step_minutes > 0
+            && $step % (int) $policy->time_step_minutes === 0;
+    }
+
     /** @return array<string, mixed> */
     public function forDate(
         Venue $venue, VenueCourt $court, string $date,
@@ -121,14 +141,7 @@ final readonly class PublicVenueDaySchedule
         $maximum = (int) ($effective['maximum_duration_minutes'] ?? 480);
         $leadTime = (int) ($effective['minimum_lead_time_minutes'] ?? 0);
         $latestStart = CarbonImmutable::now('Europe/Moscow')->addDays((int) ($effective['maximum_advance_days'] ?? 90));
-        $rentalEnabled = $supportedStep
-            && config('features.venue_rental.rental_flow', false)
-            && $policy !== null && $policy->is_enabled
-            && (bool) $effective['rental_enabled']
-            && $court->allows_whole
-            && $maximum >= $minimum
-            && (int) $policy->time_step_minutes > 0
-            && $step % (int) $policy->time_step_minutes === 0;
+        $rentalEnabled = $this->bookingEnabled($venue, $court, (int) ($snapshot?->minimum_minutes ?? 0), $policy);
 
         $intervals = $this->hours->intervals($venue, $court, $day);
         $openings = ($intervals ?? collect())->map(static function (object $row) use ($snapshot): array {
