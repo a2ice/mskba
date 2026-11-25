@@ -82,10 +82,23 @@ final class VenueCatalogInfiniteTest extends TestCase
             ->assertOk()
             ->assertSee('data-venue-infinite-catalog')
             ->assertSee('data-next-page="2"', false)
+            ->assertSee('href="'.route('venues', ['page' => 2]).'" rel="next" data-venue-next-page', false)
             ->assertSee('image-upload-loading__spinner')
             ->assertSee('Тестовая площадка 01')
             ->assertDontSee('Тестовая площадка 06')
             ->assertDontSee('БАСКЕТБОЛЬНЫЕ ПЛОЩАДКИ');
+
+        $this->get('/venues?page=2')
+            ->assertOk()
+            ->assertSee('Тестовая площадка 06')
+            ->assertDontSee('Тестовая площадка 01')
+            ->assertSee('<link rel="canonical" href="'.route('venues', ['page' => 2]).'">', false)
+            ->assertSee('href="'.route('venues').'" rel="prev"', false)
+            ->assertDontSee('data-venue-next-page', false);
+
+        $this->get('/venues?search=Тестовая&sort=name_desc')
+            ->assertOk()
+            ->assertSee('href="'.e(route('venues', ['search' => 'Тестовая', 'sort' => 'name_desc', 'page' => 2])).'" rel="next" data-venue-next-page', false);
 
         $response = $this->getJson('/venues?page=2&fragment=items')
             ->assertOk()->assertJsonPath('has_more', false)
