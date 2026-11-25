@@ -15,6 +15,7 @@ final class AccountDashboardService
         'account_status' => 'Статус аккаунта',
         'getting_started' => 'Возможности портала',
         'message_summary' => 'Сообщения',
+        'dynamic' => 'Динамический виджет',
         'information' => 'Информационная карточка',
         'advertisement' => 'Рекламная карточка',
         'custom_html' => 'HTML / CSS / JS (песочница)',
