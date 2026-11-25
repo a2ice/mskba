@@ -60,11 +60,12 @@ if (dock) {
             'game_format', 'pricing_type', 'team_id', 'accepts_requests', 'recruiting',
             'tag', 'product_type', 'stock', 'color', 'size', 'min_price', 'max_price',
             'sport_type', 'member_count', 'hiring', 'access', 'operational_status',
-            'has_upcoming_events', 'my_interests', 'interest_id', 'latitude', 'longitude', 'radius_km', 'scope', 'role']);
+            'has_upcoming_events', 'my_interests', 'interest_id', 'rental_configured', 'latitude', 'longitude', 'radius_km', 'scope', 'role']);
         const defaults = { period: ['upcoming', 'all'], status: ['not_cancelled'] };
         let count = 0;
         for (const [key, val] of url.searchParams) {
             if (!keys.has(key) || !val || defaults[key]?.includes(val)) continue;
+            if (key === 'rental_configured' && val !== '1') continue;
             if (key === 'role' && /\/(players|coaches)$/.test(url.pathname)) continue;
             if (['longitude', 'radius_km'].includes(key) && url.searchParams.has('latitude')) continue;
             count++;
