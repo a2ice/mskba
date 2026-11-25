@@ -231,6 +231,84 @@ final class AccountInvitationWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_revoked_issuer_authority_requires_explicit_review_and_preserves_acceptance(): void
+    {
+        [$issuer, $venue, $invitation, $token] = $this->invite('review-staff@example.test', 'staff');
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $manager = app(AccountInvitationManager::class);
+        $manager->accept($invitation, $user);
+        $user->createProfile([
+            'first_name' => 'Иван', 'last_name' => 'Сотрудник',
+            'birth_date' => '1990-01-01', 'gender' => 'male',
+        ]);
+        $user->confirmAccount();
+        $issuer->forceFill(['system_role' => UserSystemRoleEnum::USER])->save();
+
+        $this->actingAs($user)->followingRedirects()->get(route('account-invitations.show', $token))
+            ->assertOk()->assertSee('Ожидается согласование полномочий');
+        $this->get(route('account-invitations.continue'))->assertOk();
+        $this->assertSame('awaiting_authorization', $invitation->fresh()->progress);
+        $this->assertSame($user->id, $invitation->fresh()->accepted_user_id);
+        $this->assertTrue($user->fresh()->hasVerifiedPrimaryContact());
+        $this->assertSame(1, $invitation->events()->where('event', 'awaiting_authorization')->count());
+        $this->assertDatabaseMissing('contract_memberships', ['scope_id' => $venue->id, 'user_id' => $user->id]);
+
+        try {
+            $manager->approveCompletion($invitation, $issuer, 'Проверено основание назначения роли');
+            $this->fail('Former issuer must not approve the role.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+
+        // Regaining the role does not silently clear an existing review hold.
+        $issuer->forceFill(['system_role' => UserSystemRoleEnum::SUPERADMIN])->save();
+        $this->get(route('account-invitations.continue'))->assertOk();
+        $this->assertSame('awaiting_authorization', $invitation->fresh()->progress);
+        $reviewer = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN, 'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $manager->approveCompletion($invitation, $reviewer, 'Проверено основание назначения роли');
+        $this->assertSame('completed', $invitation->fresh()->status);
+        $this->assertSame($issuer->id, $invitation->fresh()->created_by_user_id);
+        $this->assertDatabaseHas('contract_memberships', [
+            'scope_type' => 'venue', 'scope_id' => $venue->id, 'user_id' => $user->id, 'access_level' => 'staff',
+        ]);
+        $event = $invitation->events()->where('event', 'authorization_reviewed')->sole();
+        $this->assertSame($reviewer->id, $event->details['reviewer_id']);
+        $this->assertSame($issuer->id, $event->details['issuer_id']);
+        $this->assertSame('Проверено основание назначения роли', $event->details['reason']);
+    }
+
+    public function test_confirmed_status_without_actual_requirements_does_not_grant_employee_role(): void
+    {
+        [, $venue, $invitation] = $this->invite('forced-staff@example.test', 'staff');
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $manager = app(AccountInvitationManager::class);
+        $manager->accept($invitation, $user);
+        // Fixture represents an exceptional confirmation with an incomplete profile.
+        $user->forceFill(['status' => UserStatusEnum::CONFIRMED])->save();
+        $manager->advance($invitation->fresh(), $user);
+
+        $this->assertSame('awaiting_account', $invitation->fresh()->progress);
+        $this->assertDatabaseMissing('contract_memberships', ['scope_id' => $venue->id, 'user_id' => $user->id]);
+    }
+
+    public function test_consumed_invitation_cannot_reverify_contact(): void
+    {
+        [, $venue, $invitation] = $this->invite('consumed-staff@example.test', 'staff');
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $manager = app(AccountInvitationManager::class);
+        $manager->accept($invitation, $user);
+        $contact = $user->identityContactsQuery()->where('value', $invitation->contact_value)->firstOrFail();
+        $contact->forceFill(['verified_at' => null])->save();
+
+        $manager->accept($invitation->fresh(), $user);
+
+        $this->assertNull($contact->fresh()->verified_at);
+        $this->assertSame(1, $invitation->events()->where('event', 'contact_verified')->count());
+        $this->assertDatabaseMissing('contract_memberships', ['scope_id' => $venue->id, 'user_id' => $user->id]);
+    }
+
     public function test_invalid_registration_returns_to_invitation_instead_of_previous_js_asset(): void
     {
         [, , $invitation, $token] = $this->invite();
