@@ -1,7 +1,7 @@
 @php
     $title = 'Площадки';
     $currentView = in_array(($filters['view'] ?? null), ['list', 'map'], true) ? $filters['view'] : 'cards';
-    $activeFilterCount = collect(['type', 'operational_status', 'access', 'radius_km'])
+    $activeFilterCount = collect(['type', 'operational_status', 'access', 'radius_km', 'city_id', 'district_id'])
         ->filter(fn ($key) => filled($filters[$key] ?? null))
         ->count();
     $mapVenues = collect($venues)
@@ -49,7 +49,7 @@
             <i class="ti ti-search" aria-hidden="true"></i>
             <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" form="venue-catalog-filter-form" data-default-category-search>
         </label>
-        @foreach(['type', 'operational_status', 'access', 'latitude', 'longitude', 'radius_km'] as $filterKey)
+        @foreach(['type', 'operational_status', 'access', 'latitude', 'longitude', 'radius_km', 'city_id', 'district_id'] as $filterKey)
             @if(filled($filters[$filterKey] ?? null))
                 <input type="hidden" name="{{ $filterKey }}" value="{{ $filters[$filterKey] }}">
             @endif
