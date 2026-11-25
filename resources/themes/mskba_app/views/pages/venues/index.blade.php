@@ -45,6 +45,7 @@
                 <label><span>Поиск площадки</span>
                     <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание">
                 </label>
+                @include('components.venue-catalog-geography-filter', ['geographyTheme' => 'app'])
                 @include('components.venue-catalog-nearby-filter', ['scope' => 'app'])
                 <div data-catalog-range-filter>
                     <label class="check-label">
