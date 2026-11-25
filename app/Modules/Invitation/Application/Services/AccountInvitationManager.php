@@ -45,16 +45,11 @@ final class AccountInvitationManager
         if ($days < 1 || $days > 30) {
             throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
         }
-        if (AccountInvitation::query()->where('contact_value', $email)
-            ->where('scope_type', $scopeType)->where('scope_id', $scopeId)
-            ->where('role', $role)->where('status', 'pending')
-            ->where(fn ($query) => $query->whereNotNull('accepted_user_id')
-                ->orWhere('expires_at', '>', now()))->exists()) {
-            throw ValidationException::withMessages(['email' => 'Для этого контакта и роли уже есть активное приглашение.']);
-        }
-
         $token = bin2hex(random_bytes(32));
         $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token) {
+            Venue::query()->whereKey($scopeId)->lockForUpdate()->firstOrFail();
+            $this->assertTarget($scopeType, $scopeId, $role);
+            $this->assertNoActiveDuplicate($email, $scopeType, $scopeId, $role);
             $record = AccountInvitation::query()->create([
                 'status' => 'pending',
                 'progress' => 'created',
@@ -73,7 +68,7 @@ final class AccountInvitationManager
             ]);
             $this->event($record, 'created', ['issuer_id' => $issuer->id]);
             return $record;
-        });
+        }, 3);
         $this->send($invitation, $token);
         return [$invitation->refresh(), route('account-invitations.show', $token)];
     }
@@ -86,8 +81,11 @@ final class AccountInvitationManager
         }
         $token = bin2hex(random_bytes(32));
         DB::transaction(function () use ($invitation, $days, $token, $issuer): void {
+            Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
             abort_unless($record->canManageLink(), 409);
+            $this->assertTarget($record->scope_type, $record->scope_id, $record->role);
+            $this->assertNoActiveDuplicate($record->contact_value, $record->scope_type, $record->scope_id, $record->role, $record->id);
             $previousExpiry = $record->expires_at;
             $record->forceFill([
                 'token_hash' => hash('sha256', $token),
@@ -98,9 +96,58 @@ final class AccountInvitationManager
                 'previous_expires_at' => $previousExpiry->toIso8601String(),
                 'expires_at' => $record->expires_at->toIso8601String(),
             ]);
-        });
+        }, 3);
         $this->send($invitation->refresh(), $token);
         return route('account-invitations.show', $token);
+    }
+
+    public function restore(AccountInvitation $invitation, User $issuer, int $days, string $reason): string
+    {
+        $issuer = $this->authorizeIssuer($issuer);
+        $reason = trim($reason);
+        if ($days < 1 || $days > 30) {
+            throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
+        }
+        if (mb_strlen($reason) < 5 || mb_strlen($reason) > 2000) {
+            throw ValidationException::withMessages(['reason' => 'Укажите причину восстановления (от 5 до 2000 символов).']);
+        }
+        $token = bin2hex(random_bytes(32));
+        DB::transaction(function () use ($invitation, $issuer, $days, $reason, $token): void {
+            Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
+            $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            abort_unless($record->status === 'revoked' && $record->accepted_user_id === null, 409);
+            $this->assertTarget($record->scope_type, $record->scope_id, $record->role);
+            $this->assertNoActiveDuplicate($record->contact_value, $record->scope_type, $record->scope_id, $record->role, $record->id);
+            $previousExpiry = $record->expires_at;
+            $previousRevocation = $record->revoked_at;
+            $record->forceFill([
+                'status' => 'pending',
+                'revoked_at' => null,
+                'token_hash' => hash('sha256', $token),
+                'expires_at' => now()->addDays($days),
+            ])->save();
+            $this->event($record, 'restored', [
+                'issuer_id' => $issuer->id,
+                'reason' => $reason,
+                'previous_revoked_at' => $previousRevocation?->toIso8601String(),
+                'previous_expires_at' => $previousExpiry->toIso8601String(),
+                'expires_at' => $record->expires_at->toIso8601String(),
+            ]);
+        }, 3);
+        $this->send($invitation->refresh(), $token);
+        return route('account-invitations.show', $token);
+    }
+
+    private function assertNoActiveDuplicate(string $email, string $scopeType, int $scopeId, string $role, ?int $exceptId = null): void
+    {
+        if (AccountInvitation::query()->where('contact_value', $email)
+            ->where('scope_type', $scopeType)->where('scope_id', $scopeId)
+            ->where('role', $role)->where('status', 'pending')
+            ->when($exceptId !== null, fn ($query) => $query->where('id', '!=', $exceptId))
+            ->where(fn ($query) => $query->whereNotNull('accepted_user_id')
+                ->orWhere('expires_at', '>', now()))->exists()) {
+            throw ValidationException::withMessages(['email' => 'Для этого контакта и роли уже есть активное приглашение.']);
+        }
     }
 
     public function revoke(AccountInvitation $invitation, User $issuer): void
@@ -127,7 +174,8 @@ final class AccountInvitationManager
         }
         DB::transaction(function () use ($invitation): void {
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
-            if ($record->status !== 'pending' || $record->isExpired()) {
+            if ($record->status !== 'pending' || $record->isExpired()
+                || ! hash_equals($record->token_hash, $invitation->token_hash)) {
                 return;
             }
             $record->increment('views_count');
@@ -147,6 +195,7 @@ final class AccountInvitationManager
         return DB::transaction(function () use ($invitation, $user, $registered): AccountInvitation {
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
             abort_unless($record->status === 'pending'
+                && hash_equals($record->token_hash, $invitation->token_hash)
                 && (! $record->isExpired() || $record->accepted_user_id !== null), 410);
             $user = $user->canonical();
             abort_if($user->isBlocked() || $user->trashed(), 403);

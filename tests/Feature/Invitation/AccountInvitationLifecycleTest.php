@@ -109,4 +109,78 @@ final class AccountInvitationLifecycleTest extends TestCase
         $this->assertSame($invitation->expires_at->toIso8601String(), $event->details['expires_at']);
         $this->assertTrue($invitation->canManageLink());
     }
+
+    public function test_restore_rotates_link_preserves_history_and_rejects_stale_acceptance(): void
+    {
+        [$issuer, $invitation] = $this->invitation();
+        $manager = app(AccountInvitationManager::class);
+        $stale = clone $invitation;
+        $previousHash = $invitation->token_hash;
+        $previousExpiry = $invitation->expires_at->toIso8601String();
+        $manager->revoke($invitation, $issuer);
+        $invitation->refresh();
+        $previousRevocation = $invitation->revoked_at->toIso8601String();
+
+        $url = $manager->restore($invitation, $issuer, 14, 'Получатель снова готов подключиться');
+        $invitation->refresh();
+
+        $this->assertSame('pending', $invitation->status);
+        $this->assertNull($invitation->revoked_at);
+        $this->assertNotSame($previousHash, $invitation->token_hash);
+        $this->assertNull($invitation->accepted_user_id);
+        $token = basename(parse_url($url, PHP_URL_PATH));
+        $this->assertSame($invitation->id, $manager->findByToken($token)->id);
+        $event = $invitation->events()->where('event', 'restored')->firstOrFail();
+        $this->assertSame($issuer->id, $event->details['issuer_id']);
+        $this->assertSame('Получатель снова готов подключиться', $event->details['reason']);
+        $this->assertSame($previousRevocation, $event->details['previous_revoked_at']);
+        $this->assertSame($previousExpiry, $event->details['previous_expires_at']);
+        $this->assertSame($invitation->expires_at->toIso8601String(), $event->details['expires_at']);
+        $this->assertTrue($invitation->events()->where('event', 'revoked')->exists());
+
+        $manager->seen($stale);
+        $this->assertSame(0, $invitation->fresh()->views_count);
+        try {
+            $manager->accept($stale, User::factory()->create());
+            $this->fail('A stale token revision must not be accepted after restoration.');
+        } catch (HttpException $exception) {
+            $this->assertSame(410, $exception->getStatusCode());
+        }
+        $this->assertNull($invitation->fresh()->accepted_user_id);
+    }
+
+    public function test_restore_rejects_duplicate_live_invitation(): void
+    {
+        [$issuer, $invitation] = $this->invitation();
+        $manager = app(AccountInvitationManager::class);
+        $manager->revoke($invitation, $issuer);
+        $manager->create($issuer, $invitation->contact_value, 'venue', $invitation->scope_id,
+            'owner', 'New invitation', null, 7);
+
+        try {
+            $manager->restore($invitation, $issuer, 7, 'Повторное подключение');
+            $this->fail('Restoration must not create a duplicate active invitation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('email', $exception->errors());
+        }
+        $this->assertSame('revoked', $invitation->fresh()->status);
+        $this->assertFalse($invitation->events()->where('event', 'restored')->exists());
+    }
+
+    public function test_renewal_rejects_duplicate_after_expiry(): void
+    {
+        [$issuer, $invitation] = $this->invitation();
+        $manager = app(AccountInvitationManager::class);
+        $this->travel(8)->days();
+        $manager->create($issuer, $invitation->contact_value, 'venue', $invitation->scope_id,
+            'owner', 'Replacement invitation', null, 7);
+
+        try {
+            $manager->renew($invitation, $issuer, 7);
+            $this->fail('Renewing an expired link must not create a duplicate active invitation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('email', $exception->errors());
+        }
+        $this->assertTrue($invitation->fresh()->isExpired());
+    }
 }
