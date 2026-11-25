@@ -18,7 +18,7 @@ final readonly class VenueCourtDiscoveryAccess
     /**
      * @return array{free: array<int, array<string, mixed>>, paid: array<int, array<string, mixed>>, approval: array<int, array<string, mixed>>, unknown: array<int, array<string, mixed>>}
      */
-    public function classify(Venue $venue, ?VenueBookingPolicy $policy = null, bool $includeClosed = false): array
+    public function classify(Venue $venue, ?VenueBookingPolicy $policy = null, bool $includeClosed = false, bool $configuredRentalOnly = false): array
     {
         $categories = ['free' => [], 'paid' => [], 'approval' => [], 'unknown' => []];
 
@@ -29,6 +29,10 @@ final readonly class VenueCourtDiscoveryAccess
 
             $effective = $this->effectivePolicies->resolve($venue, $court, $policy);
             if (! $includeClosed && ! $effective['is_open']) {
+                continue;
+            }
+
+            if ($configuredRentalOnly && ! $this->effectivePolicies->hasConfiguredRental($court, $effective)) {
                 continue;
             }
 
