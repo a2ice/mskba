@@ -67,7 +67,9 @@ test('venue availability entry points reuse the rental calendar without booking 
     const rental=read('resources/themes/mskba_app/js/venue-rental-search.js');
     const detail=read('resources/themes/mskba_app/js/venue-detail.js');
     assert.match(funnel,/data-venue-play-empty-footer/);
-    assert.match(funnel,/data-venue-availability-open/);
+    // The games popup now offers favorites instead of a duplicate availability entry.
+    assert.doesNotMatch(funnel,/data-venue-availability-open/);
+    assert.match(funnel,/data-venue-favorite-footer/);
     assert.match(quick,/base.textContent='Любой зал'/);
     assert.match(quick,/scheduleEnabled.checked=false;syncScheduleVisibility\(\);setStep\(0\)/);
     assert.match(quick,/mskba:availability-open/);
