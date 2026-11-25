@@ -1,0 +1,97 @@
+<?php
+
+namespace Tests\Feature\Identity;
+
+use App\Modules\Identity\Application\UseCases\AdminCreateUserHandler;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum as Role;
+use App\Modules\Identity\Domain\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
+use Tests\TestCase;
+
+final class AdminCreateUserTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_superadmin_creates_minimal_unconfirmed_account_with_audit(): void
+    {
+        $actor = $this->actor(Role::SUPERADMIN);
+        $user = app(AdminCreateUserHandler::class)->handle($actor, 'Ivanov777');
+
+        $this->assertSame('ivanov777', $user->username);
+        $this->assertSame(Role::USER, $user->system_role);
+        $this->assertSame(UserStatusEnum::UNCONFIRMED, $user->status);
+        $this->assertNull($user->password);
+        $this->assertNull($user->password_updated_at);
+        $this->assertNotNull($user->profile);
+        $this->assertFalse($user->contacts()->exists());
+        $this->assertFalse($user->operationalPermissions()->exists());
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+            'event' => 'admin_user_created',
+        ]);
+    }
+
+    public function test_admin_needs_creation_permission_and_editor_access(): void
+    {
+        $actor = $this->actor(Role::ADMIN);
+        $handler = app(AdminCreateUserHandler::class);
+        foreach ([Permission::BACKOFFICE_ACCESS, Permission::EDIT_USER_PERSONAL_DATA] as $permission) {
+            $actor->operationalPermissions()->create(['permission' => $permission->value, 'is_allowed' => true]);
+        }
+        $this->assertFalse($handler->canCreate($actor));
+        try {
+            $handler->handle($actor, 'forbidden_user');
+            $this->fail('Creation must require its own permission.');
+        } catch (AuthorizationException) {
+            $this->assertDatabaseMissing('users', ['username' => 'forbidden_user']);
+        }
+
+        $actor->operationalPermissions()->create([
+            'permission' => Permission::BACKOFFICE_USER_CREATE->value, 'is_allowed' => true,
+        ]);
+        $this->assertTrue($handler->canCreate($actor));
+        $this->assertSame(Role::USER, $handler->handle($actor, 'allowed_user')->system_role);
+
+        $actor->operationalPermissions()->where('permission', Permission::EDIT_USER_PERSONAL_DATA->value)
+            ->update(['is_allowed' => false]);
+        $this->assertFalse($handler->canCreate($actor));
+    }
+
+    public function test_unconfirmed_or_lower_role_cannot_create_accounts(): void
+    {
+        $handler = app(AdminCreateUserHandler::class);
+        $this->assertFalse($handler->canCreate(null));
+        $this->assertFalse($handler->canCreate($this->actor(Role::USER)));
+        $actor = $this->actor(Role::SUPERADMIN);
+        $actor->forceFill(['status' => UserStatusEnum::UNCONFIRMED])->save();
+        $this->assertFalse($handler->canCreate($actor));
+    }
+
+    public function test_taken_or_invalid_logins_are_rejected(): void
+    {
+        $actor = $this->actor(Role::SUPERADMIN);
+        User::factory()->create(['username' => 'IVANOV'])->delete();
+        $holder = User::factory()->create(['username' => 'different_login']);
+        $holder->forceFill(['nickname' => 'busy_nickname'])->save();
+
+        foreach (['ivanov', 'busy_nickname', 'a!'] as $username) {
+            try {
+                app(AdminCreateUserHandler::class)->handle($actor, $username);
+                $this->fail('Invalid or occupied login must not be created.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('username', $exception->errors());
+            }
+        }
+        $this->assertDatabaseCount('users', 3);
+    }
+
+    private function actor(Role $role): User
+    {
+        return User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => $role]);
+    }
+}
