@@ -229,8 +229,12 @@ final class AccountInvitationManager
                 && (! $record->isExpired() || $record->accepted_user_id !== null), 410);
             $user = $user->canonical();
             abort_if($user->isBlocked() || $user->trashed(), 403);
-            if ($record->accepted_user_id !== null && ! $user->isSameIdentity((int) $record->accepted_user_id)) {
-                abort(403);
+            if ($record->accepted_user_id !== null) {
+                abort_unless($user->isSameIdentity((int) $record->accepted_user_id), 403);
+
+                // A previously consumed link is not new evidence of control
+                // over an email removed from the accepting identity.
+                return $this->advance($record, $user);
             }
 
             $ownership = app(ContactOwnership::class);
@@ -270,6 +274,10 @@ final class AccountInvitationManager
 
     public function advance(AccountInvitation $invitation, User $user): AccountInvitation
     {
+        if ($invitation->status !== 'pending' || $invitation->accepted_user_id === null) {
+            return $invitation;
+        }
+
         return DB::transaction(function () use ($invitation, $user): AccountInvitation {
             $venue = Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
