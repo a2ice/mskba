@@ -108,8 +108,8 @@ final class VenueCatalogCourtAccessTest extends TestCase
 
         $this->get(route('venues', ['access' => 'free']))
             ->assertOk()
-            ->assertSee('Подходящий зал: Уличная площадка')
-            ->assertSee($free->matchedCourtUrl, false)
+            ->assertDontSee('Подходящий зал:')
+            ->assertSee('href="'.$free->matchedCourtUrl.'"', false)
             ->assertDontSee('data-venue-card-tooltip="Игровых зон:', false)
             ->assertDontSee('data-venue-card-tooltip="Требуется подтверждение"', false);
 
