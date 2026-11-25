@@ -3,7 +3,7 @@
 namespace App\Filament\Backoffice\Resources\AccountInvitations;
 
 use App\Filament\Backoffice\Resources\AccountInvitations\Pages\ListAccountInvitations;
-use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Invitation\Application\Services\AccountInvitationAccess;
 use App\Modules\Invitation\Application\Services\AccountInvitationManager;
 use App\Modules\Invitation\Domain\Models\AccountInvitation;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -34,14 +34,13 @@ final class AccountInvitationResource extends Resource
 
     public static function canViewAny(): bool
     {
-        $user = auth('web')->user()?->canonical();
-        return $user !== null && $user->isConfirmed()
-            && $user->system_role === UserSystemRoleEnum::SUPERADMIN;
+        return app(AccountInvitationAccess::class)->canViewAny(auth('web')->user());
     }
 
     public static function canView(Model $record): bool
     {
-        return $record instanceof AccountInvitation && self::canViewAny();
+        return $record instanceof AccountInvitation
+            && app(AccountInvitationAccess::class)->canView(auth('web')->user(), $record);
     }
 
     public static function canCreate(): bool { return false; }
@@ -51,8 +50,7 @@ final class AccountInvitationResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->when(! self::canViewAny(), fn (Builder $query) => $query->whereRaw('1 = 0'))
+        return app(AccountInvitationAccess::class)->constrain(parent::getEloquentQuery(), auth('web')->user())
             ->with(['issuer', 'acceptedUser'])
             ->withExists(['events as has_restoration' => fn (Builder $query) => $query->where('event', 'restored')]);
     }
@@ -100,6 +98,7 @@ final class AccountInvitationResource extends Resource
             ->headerActions([
                 Action::make('issue')->label('Создать аккаунт и пригласить пользователя')
                     ->icon('heroicon-o-user-plus')->modalWidth('lg')
+                    ->visible(fn (): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()))
                     ->schema([
                         Select::make('scope_type')->label('Контекст')->required()->default('venue')
                             ->options(['venue' => 'Площадка']),
@@ -125,7 +124,7 @@ final class AccountInvitationResource extends Resource
                             ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
                     ])
                     ->action(function (array $data): void {
-                        abort_unless(self::canViewAny(), 403);
+                        abort_unless(app(AccountInvitationAccess::class)->canMutate(auth('web')->user()), 403);
                         try {
                             [$invitation, $url] = app(AccountInvitationManager::class)->create(
                                 auth('web')->user(), (string) $data['email'], (string) $data['scope_type'],
@@ -149,12 +148,14 @@ final class AccountInvitationResource extends Resource
             ->recordActions([
                 Action::make('details')->label('Прогресс и история')
                     ->icon('heroicon-o-clock')
+                    ->visible(fn (AccountInvitation $record): bool => self::canView($record))
                     ->modalHeading(fn (AccountInvitation $record): string => 'Приглашение #'.$record->id)
                     ->modalSubmitAction(false)
-                    ->modalContent(fn (AccountInvitation $record) => view(
-                        'filament.backoffice.account-invitation-history',
-                        ['invitation' => $record->load(['events', 'acceptedUser', 'issuer'])],
-                    ))
+                    ->modalContent(function (AccountInvitation $record) {
+                        abort_unless(self::canView($record), 403);
+                        return view('filament.backoffice.account-invitation-history',
+                            ['invitation' => $record->load(['events', 'acceptedUser', 'issuer'])]);
+                    })
                     ->extraModalFooterActions(fn (AccountInvitation $record): array => [
                         self::renewAction('renewFromDetails')->record($record)->cancelParentActions(),
                         self::revokeAction('revokeFromDetails')->record($record)->cancelParentActions(),
@@ -171,7 +172,7 @@ final class AccountInvitationResource extends Resource
     {
         return Action::make($name)->label('Продлить / обновить ссылку')
             ->icon('heroicon-o-arrow-path')
-            ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
+            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()) && $record->canManageLink())
             ->schema([
                 Select::make('days')->label('Новый срок')->required()->default(7)
                     ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
@@ -195,9 +196,10 @@ final class AccountInvitationResource extends Resource
     private static function revokeAction(string $name = 'revoke'): Action
     {
         return Action::make($name)->label('Аннулировать')->color('danger')
-            ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
+            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()) && $record->canManageLink())
             ->requiresConfirmation()
             ->action(function (AccountInvitation $record): void {
+                abort_unless(app(AccountInvitationAccess::class)->canMutate(auth('web')->user()), 403);
                 app(AccountInvitationManager::class)->revoke($record, auth('web')->user());
                 Notification::make()->success()->title('Приглашение аннулировано')->send();
             });
@@ -206,7 +208,7 @@ final class AccountInvitationResource extends Resource
     private static function restoreAction(string $name = 'restore'): Action
     {
         return Action::make($name)->label('Восстановить')->icon('heroicon-o-arrow-path')
-            ->visible(fn (AccountInvitation $record): bool => $record->canRestoreLink())
+            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()) && $record->canRestoreLink())
             ->modalDescription('Приглашение снова станет активным. Получателю будет отправлена новая ссылка.')
             ->schema([
                 Select::make('days')->label('Новый срок')->required()->default(7)
