@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -74,8 +75,10 @@ class VenueController extends Controller
         ]);
     }
 
-    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse
+    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors, ?string $landingSlug = null): Response|JsonResponse|RedirectResponse
     {
+        $navigation = app(VenueCatalogLandingNavigation::class);
+        $requestedLanding = $navigation->prepare($request, $landingSlug);
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'city_id' => ['nullable', 'integer', 'min:1', 'exists:cities,id'],
@@ -96,6 +99,17 @@ class VenueController extends Controller
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'fragment' => ['nullable', Rule::in(['items'])],
         ]);
+        $landing = $navigation->match($request, $filters);
+        $isFragment = ($filters['fragment'] ?? null) === 'items';
+        if (! $isFragment && ! $request->expectsJson()) {
+            if ($landing !== null && ! $landing->is($requestedLanding)) {
+                return redirect()->to($navigation->url($landing, $navigation->presentationQuery($request, $filters)));
+            }
+            if ($requestedLanding !== null && $landing === null) {
+                return redirect()->route('venues', $filters);
+            }
+        }
+
         // A selected interest is strictly owned by the current canonical user.
         // An empty selection filters against ANY active, non-expired interest.
         $viewer = $request->user()?->canonical();
@@ -118,11 +132,31 @@ class VenueController extends Controller
             ? ($chosenInterest !== null ? $myInterests->where('id', $chosenInterest)->values() : $myInterests)
             : null;
         $venues = $useCase->handle(
-            $request->user(), $actors->resolveForRequest($request), $filters, $matchingInterests,
+            $landing === null ? $request->user() : null,
+            $landing === null ? $actors->resolveForRequest($request) : null,
+            $filters, $matchingInterests,
             configuredRentalOnly: $request->boolean('rental_configured'),
         );
+        $landingData = [];
+        if ($landing !== null) {
+            $pageNumber = (int) ($filters['page'] ?? 1);
+            $canonical = $navigation->url($landing, $pageNumber > 1 ? ['page' => $pageNumber] : []);
+            $landingData = app(PageSeoResolver::class)->resolve(
+                SeoEntityTypeEnum::VENUE_CATALOG_LANDING,
+                $landing->id,
+                $landing->h1.' | MSKBA',
+                $landing->intro_text,
+                $canonical,
+            ) + [
+                'landing' => $landing,
+                'landingUrl' => $navigation->url($landing),
+                // Indexing and sitemap eligibility are deliberately deferred.
+                'metaRobots' => 'noindex, nofollow, noarchive',
+            ];
+        }
+
         if (app(ThemeResolver::class)->active() !== 'mskba_app') {
-            return ThemeResolver::page('venues.index', [
+            return ThemeResolver::page('venues.index', $landingData + [
                 'venues' => $venues,
                 'filters' => $filters,
                 'types' => VenueTypeEnum::cases(),
@@ -175,7 +209,7 @@ class VenueController extends Controller
             ])->header('Cache-Control', 'private, no-store');
         }
 
-        return ThemeResolver::page('venues.index', compact(
+        return ThemeResolver::page('venues.index', $landingData + compact(
             'venues', 'filters', 'total', 'page', 'hasMore', 'currentView', 'mapPoints',
         ) + [
             'types' => VenueTypeEnum::cases(),
