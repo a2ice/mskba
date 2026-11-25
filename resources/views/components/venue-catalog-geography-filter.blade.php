@@ -19,7 +19,7 @@
     </select>
     @if($appGeography)<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>@endif
 </label>
-<div data-venue-geography-district-field @if(!$selectedCity) hidden @endif>
+<div data-venue-geography-district-field @if(!$selectedCity)hidden @endif>
     <label @unless($appGeography) class="default-category-filter__field" @endunless>
         <span>Округ или район</span>
         @if($appGeography)<span class="select-control">@endif
