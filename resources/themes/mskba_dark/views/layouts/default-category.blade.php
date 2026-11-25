@@ -32,6 +32,13 @@
                 <h1>{{ $title }}</h1>
             </header>
 
+            @if($categoryId === 'venues')
+                @include('partials.venues.catalog-landing-editorial', [
+                    'editorialPosition' => 'intro',
+                    'editorialClass' => 'venue-show-section__description',
+                    'editorialPage' => $filters['page'] ?? 1,
+                ])
+            @endif
             <div class="default-category__grid">
                 <aside class="default-category__sidebar" aria-label="Навигация и фильтры раздела">
                     <div class="default-category__sidebar-panel" data-default-category-sidebar-accordion>
@@ -193,6 +200,13 @@
                     @yield('category-pagination')
                 </main>
             </div>
+            @if($categoryId === 'venues')
+                @include('partials.venues.catalog-landing-editorial', [
+                    'editorialPosition' => 'body',
+                    'editorialClass' => 'venue-show-section__description',
+                    'editorialPage' => $filters['page'] ?? 1,
+                ])
+            @endif
         </div>
     </section>
 
