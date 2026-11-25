@@ -119,12 +119,16 @@ final class AccountInvitationLifecycleTest extends TestCase
         $previousExpiry = $invitation->expires_at->toIso8601String();
         $manager->revoke($invitation, $issuer);
         $invitation->refresh();
+        $this->assertTrue($invitation->canRestoreLink());
+        $this->assertSame('Аннулировано', $invitation->systemStatusLabel());
         $previousRevocation = $invitation->revoked_at->toIso8601String();
 
         $url = $manager->restore($invitation, $issuer, 14, 'Получатель снова готов подключиться');
         $invitation->refresh();
 
         $this->assertSame('pending', $invitation->status);
+        $this->assertSame('Восстановлено', $invitation->systemStatusLabel());
+        $this->assertFalse($invitation->canRestoreLink());
         $this->assertNull($invitation->revoked_at);
         $this->assertNotSame($previousHash, $invitation->token_hash);
         $this->assertNull($invitation->accepted_user_id);
