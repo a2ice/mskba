@@ -177,8 +177,10 @@ class PublicVenuesApiTest extends TestCase
             // Free pricing and request approval are separate dimensions; a
             // free hall with manual confirmation still matches free access.
             [['access' => 'free'], [$free->id, $approval->id]],
-            // A closed venue must never advertise a bookable paid court.
-            [['access' => 'paid'], []],
+            // Payment type is independent of temporary closure; availability is explicit.
+            [['access' => 'paid'], [$paid->id]],
+            [['access' => 'paid', 'operational_status' => 'active'], []],
+            [['access' => 'paid', 'operational_status' => 'temporarily_closed'], [$paid->id]],
             [['access' => 'approval'], [$approval->id]],
             [['type' => 'school', 'operational_status' => 'active', 'access' => 'free'], [$free->id]],
             [['search' => 'school free'], [$free->id]],
@@ -191,6 +193,11 @@ class PublicVenuesApiTest extends TestCase
                 ->json('data');
             $this->assertSame($expected, array_column($actual, 'id'), json_encode($filters));
         }
+
+        $this->getJson(route('api.v1.venues.index', ['access' => 'paid']))
+            ->assertOk()->assertJsonPath('data.0.matched_court.requires_payment', true)
+            ->assertJsonPath('data.0.matched_court.is_open', false)
+            ->assertJsonPath('data.0.has_free_access', false);
 
         // Nullable payment terms are not silently treated as free.
         $this->getJson(route('api.v1.venues.index', ['type' => 'street_court']))

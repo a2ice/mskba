@@ -35,7 +35,7 @@ features: they require a separate one-day Page Builder agent Sanctum token
 for a confirmed superadmin with the relevant backoffice permissions.
 
 The spec includes the currently implemented REST v1 routes, including mobile registration (`POST /api/v1/auth/register`) and
-`GET /api/v1/venues/{venue}` for one confirmed venue by numeric ID.
+`GET /api/v1/venues/{venue}` for one confirmed venue by numeric ID. The catalogue matches indoor/outdoor and payment filters against the same court; closed courts retain their payment category. The optional operational status narrows the matched court (or the venue without zone filters). `matched_court` supplies the selected zone and `court_count` counts all non-deleted zones.
 The deprecated `/api/get_venues` alias was removed from DEV. It does **not**
 expose nonexistent `/users`, `/teams`, or write endpoints. Adding new
 features requires new Laravel operations, OpenAPI descriptions and tests.

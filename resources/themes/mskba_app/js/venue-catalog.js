@@ -225,9 +225,16 @@ document.querySelectorAll('[data-venue-interest-filter]').forEach(root => {
         if (point.matched_court) {
             sections.push('<div>Подходящий зал: ' + escapeHtml(point.matched_court) + '</div>');
         }
-        if (point.free_courts) sections.push('<div>Есть бесплатный доступ</div>');
-        if (point.paid_courts) sections.push('<div>Есть платные залы</div>');
-        if (point.approval_courts) sections.push('<div>Есть залы с подтверждением</div>');
+        const court = point.matched_court_details;
+        if (court) {
+            if (court.type_label) sections.push('<div>' + escapeHtml(court.type_label) + '</div>');
+            if (court.operational_status_label) sections.push('<div>' + escapeHtml(court.operational_status_label) + '</div>');
+            sections.push('<div>' + (court.requires_payment === true ? 'Платно' : court.requires_payment === false ? 'Бесплатно' : 'Условия уточняются') + '</div>');
+        } else {
+            if (point.free_courts) sections.push('<div>Есть бесплатные зоны</div>');
+            if (point.paid_courts) sections.push('<div>Есть платные зоны</div>');
+        }
+        if (point.approval_courts) sections.push(court ? '<div>Требуется подтверждение</div>' : '<div>Есть залы с подтверждением</div>');
         sections.push('<a href="' + escapeHtml(point.url) + '">' +
             (point.matched_court ? 'Открыть зал' : 'Открыть площадку') + '</a>');
         if (Number.isSafeInteger(Number(point.id)) && Number(point.id) > 0) {

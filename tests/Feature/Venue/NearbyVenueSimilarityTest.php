@@ -75,7 +75,7 @@ final class NearbyVenueSimilarityTest extends TestCase
         // Seed the same cache consumed in production; VenueSearchCache is final.
         config()->set('venue_search.store', 'array');
         Cache::store('array')->put('venue-search:version', 1);
-        Cache::store('array')->put('venue-search:index:court-features-v2:v1', $documents, 60);
+        Cache::store('array')->put('venue-search:index:court-features-v3:v1', $documents, 60);
 
         return new FindNearbyVenuesHandler(new VenueSearchCache());
     }
