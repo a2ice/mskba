@@ -37,18 +37,23 @@ final class DashboardScheduleRentalsTest extends TestCase
         $other = $this->confirmedUser();
         $actor = app(CurrentActorResolver::class)->resolve($user, null);
         $own = Event::factory()->create(['organizer_actor_id' => $actor->id, 'type' => EventTypeEnum::TRAINING]);
-        $joined = Event::factory()->create(['type' => EventTypeEnum::TRAINING]);
+        $joined = Event::factory()->create(['type' => EventTypeEnum::TRAINING])->refresh();
         $joined->participants()->create([
             'user_id' => $user->id, 'role' => EventParticipantRoleEnum::PARTICIPANT,
             'status' => EventParticipantStatusEnum::CONFIRMED,
             'confirmation_version' => $joined->participation_confirmation_version,
         ]);
         $cancelled = Event::factory()->create(['organizer_actor_id' => $actor->id, 'status' => EventStatusEnum::CANCELLED]);
-        $private = Event::factory()->create(['visibility' => EventVisibilityEnum::PRIVATE]);
+        $private = Event::factory()->create(['visibility' => EventVisibilityEnum::PRIVATE])->refresh();
         $private->participants()->create([
             'user_id' => $user->id, 'role' => EventParticipantRoleEnum::PARTICIPANT,
             'status' => EventParticipantStatusEnum::CONFIRMED,
             'confirmation_version' => $private->participation_confirmation_version,
+        ]);
+        $stale = Event::factory()->create(['type' => EventTypeEnum::TRAINING, 'participation_confirmation_version' => 2]);
+        $stale->participants()->create([
+            'user_id' => $user->id, 'role' => EventParticipantRoleEnum::PARTICIPANT,
+            'status' => EventParticipantStatusEnum::CONFIRMED, 'confirmation_version' => 1,
         ]);
         $provider = app(UpcomingEventsProvider::class);
         $data = $provider->getData($user, []);
