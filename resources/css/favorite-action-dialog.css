@@ -29,3 +29,10 @@
 .venue-favorite-follow[data-state="active"] .venue-favorite-follow__message{color:var(--text,#f5f6f8);}
 .venue-favorite-follow[data-state="loading"] .venue-favorite-follow__action{cursor:progress;}
 @media(max-width:480px){.venue-favorite-follow{padding:12px;gap:10px}}
+
+/* Text buttons use the same heart and pressed state as the shared follow action. */
+[data-venue-favorite-main],[data-venue-favorite-footer]{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+[data-venue-favorite-main][aria-pressed="true"] .venue-favorite-follow__icon,
+[data-venue-favorite-footer][aria-pressed="true"] .venue-favorite-follow__icon{fill:currentColor;color:var(--accent,currentColor)}
+[data-venue-favorite-footer][aria-pressed="true"]:disabled{opacity:1;cursor:default}
+#app-venue-interest[hidden],a[href="#app-venue-interest"][hidden]{display:none!important}

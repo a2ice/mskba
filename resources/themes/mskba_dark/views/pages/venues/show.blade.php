@@ -308,7 +308,7 @@
                 <div class="venue-hero__summary">
                     <div class="venue-play-hero-actions" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
                         <button type="button" class="btn btn--primary" data-venue-play-open>Хочу здесь играть</button>
-                        <button type="button" class="btn btn--secondary" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false">В избранное ({{ $favoritesCount }})</button>
+                        <button type="button" class="btn btn--secondary" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false"><svg class="venue-favorite-follow__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span data-venue-favorite-main-label>В избранное@if($favoritesCount > 0) ({{ $favoritesCount }})@endif</span></button>
                     </div>
                     <div class="venue-hero__details">
                         <div>
@@ -664,11 +664,11 @@
                 @endif
             </section>
 
+            @if($legacyInterestCount > 0)
             <section id="venue-interest" class="venue-show-section">
                 <div class="venue-show-section__heading">
-                    <h2>{{ $legacyInterestCount > 0 ? 'Площадкой интересуются' : 'Играй здесь' }}</h2>
+                    <h2>Площадкой интересуются</h2>
                 </div>
-                @if($legacyInterestCount > 0)
                     <div class="venue-nearby__interest-avatars" aria-label="Заинтересованные игроки">
                         @foreach($legacyInterestUsers->take(5) as $player)
                             <span class="venue-nearby__avatar" title="{{ $player['public'] || $player['is_self'] ? $player['name'] : 'Игрок' }}">
@@ -697,11 +697,8 @@
                             @endforeach
                         </div>
                     </dialog>
-                @else
-                    <p>Добавьте площадку в избранное, чтобы следить за новыми играми.</p>
-                    @include('components.venue-favorite-follow', ['buttonClass' => 'btn btn--primary', 'eventUrl' => $legacyCreateEventUrl])
-                @endif
             </section>
+            @endif
             <section id="schedule" class="venue-show-section">
                 <div class="venue-show-section__heading">
                     <div>

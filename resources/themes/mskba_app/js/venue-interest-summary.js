@@ -15,6 +15,14 @@ if (venueSummary) {
             const updated = html.querySelector('[data-play-venue-interest-summary]');
             if (updated && request === latestRequest) {
                 venueSummary.replaceChildren(...Array.from(updated.childNodes).map(node => document.importNode(node, true)));
+                const section = venueSummary.closest('#app-venue-interest');
+                const freshSection = updated.closest('#app-venue-interest');
+                if (section && freshSection) {
+                    section.hidden = freshSection.hidden;
+                    const anchor = document.querySelector('a[href="#app-venue-interest"]');
+                    if (anchor) anchor.hidden = section.hidden;
+                    window.dispatchEvent(new Event('mskba:venue-interest:visibility'));
+                }
                 const freshButtons = [...html.querySelectorAll('[data-venue-interest-action]')];
                 document.querySelectorAll('[data-venue-interest-action]').forEach((button, i) => {
                     const fresh = freshButtons[i];
