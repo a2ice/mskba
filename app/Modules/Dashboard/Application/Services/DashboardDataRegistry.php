@@ -5,6 +5,8 @@ namespace App\Modules\Dashboard\Application\Services;
 use App\Modules\Dashboard\Application\Contracts\DashboardDataProvider;
 use App\Modules\Dashboard\Application\Data\DashboardWidgetData;
 use App\Modules\Dashboard\Application\Providers\UnreadMessagesProvider;
+use App\Modules\Dashboard\Application\Providers\MyInterestsProvider;
+use App\Modules\Dashboard\Application\Providers\WalletSummaryProvider;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Identity\Domain\Models\User;
 
@@ -13,6 +15,8 @@ final class DashboardDataRegistry
     /** @var array<string, class-string<DashboardDataProvider>> */
     private const PROVIDERS = [
         'unread_messages' => UnreadMessagesProvider::class,
+        'my_interests' => MyInterestsProvider::class,
+        'wallet_summary' => WalletSummaryProvider::class,
     ];
 
     private function resolve(AccountDashboardWidget $widget): ?DashboardDataProvider
