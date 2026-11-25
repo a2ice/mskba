@@ -15,6 +15,7 @@
         'admin_venue_membership_changed', 'admin_venue_membership_reverted',
         'admin_staff_specializations_changed', 'admin_staff_specializations_reverted',
         'admin_system_role_changed', 'admin_system_role_reverted',
+        'admin_user_force_confirmed', 'admin_user_created',
     ];
     $logs = $user ? AuditLog::query()
         ->where(fn ($query) => $query
@@ -33,9 +34,21 @@
             @forelse($logs as $log)
                 <tr class="border-b">
                     <td data-label="Дата">{{ $log->created_at?->format('d.m.Y H:i') }}</td>
-                    <td data-label="Действие">{{ $log->event }} #{{ $log->id }}</td>
+                    <td data-label="Действие">{{ match($log->event) {
+                        'admin_user_force_confirmed' => 'Принудительное подтверждение аккаунта',
+                        'admin_user_created' => 'Создание пользователя',
+                        default => $log->event,
+                    } }} #{{ $log->id }}</td>
                     <td data-label="Автор">{{ $log->actor_id ?? 'система' }}</td>
-                    <td data-label="Основание">{{ $log->metadata['reason'] ?? '—' }}</td>
+                    <td data-label="Основание">{{ $log->metadata['reason'] ?? '—' }}
+                        @if($log->event === 'admin_user_force_confirmed')
+                            <div class="text-sm text-gray-500">Не выполнены: {{ implode(', ', array_map(fn ($key) => match ($key) {
+                                'primary_verified_contact' => 'основной контакт', 'first_name' => 'имя',
+                                'last_name' => 'фамилия', 'birth_date' => 'дата рождения', 'gender' => 'пол',
+                                default => $key,
+                            }, $log->metadata['missing_requirements'] ?? [])) }}</div>
+                        @endif
+                    </td>
                     <td data-label="До / после">
                         @if(in_array($log->event, $revisableEvents, true))
                             <details>
