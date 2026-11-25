@@ -32,7 +32,7 @@ final class ListVenuesHandler
         private readonly RecommendVenuesForIntent $interestMatcher,
     ) {}
 
-    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
+    /** @param array{search?: string|null, city_id?: int|string|null, district_id?: int|string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
     /** @param Collection<int, PlayIntent>|null $matchingInterests */
     public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null): array
     {
@@ -64,6 +64,12 @@ final class ListVenuesHandler
                             ->orWhereLike('raw_address', $needle)
                             ->orWhereLike('short_description', $needle));
                     }
+                })
+                ->when(isset($filters['city_id']) || isset($filters['district_id']), function ($filtered) use ($filters): void {
+                    $filtered->whereHas('location.address', function ($address) use ($filters): void {
+                        $address->when(isset($filters['city_id']), fn ($query) => $query->where('city_id', (int) $filters['city_id']))
+                            ->when(isset($filters['district_id']), fn ($query) => $query->where('district_id', (int) $filters['district_id']));
+                    });
                 })
                 ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->whereDiscoveryType($type))
                 ->when((bool) ($filters['has_upcoming_events'] ?? false), function ($filtered) use ($filters): void {
