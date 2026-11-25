@@ -219,7 +219,7 @@ final class ShowVenueHandler
             $weeklyHours = [];
             $weekStart = CarbonImmutable::now(
                 (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'))
-            )->startOfWeek();
+            )->startOfWeek(CarbonInterface::MONDAY);
             for ($weekdayOffset = 0; $weekdayOffset < 7; $weekdayOffset++) {
                 $weekday = $weekStart->addDays($weekdayOffset);
                 $regular = $this->hours->intervals($venue, $court, $weekday, false);

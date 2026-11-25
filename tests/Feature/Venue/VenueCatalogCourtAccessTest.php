@@ -50,10 +50,16 @@ final class VenueCatalogCourtAccessTest extends TestCase
         $this->assertFalse($free->matchedRequiresBooking);
         $this->assertCount(1, $free->courtAccessSummary['free']);
         $this->assertCount(1, $free->courtAccessSummary['paid']);
+        $this->assertSame(['free'], $free->paymentBadgeStates());
+        $unfiltered = collect($handler->handle(null))->firstWhere('id', $venue->id);
+        $this->assertSame(['free', 'paid'], $unfiltered->paymentBadgeStates());
+        $this->assertSame(['free'], $unfiltered->paymentBadgeStates($free->matchedCourtUrl));
 
         $paid = collect($handler->handle(null, null, ['access' => 'paid']))->firstWhere('id', $venue->id);
         $this->assertNotNull($paid);
         $this->assertSame(route('venues.courts.show', [$venue->routeIdentifier(), $indoor->routeIdentifier()]), $paid->matchedCourtUrl);
+        $this->assertSame(['paid'], $paid->paymentBadgeStates());
+        $this->assertSame(['paid'], $unfiltered->paymentBadgeStates($paid->matchedCourtUrl));
 
         $approval = collect($handler->handle(null, null, ['access' => 'approval']))->firstWhere('id', $venue->id);
         $this->assertNotNull($approval);
@@ -155,6 +161,7 @@ final class VenueCatalogCourtAccessTest extends TestCase
         $venue->update(['requires_payment' => null]);
         $unknown = collect(app(ListVenuesHandler::class)->handle(null, null))->firstWhere('id', $venue->id);
         $this->assertCount(1, $unknown->courtAccessSummary['unknown']);
+        $this->assertSame(['unknown'], $unknown->paymentBadgeStates());
         $this->assertNull(collect(app(ListVenuesHandler::class)->handle(null, null, ['access' => 'free']))->firstWhere('id', $venue->id));
     }
 }
