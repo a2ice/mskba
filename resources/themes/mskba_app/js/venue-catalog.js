@@ -78,6 +78,7 @@ document.querySelectorAll('[data-venue-interest-filter]').forEach(root => {
     const spinner = root.querySelector('[data-venue-loader]');
     const error = root.querySelector('[data-venue-load-error]');
     const retry = root.querySelector('[data-venue-retry]');
+    const nextLink = root.querySelector('[data-venue-next-page]');
     const counter = root.querySelector('[data-venue-visible-count]');
     if (!items || !sentinel || !spinner || !error || !counter) return;
 
@@ -117,6 +118,17 @@ document.querySelectorAll('[data-venue-interest-filter]').forEach(root => {
             counter.textContent = String(ids.size);
             nextPage = result.has_more && Number.isInteger(Number(result.next_page))
                 ? Number(result.next_page) : null;
+            if (nextLink) {
+                if (nextPage) {
+                    const nextUrl = new URL(nextLink.href);
+                    nextUrl.searchParams.set('page', String(nextPage));
+                    nextLink.href = nextUrl.href;
+                } else {
+                    nextLink.remove();
+                    const navigation = root.querySelector('[data-venue-page-navigation]');
+                    if (navigation && !navigation.querySelector('a')) navigation.remove();
+                }
+            }
             if (!nextPage) observer.disconnect();
         } catch {
             failed = true;
@@ -131,6 +143,8 @@ document.querySelectorAll('[data-venue-interest-filter]').forEach(root => {
         }
     }
 
+    // The server-rendered links remain usable without IntersectionObserver.
+    if (!('IntersectionObserver' in window)) return;
     const observer = new IntersectionObserver(entries => {
         if (entries.some(entry => entry.isIntersecting)) void load();
     }, { rootMargin: '300px 0px' });
