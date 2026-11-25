@@ -136,11 +136,17 @@ final class ListVenuesHandler
 
                 return ['venue' => $venue, 'access' => $access, 'matched' => $matched];
             })
-            ->filter(fn (array $row): bool => $configuredRentalOnly && $row['access']['free'] === [] && $row['access']['paid'] === [] && $row['access']['unknown'] === []
-                ? false
-                : ($zoneMode
-                ? $row['matched'] !== null
-                : ($statusFilter === null || $row['venue']->operational_status->value === $statusFilter)))
+            ->filter(function (array $row) use ($configuredRentalOnly, $zoneMode, $statusFilter): bool {
+                if ($zoneMode) {
+                    return $row['matched'] !== null;
+                }
+
+                if ($configuredRentalOnly && $row['access']['free'] === [] && $row['access']['paid'] === [] && $row['access']['unknown'] === []) {
+                    return false;
+                }
+
+                return $statusFilter === null || $row['venue']->operational_status->value === $statusFilter;
+            })
             ->map(function (array $row) use (
                 $contractViewableVenueIds, $contractEditableVenueIds,
                 $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds,
