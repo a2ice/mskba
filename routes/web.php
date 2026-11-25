@@ -1555,6 +1555,8 @@ Route::get('/invites/continue', [\App\Modules\Invitation\Presentation\Http\Contr
 Route::get('/invites/{token}', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'entry'])
     ->middleware('throttle:60,1')->where('token', '[a-f0-9]{64}')
     ->name('account-invitations.show');
+Route::post('/invites/continue/interest', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'interest'])
+    ->middleware('throttle:10,1')->name('account-invitations.interest');
 Route::post('/invites/continue/register', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'register'])
     ->middleware('throttle:5,1')->name('account-invitations.register');
 Route::post('/invites/continue/accept', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'accept'])

@@ -60,6 +60,65 @@ final class AccountInvitationWorkflowTest extends TestCase
         $this->assertNotSame($token, $invitation->token_hash);
     }
 
+    public function test_interest_requires_post_and_does_not_accept_or_verify_invitation(): void
+    {
+        [, , $invitation, $token] = $this->invite();
+        $this->followingRedirects()->get(route('account-invitations.show', $token))->assertOk();
+        $this->assertNull($invitation->fresh()->interested_at);
+        // The public PageBuilder GET fallback resolves unknown pages to 404.
+        $this->get(route('account-invitations.interest'))->assertNotFound();
+        $this->assertSame(['POST'], app('router')->getRoutes()
+            ->getByName('account-invitations.interest')->methods());
+        $this->assertNull($invitation->fresh()->interested_at);
+
+        $this->post(route('account-invitations.interest'))->assertRedirect(route('account-invitations.continue'));
+        $invitation->refresh();
+        $this->assertNotNull($invitation->interested_at);
+        $this->assertSame('Заинтересован', $invitation->invitationStatusLabel());
+        $this->assertSame('interested', $invitation->progress);
+        $this->assertNull($invitation->accepted_user_id);
+        $this->assertNull($invitation->contact_verified_at);
+        $this->assertDatabaseCount('contacts', 0);
+        $firstInterest = $invitation->interested_at->toIso8601String();
+
+        $this->travel(1)->minutes();
+        $this->post(route('account-invitations.interest'))->assertRedirect(route('account-invitations.continue'));
+        $this->get(route('account-invitations.continue'))->assertOk();
+        $this->assertSame($firstInterest, $invitation->fresh()->interested_at->toIso8601String());
+        $this->assertSame(1, $invitation->events()->where('event', 'interested')->count());
+        $this->assertSame('interested', $invitation->fresh()->progress);
+    }
+
+    public function test_expired_or_revoked_invitation_does_not_record_interest(): void
+    {
+        [$issuer, , $revoked, $revokedToken] = $this->invite('revoked-interest@example.test');
+        app(AccountInvitationManager::class)->revoke($revoked, $issuer);
+        $this->get(route('account-invitations.show', $revokedToken))->assertRedirect();
+        $this->post(route('account-invitations.interest'))->assertRedirect(route('account-invitations.continue'));
+        $this->assertNull($revoked->fresh()->interested_at);
+        $this->assertFalse($revoked->events()->where('event', 'interested')->exists());
+
+        [, , $expired, $expiredToken] = $this->invite('expired-interest@example.test');
+        $this->travel(8)->days();
+        $this->get(route('account-invitations.show', $expiredToken))->assertRedirect();
+        $this->post(route('account-invitations.interest'))->assertRedirect(route('account-invitations.continue'));
+        $this->assertNull($expired->fresh()->interested_at);
+        $this->assertFalse($expired->events()->where('event', 'interested')->exists());
+    }
+
+    public function test_rotated_invitation_cannot_record_interest_from_stale_revision(): void
+    {
+        [$issuer, , $invitation, $token] = $this->invite();
+        $manager = app(AccountInvitationManager::class);
+        $stale = clone $invitation;
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $manager->renew($invitation, $issuer, 14);
+        $this->assertFalse($manager->markInterested($stale));
+        $this->post(route('account-invitations.interest'))->assertNotFound();
+        $this->assertNull($invitation->fresh()->interested_at);
+        $this->assertFalse($invitation->events()->where('event', 'interested')->exists());
+    }
+
     public function test_registration_explicitly_verifies_invited_email_but_does_not_grant_ownership(): void
     {
         [$issuer, $venue, $invitation, $token] = $this->invite();

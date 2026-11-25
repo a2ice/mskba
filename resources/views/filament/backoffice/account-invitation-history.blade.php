@@ -5,6 +5,7 @@
     <p>Приглашение: {{ $invitation->invitationStatusLabel() }} · Системный статус: {{ $invitation->systemStatusLabel() }} · Процедура: {{ $invitation->statusLabel() }} · {{ $invitation->progressLabel() }}</p>
     <p>Создал: {{ $invitation->issuer?->username }} · Принял: {{ $invitation->acceptedUser?->username ?? '—' }}</p>
     <p>Отправлено: {{ $invitation->sent_at?->format('d.m.Y H:i') ?? '—' }} · Первое техническое открытие: {{ $invitation->viewed_at?->format('d.m.Y H:i') ?? '—' }}</p>
+    <p>Первое проявление интереса: {{ $invitation->interested_at?->format('d.m.Y H:i') ?? '—' }}</p>
     <p>Срок действия: {{ $invitation->expires_at?->format('d.m.Y H:i') ?? '—' }} · Аннулировано: {{ $invitation->revoked_at?->format('d.m.Y H:i') ?? '—' }}</p>
     <p>Принято / подтверждение контакта: {{ $invitation->contact_verified_at?->format('d.m.Y H:i') ?? '—' }} · Завершено: {{ $invitation->completed_at?->format('d.m.Y H:i') ?? '—' }}</p>
     <p class="text-sm text-gray-500 dark:text-gray-400">Открытие ссылки может быть выполнено почтовым сканером и не подтверждает интерес получателя.</p>
@@ -16,6 +17,7 @@
                 'created' => 'Создано',
                 'sent' => 'Отправлено',
                 'viewed' => 'Ссылка открыта',
+                'interested' => 'Заинтересован',
                 'link_renewed' => 'Срок продлён / ссылка обновлена',
                 'revoked' => 'Аннулировано',
                 'restored' => 'Восстановлено',

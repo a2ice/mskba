@@ -190,6 +190,32 @@ final class AccountInvitationManager
         });
     }
 
+    /**
+     * Explicit interaction with a valid invitation, not identity verification
+     * or acceptance. Repeated clicks preserve the first timestamp and event.
+     */
+    public function markInterested(AccountInvitation $invitation): bool
+    {
+        return DB::transaction(function () use ($invitation): bool {
+            $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            if (! $record->canManageLink() || $record->isExpired()
+                || ! hash_equals($record->token_hash, $invitation->token_hash)) {
+                return false;
+            }
+
+            if ($record->interested_at === null) {
+                $fields = ['interested_at' => now()];
+                if (in_array($record->progress, ['created', 'sent', 'viewed'], true)) {
+                    $fields['progress'] = 'interested';
+                }
+                $record->forceFill($fields)->save();
+                $this->event($record, 'interested');
+            }
+
+            return true;
+        }, 3);
+    }
+
     public function accept(AccountInvitation $invitation, User $user, bool $registered = false): AccountInvitation
     {
         return DB::transaction(function () use ($invitation, $user, $registered): AccountInvitation {
