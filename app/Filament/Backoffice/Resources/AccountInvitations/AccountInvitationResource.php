@@ -84,6 +84,7 @@ final class AccountInvitationResource extends Resource
                 TextColumn::make('issuer.username')->label('Отправитель')->placeholder('—'),
                 TextColumn::make('sent_at')->label('Отправлено')->dateTime('d.m.Y H:i')->sortable()->placeholder('—'),
                 TextColumn::make('viewed_at')->label('Открыто')->tooltip('Техническое открытие ссылки, в том числе почтовым сканером')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('interested_at')->label('Заинтересован')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(),
                 TextColumn::make('contact_verified_at')->label('Принято / контакт подтверждён')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('views_count')->label('Открытия')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('expires_at')->label('Ссылка до')->dateTime('d.m.Y H:i')->sortable(),
