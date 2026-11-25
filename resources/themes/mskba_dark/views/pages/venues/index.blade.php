@@ -49,7 +49,10 @@
             <i class="ti ti-search" aria-hidden="true"></i>
             <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" form="venue-catalog-filter-form" data-default-category-search>
         </label>
-        @foreach(['type', 'operational_status', 'access', 'latitude', 'longitude', 'radius_km', 'city_id', 'district_id', 'rental_configured'] as $filterKey)
+        @foreach((array) ($filters['type'] ?? []) as $selectedType)
+            <input type="hidden" name="type[]" value="{{ $selectedType }}">
+        @endforeach
+        @foreach(['operational_status', 'access', 'latitude', 'longitude', 'radius_km', 'city_id', 'district_id', 'rental_configured'] as $filterKey)
             @if(filled($filters[$filterKey] ?? null))
                 <input type="hidden" name="{{ $filterKey }}" value="{{ $filters[$filterKey] }}">
             @endif
