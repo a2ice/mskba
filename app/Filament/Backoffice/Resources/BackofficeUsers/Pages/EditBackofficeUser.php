@@ -31,6 +31,7 @@ use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotH
 use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminAssignParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
+use App\Modules\Identity\Application\UseCases\AdminForceConfirmUserHandler;
 use App\Modules\Identity\Application\UseCases\SetUserPasswordHandler;
 use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
@@ -276,6 +277,26 @@ final class EditBackofficeUser extends EditRecord
                             ->title($result->replayed ? 'Этот перевод уже выполнен' : 'Бонусы перечислены пользователю')
                             ->send();
                     }
+                }),
+            Action::make('forceConfirmAccount')
+                ->label('Принудительно подтвердить аккаунт')
+                ->color('danger')
+                ->icon('heroicon-o-exclamation-triangle')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && app(AdminForceConfirmUserHandler::class)->canConfirm(auth('web')->user(), $this->getRecord()))
+                ->modalHeading('Принудительное подтверждение аккаунта')
+                ->modalDescription('Исключительное действие: аккаунт получит статус «Подтверждён» даже при невыполненных условиях. Контакты не будут подтверждены, персональные данные не изменятся. Статус может влиять на доступ к функциям портала. Основание и невыполненные условия сохраняются в истории.')
+                ->modalSubmitActionLabel('Подтвердить принудительно')
+                ->schema([Textarea::make('reason')->label('Основание исключения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null && BackofficeUserResource::canEdit($this->getRecord()), 403);
+                    $user = app(AdminForceConfirmUserHandler::class)->handle(
+                        $actor, $this->getRecord(), (string) $data['reason'],
+                    );
+                    $this->getRecord()->refresh();
+                    $this->data['account_status'] = $user->status->value;
+                    Notification::make()->success()->title('Аккаунт подтверждён принудительно')->send();
                 }),
             Action::make('saveGeneralInline')
                 ->label('Сохранить общие данные')
