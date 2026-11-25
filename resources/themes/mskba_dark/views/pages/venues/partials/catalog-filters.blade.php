@@ -25,6 +25,7 @@
         @disabled($currentView === 'cards')
     >
 
+    @include('components.venue-catalog-geography-filter', ['geographyTheme' => 'dark'])
     @include('components.venue-catalog-nearby-filter', ['scope' => $scope])
 
     <label class="default-category-filter__field">
