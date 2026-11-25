@@ -34,7 +34,7 @@ final class ListVenuesHandler
 
     /** @param array{search?: string|null, city_id?: int|string|null, district_id?: int|string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
     /** @param Collection<int, PlayIntent>|null $matchingInterests */
-    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null): array
+    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null, bool $configuredRentalOnly = false): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -124,8 +124,8 @@ final class ListVenuesHandler
         $zoneMode = $environment !== null || filled($accessFilter);
 
         return $venues
-            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment, $statusFilter, $zoneMode): array {
-                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id), includeClosed: true);
+            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment, $statusFilter, $zoneMode, $configuredRentalOnly): array {
+                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id), includeClosed: true, configuredRentalOnly: $configuredRentalOnly);
                 $matched = VenueCourtDiscoveryAccess::select(
                     $access,
                     $environment?->value,
@@ -136,9 +136,11 @@ final class ListVenuesHandler
 
                 return ['venue' => $venue, 'access' => $access, 'matched' => $matched];
             })
-            ->filter(fn (array $row): bool => $zoneMode
+            ->filter(fn (array $row): bool => $configuredRentalOnly && $row['access']['free'] === [] && $row['access']['paid'] === [] && $row['access']['unknown'] === []
+                ? false
+                : ($zoneMode
                 ? $row['matched'] !== null
-                : ($statusFilter === null || $row['venue']->operational_status->value === $statusFilter))
+                : ($statusFilter === null || $row['venue']->operational_status->value === $statusFilter)))
             ->map(function (array $row) use (
                 $contractViewableVenueIds, $contractEditableVenueIds,
                 $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds,
