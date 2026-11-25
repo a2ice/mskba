@@ -99,6 +99,7 @@
 @endsection
 
 @section('category-mobile-filters')
+    @include('venues.partials.map-dialog', ['mapShowCurrentVenueLink' => true])
     @component('theme::partials.modal.layout', ['id' => 'venue-catalog-filters', 'dialogClass' => 'default-category-mobile-filters__dialog'])
         <h2 class="modal_title" id="modal-title-venue-catalog-filters">Фильтры площадок</h2>
         @include('theme::pages.venues.partials.catalog-filters', ['formId' => 'venue-catalog-filter-form-mobile', 'scope' => 'mobile', 'currentView' => $currentView])

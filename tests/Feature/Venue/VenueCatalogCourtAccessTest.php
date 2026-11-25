@@ -62,6 +62,9 @@ final class VenueCatalogCourtAccessTest extends TestCase
         $this->assertSame(['paid'], $unfiltered->paymentBadgeStates($paid->matchedCourtUrl));
         $this->assertSame(2, $unfiltered->cardCourtCount());
         $this->assertSame(0, $paid->cardCourtCount());
+        $this->assertSame(['approval' => true, 'booking' => true], $unfiltered->cardConditions());
+        $this->assertSame(['approval' => false, 'booking' => false], $free->cardConditions($free->cardCourt()));
+        $this->assertSame(['approval' => true, 'booking' => true], $paid->cardConditions($paid->cardCourt()));
         $indoor->update(['operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED]);
         $mixed = collect($handler->handle(null))->firstWhere('id', $venue->id);
         $this->assertSame(['free', 'paid'], $mixed->paymentBadgeStates());
@@ -85,7 +88,9 @@ final class VenueCatalogCourtAccessTest extends TestCase
         $this->get(route('venues', ['access' => 'free']))
             ->assertOk()
             ->assertSee('Подходящий зал: Уличная площадка')
-            ->assertSee($free->matchedCourtUrl, false);
+            ->assertSee($free->matchedCourtUrl, false)
+            ->assertDontSee('data-venue-card-tooltip="Игровых зон:', false)
+            ->assertDontSee('data-venue-card-tooltip="Требуется подтверждение"', false);
 
         $this->get(route('venues', ['access' => 'free', 'view' => 'map']))
             ->assertOk()

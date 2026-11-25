@@ -27,6 +27,7 @@ if (dialog) {
     let contextRequest = null;
     let activeVenueId = null;
     let generation = 0;
+    const initialContext = { data: {...canvas.dataset}, title: title.textContent, address: address.textContent, nearby: apply.dataset.nearbyUrl, currentLink: dialog.dataset.currentVenueLink };
 
     const safeHtml = value => {
         const el = document.createElement('span');
@@ -151,6 +152,7 @@ if (dialog) {
         destroyMap();
         resetNearby();
         activeVenueId = Number(venue.id);
+        dialog.dataset.currentVenueLink = 'true';
         const name = String(venue.name || 'Площадка');
         title.textContent = name + ' — на карте';
         address.textContent = String(venue.address || '');
@@ -169,7 +171,22 @@ if (dialog) {
         event.preventDefault();
         // The venue detail is already a server-rendered map context.
         const item = trigger.closest('[data-venue-id]');
-        if (!item) { show(); return; }
+        if (!item) {
+            contextRequest?.abort();
+            if (activeVenueId !== null || canvas.dataset.name !== initialContext.data.name) {
+                generation++;
+                destroyMap();
+                resetNearby();
+                Object.assign(canvas.dataset, initialContext.data);
+                title.textContent = initialContext.title;
+                address.textContent = initialContext.address;
+                apply.dataset.nearbyUrl = initialContext.nearby;
+                dialog.dataset.currentVenueLink = initialContext.currentLink;
+                activeVenueId = null;
+            }
+            show();
+            return;
+        }
 
         const id = Number(item.dataset.venueId);
         if (!Number.isSafeInteger(id) || id <= 0) return;

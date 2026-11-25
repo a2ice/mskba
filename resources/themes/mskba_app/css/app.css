@@ -38,6 +38,7 @@
 @import './group-rentals.css';
 @import './catalog-sidebar-sticky.css';
 @import './venue-catalog.css';
+@import '../../../css/venue-catalog-card.css';
 @import '../../mskba_dark/css/image-upload.css';
 @import './shop.css';
 @import './catalog-controls.css';

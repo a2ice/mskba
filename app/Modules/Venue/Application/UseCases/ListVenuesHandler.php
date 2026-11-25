@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
+use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
@@ -177,6 +178,17 @@ final class ListVenuesHandler
                     matchedCourtName: $matched['name'] ?? null,
                     matchedRequiresBooking: $matched['requires_booking'] ?? null,
                     matchedRequiresApproval: $matched['requires_booking_approval'] ?? null,
+                    metroStations: ($venue->location?->metroStations ?? collect())
+                        ->map(fn ($station) => new VenueMetroStationDTO(
+                            id: (int) $station->id,
+                            name: $station->name,
+                            lineName: $station->line?->name,
+                            lineColor: $station->line?->color,
+                            latitude: $station->latitude === null ? null : (string) $station->latitude,
+                            longitude: $station->longitude === null ? null : (string) $station->longitude,
+                            distanceMeters: $station->pivot?->distance_meters === null ? null : (int) $station->pivot->distance_meters,
+                            walkingTimeMinutes: $station->pivot?->walking_time_minutes === null ? null : (int) $station->pivot->walking_time_minutes,
+                        ))->values()->all(),
                 );
             })
             ->all();

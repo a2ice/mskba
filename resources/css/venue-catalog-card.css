@@ -1,0 +1,18 @@
+/* Shared compact venue card metadata; no global button or tooltip changes. */
+.venue-catalog-payment-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;width:100%;min-width:0}
+.venue-catalog-card-icons{display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;margin-left:auto;flex:none;white-space:nowrap;color:var(--muted, #b7bcb5)}
+.venue-catalog-card-icons__item{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:inherit;padding:2px 0;min-height:26px;cursor:pointer;font:inherit;font-size:13px;line-height:1}
+.venue-catalog-card-icons__item svg{display:block;width:18px;height:18px;flex:none}
+.venue-catalog-card-icons__item:is(:hover,:focus-visible,[aria-expanded="true"]){color:var(--accent,#ff7a1a)}
+.venue-catalog-card-icons__separator{font-size:12px;line-height:1;opacity:.55}
+.venue-card-tooltip{position:fixed;z-index:10000;box-sizing:border-box;width:max-content;max-width:min(280px,calc(100vw - 16px));padding:8px 11px;border-radius:8px;background:#222831;color:#fff;font:500 12px/1.4 system-ui,sans-serif;box-shadow:0 4px 14px #0003;text-align:center;pointer-events:none}
+.venue-card-tooltip[hidden]{display:none}
+.venue-catalog-address{appearance:none;display:inline-flex;align-items:center;gap:7px;align-self:flex-start;max-width:100%;padding:0;border:0;background:none;text-align:left;color:var(--muted,#b7bcb5);font:inherit;font-size:14px;line-height:1.4;cursor:pointer}
+.venue-catalog-address svg{width:17px;height:17px;flex:none}
+.venue-catalog-address:hover span{text-decoration:underline;text-underline-offset:3px}
+.venue-catalog-metro{display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px;color:var(--text,#f2f3ef);font-size:12px;line-height:1.35}
+.venue-catalog-metro__station{display:inline-flex;align-items:center;gap:5px}
+.venue-catalog-metro__dot{width:9px;height:9px;flex:none;border-radius:50%;background:var(--metro-color,#758392);border:1px solid #0002}
+.venue-catalog-card-description{display:block;margin:0;color:var(--muted,#b7bcb5);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.venue-catalog-card-icons__item:focus-visible,.venue-catalog-address:focus-visible{outline:2px solid var(--accent,#ff7a1a);outline-offset:2px;border-radius:4px}
+@media(max-width:520px){.venue-catalog-item--list .venue-catalog-address{font-size:11px}.venue-catalog-item--list .venue-catalog-metro,.venue-catalog-item--list .venue-catalog-card-description{font-size:11px}}

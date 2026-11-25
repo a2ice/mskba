@@ -173,3 +173,7 @@
         @endif
     </section>
 @endsection
+
+@section('category-before-items')
+    @include('theme::partials.venue-map-dialog', ['mapShowCurrentVenueLink' => true])
+@endsection
