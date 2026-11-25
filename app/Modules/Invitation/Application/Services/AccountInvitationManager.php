@@ -48,7 +48,8 @@ final class AccountInvitationManager
         if (AccountInvitation::query()->where('contact_value', $email)
             ->where('scope_type', $scopeType)->where('scope_id', $scopeId)
             ->where('role', $role)->where('status', 'pending')
-            ->where('expires_at', '>', now())->exists()) {
+            ->where(fn ($query) => $query->whereNotNull('accepted_user_id')
+                ->orWhere('expires_at', '>', now()))->exists()) {
             throw ValidationException::withMessages(['email' => 'Для этого контакта и роли уже есть активное приглашение.']);
         }
 
