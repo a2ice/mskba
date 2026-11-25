@@ -57,6 +57,12 @@ final class VenueCatalogGeographyTest extends TestCase
         );
         $this->assertSame([], $handler->handle(null, filters: ['city_id' => $otherCity->id, 'district_id' => $district->id]));
 
+        $this->get(route('venues'))->assertOk()
+            ->assertSee('data-venue-geography-district-field hidden', false);
+        $this->get(route('venues', ['district_id' => $district->id]))->assertOk()
+            ->assertDontSee('data-venue-geography-district-field hidden', false)
+            ->assertSee('GeoMatch01')->assertDontSee('GeoOtherDistrict');
+
         $filters = ['city_id' => $city->id, 'district_id' => $district->id];
         $this->get(route('venues', $filters))->assertOk()
             ->assertSee('GeoMatch01')->assertDontSee('GeoMatch05')->assertDontSee('GeoOtherDistrict')
