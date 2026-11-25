@@ -93,8 +93,9 @@ final readonly class VenueCourtDiscoveryAccess
         ?bool $requiresPayment = null,
         ?bool $requiresApproval = null,
         ?string $status = null,
+        bool $allowUnconstrained = false,
     ): ?array {
-        if ($environment === null && $requiresPayment === null && $requiresApproval === null) {
+        if (! $allowUnconstrained && $environment === null && $requiresPayment === null && $requiresApproval === null) {
             return null;
         }
 

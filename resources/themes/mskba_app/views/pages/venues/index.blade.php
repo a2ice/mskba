@@ -75,6 +75,7 @@
                         <span class="app-player-workspace__range-bounds" aria-hidden="true"><span>1</span><span>14</span></span>
                     </label>
                 </div>
+                @include('components.venue-catalog-rental-filter')
                 @auth
                 <div class="app-venues-catalog__interest-filter" data-venue-interest-filter>
                     <div class="app-venues-catalog__interest-label">

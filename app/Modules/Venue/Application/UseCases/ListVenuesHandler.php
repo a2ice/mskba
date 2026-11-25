@@ -121,7 +121,7 @@ final class ListVenuesHandler
         $accessFilter = $filters['access'] ?? null;
         $environment = VenueTypeEnum::tryFrom((string) ($filters['type'] ?? ''))?->discoveryEnvironment();
         $statusFilter = $filters['operational_status'] ?? null;
-        $zoneMode = $environment !== null || filled($accessFilter);
+        $zoneMode = $configuredRentalOnly || $environment !== null || filled($accessFilter);
 
         return $venues
             ->map(function (Venue $venue) use ($policies, $accessFilter, $environment, $statusFilter, $zoneMode, $configuredRentalOnly): array {
@@ -132,17 +132,14 @@ final class ListVenuesHandler
                     VenueCourtDiscoveryAccess::paymentFilter($accessFilter),
                     $accessFilter === 'approval' ? true : null,
                     $statusFilter,
+                    allowUnconstrained: $configuredRentalOnly,
                 );
 
                 return ['venue' => $venue, 'access' => $access, 'matched' => $matched];
             })
-            ->filter(function (array $row) use ($configuredRentalOnly, $zoneMode, $statusFilter): bool {
+            ->filter(function (array $row) use ($zoneMode, $statusFilter): bool {
                 if ($zoneMode) {
                     return $row['matched'] !== null;
-                }
-
-                if ($configuredRentalOnly && $row['access']['free'] === [] && $row['access']['paid'] === [] && $row['access']['unknown'] === []) {
-                    return false;
                 }
 
                 return $statusFilter === null || $row['venue']->operational_status->value === $statusFilter;
