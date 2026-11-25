@@ -94,3 +94,6 @@ dialog.dialog-compact{--dialog-padding:12px}
 @media(max-width:639px){dialog{--dialog-padding:24px}.dialog-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dialog-body h2{font-size:28px;line-height:34px}}
 @media(max-height:400px){.dialog-header{padding-block:12px}.dialog-footer{padding-block:12px}.dialog-body{padding-bottom:12px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+/* One compact price badge: the segments inherit the existing semantic colors. */
+.venue-payment-badge{display:inline-flex;align-items:stretch;align-self:flex-start;gap:0;border-radius:999px;overflow:hidden;max-width:100%;vertical-align:middle}
+.venue-payment-badge>.badge{border-radius:0;white-space:nowrap}

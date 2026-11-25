@@ -193,6 +193,12 @@
                         <span class="badge danger-badge">Ошибка</span>
                         <span class="badge">Черновик</span>
                     </div>
+                    <div class="actions" aria-label="Стоимость доступа к площадке">
+                        @include('venues.partials.payment-badge', ['paymentStates' => ['free']])
+                        @include('venues.partials.payment-badge', ['paymentStates' => ['paid']])
+                        @include('venues.partials.payment-badge', ['paymentStates' => ['free', 'paid']])
+                        @include('venues.partials.payment-badge', ['paymentStates' => ['unknown']])
+                    </div>
                     <div class="filter-group" role="group" aria-label="Демонстрационные фильтры" data-kit-chips>
                         <button type="button" class="chip" aria-pressed="true">Все</button>
                         <button type="button" class="chip" aria-pressed="false">5×5</button>

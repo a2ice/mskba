@@ -13,6 +13,27 @@ final readonly class ResolveActivePromotions
     public function __construct(private RewardMechanismRegistry $mechanisms) {}
 
     /**
+     * Court schedules come from ShowVenueHandler and its shared bookingEnabled
+     * configuration check, not from day-slot occupancy. Court pages contain
+     * only their selected court, so the same rule applies to either page.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function forVenueDetails(int $venueId, array $courtSchedules): array
+    {
+        $canRent = collect($courtSchedules)->contains(
+            fn (array $court): bool => ($court['bookingEnabled'] ?? false) === true,
+        );
+
+        return collect($this->forPlacement('venue_page', $venueId))
+            ->concat($this->forPlacement('venue_slots', $venueId))
+            ->unique('promotion_code')
+            ->filter(fn (array $promotion): bool =>
+                $promotion['reward_code'] !== 'venue_rental_completed' || $canRent)
+            ->values()->all();
+    }
+
+    /**
      * Only a server-verified active promotion can make a public promise of a reward.
      * All amounts are integer kopecks and venue overrides apply only to rental rewards.
      *

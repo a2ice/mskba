@@ -1,7 +1,6 @@
 @php
     $url = $cardUrl ?? ($venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()));
-    $free = $venue->courtAccessSummary['free'] ?? [];
-    $paid = $venue->courtAccessSummary['paid'] ?? [];
+    $paymentStates = $venue->paymentBadgeStates(!empty($cardCourtName) ? ($cardUrl ?? null) : null);
     $approval = $venue->courtAccessSummary['approval'] ?? [];
 @endphp
 <article class="app-venues-catalog__card panel app-venue-card" data-venue-id="{{ $venue->id }}">
@@ -30,13 +29,10 @@
         @if($venue->shortDescription)
             <p class="app-venues-catalog__description">{{ $venue->shortDescription }}</p>
         @endif
-        <p class="app-venues-catalog__access">
-            @if($free !== []){{ $paid !== [] ? 'Есть бесплатный доступ' : 'Бесплатно' }}
-            @elseif($paid !== [])Платно
-            @elseif($approval !== [])Требуется подтверждение
-            @else Условия уточняются
-            @endif
-        </p>
+        <div class="app-venues-catalog__access">
+            @include('venues.partials.payment-badge', ['paymentStates' => $paymentStates])
+            @if($approval !== [])<span>Требуется подтверждение</span>@endif
+        </div>
         <a class="button secondary app-venues-catalog__details" href="{{ $url }}">Подробнее <span aria-hidden="true">→</span></a>
     </div>
 </article>

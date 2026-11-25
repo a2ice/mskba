@@ -70,15 +70,9 @@
         ->filter(fn (array $day): bool => count($day['slots']) > 0)
         ->values();
     $venuePromotionResolver = app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class);
-    $venuePromotions = $venuePromotionResolver->forPlacement('venue_page', (int) $venue->id);
-    $venueSlotPromotions = $venuePromotionResolver->forPlacement('venue_slots', (int) $venue->id);
-    // Show each active offer once, inside the venue details rather than the
-    // compact day picker. Prefer venue-page copy over slot-specific copy.
-    $venueAboutPromotions = collect($venuePromotions)
-        ->concat($venueSlotPromotions)
-        ->unique('promotion_code')
-        ->filter(fn ($promotion) => !str_contains(mb_strtolower((string) ($promotion['title'] ?? '')), 'арендуй зал') || collect($venue->courtSchedules)->contains(fn ($group) => ($group['bookingEnabled'] ?? false) && (!$venue->isCourtPage || (int) $group['id'] === (int) $venue->selectedCourt['id'])))
-        ->values();
+    $venueAboutPromotions = collect($venuePromotionResolver->forVenueDetails(
+        (int) $venue->id, $venue->courtSchedules,
+    ));
 @endphp
 @php
     $bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
@@ -309,39 +303,7 @@
                         @endunless
                         @if(!($scheduleGroup['bookingEnabled'] ?? false))
                             <p class="muted">Онлайн-бронирование недоступно.</p>
-                            @forelse(collect($scheduleGroup['weeklyHours'] ?? [])->groupBy(fn ($day) => json_encode($day['intervals'])) as $days)
-                                @php $hours = $days->first()['intervals']; @endphp
-                                <p aria-label="Часы работы"><svg aria-hidden="true" width="16" height="16"><use href="#clock"/></svg>
-                                    @php
-                                        $labels = $days->pluck('weekday')->all();
-                                        $label = match (true) {
-                                            count($labels) === 7 => '',
-                                            $labels === ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'] => 'Будни',
-                                            $labels === ['Сб', 'Вс'] => 'Выходные',
-                                            default => implode(', ', $labels),
-                                        };
-                                    @endphp
-                                    @if($label !== '')<strong>{{ $label }}</strong> — @endif
-                                    @if($hours === null)Режим работы не указан
-                                    @elseif($hours === [])Не работает
-                                    @else{{ collect($hours)->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') }}
-                                    @endif
-                                </p>
-                            @empty
-                                <p>Режим работы не указан.</p>
-                            @endforelse
-                            @if(!empty($scheduleGroup['exceptions']))
-                                <h4>Изменения графика</h4>
-                                @foreach($scheduleGroup['exceptions'] as $exception)
-                                    <p><strong>{{ $exception['label'] }} ({{ $exception['weekday'] }})</strong> —
-                                        @forelse($exception['intervals'] as $interval)
-                                            {{ $interval['startsAt'] }}–{{ $interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt'] }}{{ $loop->last ? '' : ', ' }}
-                                        @empty
-                                            Не работает
-                                        @endforelse
-                                    </p>
-                                @endforeach
-                            @endif
+                            @include('venues.partials.informational-hours', ['scheduleGroup' => $scheduleGroup])
                         @elseif(count($scheduleGroup['days']))
                             <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}">
                                 @foreach($scheduleGroup['days'] as $day)

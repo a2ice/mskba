@@ -108,3 +108,7 @@
         -webkit-line-clamp: 1;
     }
 }
+
+/* One compact price badge: the segments inherit the existing semantic colors. */
+.venue-payment-badge{display:inline-flex;align-items:stretch;align-self:flex-start;gap:0;border-radius:999px;overflow:hidden;max-width:100%;vertical-align:middle}
+.venue-payment-badge>.badge{border-radius:0;white-space:nowrap}

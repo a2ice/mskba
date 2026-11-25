@@ -2,10 +2,8 @@
     $mode = $mode ?? 'card';
     $showDescription = $mode === 'list';
     $venueUrl = $cardUrl ?? ($venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()));
-    $freeCourts = $venue->courtAccessSummary['free'] ?? [];
-    $paidCourts = $venue->courtAccessSummary['paid'] ?? [];
+    $paymentStates = $venue->paymentBadgeStates(!empty($cardCourtName) ? ($cardUrl ?? null) : null);
     $approvalCourts = $venue->courtAccessSummary['approval'] ?? [];
-    $unknownCourts = $venue->courtAccessSummary['unknown'] ?? [];
 @endphp
 
 <article class="catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}" data-venue-id="{{ $venue->id }}">
@@ -41,17 +39,9 @@
         @endif
 
         <div class="venue-catalog-item__access">
-            @if($freeCourts !== [])
-                <span><i class="ti ti-gift" aria-hidden="true"></i>{{ $paidCourts !== [] ? 'Есть бесплатный доступ' : 'Бесплатно' }}</span>
-            @endif
-            @if($paidCourts !== [])
-                <span><i class="ti ti-currency-ruble" aria-hidden="true"></i>{{ $freeCourts !== [] ? 'Есть платные залы' : 'Платно' }}</span>
-            @endif
+            @include('venues.partials.payment-badge', ['paymentStates' => $paymentStates, 'legacyPayment' => true])
             @if($approvalCourts !== [])
                 <span><i class="ti ti-shield-check" aria-hidden="true"></i>Есть залы с подтверждением</span>
-            @endif
-            @if($freeCourts === [] && $paidCourts === [])
-                <span><i class="ti ti-help-circle" aria-hidden="true"></i>{{ $unknownCourts !== [] ? 'Условия уточняются' : 'Нет доступных залов' }}</span>
             @endif
             @if($venue->matchedCourtName !== null)
                 <span><i class="ti ti-layout-grid" aria-hidden="true"></i>Подходящий зал: {{ $venue->matchedCourtName }}</span>

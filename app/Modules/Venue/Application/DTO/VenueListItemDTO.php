@@ -36,6 +36,32 @@ final readonly class VenueListItemDTO
         public ?bool $matchedRequiresApproval = null,
     ) {}
 
+    /**
+     * Use the actual destination court (including similar-nearby cards) or
+     * all active courts on a venue card. Never fall back to the parent price.
+     *
+     * @return list<string>
+     */
+    public function paymentBadgeStates(?string $destinationCourtUrl = null): array
+    {
+        $courtUrl = $destinationCourtUrl ?? $this->matchedCourtUrl;
+        $states = [];
+        foreach (['free', 'paid', 'unknown'] as $state) {
+            $courts = $this->courtAccessSummary[$state] ?? [];
+            if ($courtUrl !== null) {
+                foreach ($courts as $court) {
+                    if ($court['url'] === $courtUrl) {
+                        return [$state];
+                    }
+                }
+            } elseif ($courts !== []) {
+                $states[] = $state;
+            }
+        }
+
+        return $courtUrl !== null ? ['unknown'] : $states;
+    }
+
     public function hasFreeAccess(): bool
     {
         return $this->requiresPayment === false && ! $this->requiresBookingApproval;

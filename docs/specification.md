@@ -234,6 +234,8 @@ Backend не доверяет данным Telegram-пользователя с 
 
 ## Площадки
 
+Приёмка #1025: `CompactWeeklyHours` и общий Blade partial форматируют эффективные недельные часы, не меняя данные календаря и исключений. `ResolveActivePromotions::forVenueDetails` использует `reward_code=venue_rental_completed` и уже вычисленный `PublicVenueDaySchedule::bookingEnabled` из `ShowVenueHandler::courtSchedules` (только выбранная зона на её странице), сохраняя активность и override вознаграждения. `VenueListItemDTO::paymentBadgeStates` проецирует `VenueCourtDiscoveryAccess` на URL карточки, включая похожую зону в «Площадки рядом», либо на все активные зоны; неизвестные условия не заменяются родительским значением.
+
 
 ### #1025: публичная аренда, часы и сопоставление конкретных залов
 

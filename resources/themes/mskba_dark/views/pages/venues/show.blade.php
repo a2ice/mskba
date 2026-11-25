@@ -729,25 +729,7 @@
                                 <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}" class="btn btn--secondary btn--sm">Расписание и аренда</a>
                             @else
                                 <p>Онлайн-бронирование через портал недоступно.</p>
-                                @forelse(collect($scheduleGroup['weeklyHours'] ?? [])->groupBy(fn ($day) => json_encode($day['intervals'])) as $days)
-                                    @php($hours = $days->first()['intervals'])
-                                    <p><strong>{{ $days->pluck('weekday')->implode(', ') }}</strong> —
-                                        @if($hours === null)Режим работы не указан
-                                        @elseif($hours === [])Не работает
-                                        @else{{ collect($hours)->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') }}
-                                        @endif
-                                    </p>
-                                @empty
-                                    <p>Режим работы не указан.</p>
-                                @endforelse
-                                @if(!empty($scheduleGroup['exceptions']))
-                                    <h4>Изменения графика</h4>
-                                    @foreach($scheduleGroup['exceptions'] as $exception)
-                                        <p><strong>{{ $exception['label'] }} ({{ $exception['weekday'] }})</strong> —
-                                            {{ collect($exception['intervals'])->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') ?: 'Не работает' }}
-                                        </p>
-                                    @endforeach
-                                @endif
+                                @include('venues.partials.informational-hours', ['scheduleGroup' => $scheduleGroup, 'legacyHours' => true])
                             @endif
                         </div>
                     @empty
