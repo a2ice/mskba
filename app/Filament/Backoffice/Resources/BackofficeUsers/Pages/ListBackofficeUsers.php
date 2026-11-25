@@ -34,6 +34,7 @@ final class ListBackofficeUsers extends ListRecords
                         ->helperText('Необязательно. Адрес используется только для подсказки и не сохраняется как контакт.')
                         ->live(onBlur: true)
                         ->afterStateUpdated(function (?string $state, Get $get, Set $set): void {
+                            abort_unless(app(AdminCreateUserHandler::class)->canCreate(auth('web')->user()), 403);
                             if (filled($get('username')) || ! filter_var($state, FILTER_VALIDATE_EMAIL)) {
                                 return;
                             }
