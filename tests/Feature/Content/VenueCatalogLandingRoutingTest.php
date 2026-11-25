@@ -4,6 +4,7 @@ namespace Tests\Feature\Content;
 
 use App\Modules\Content\Domain\Models\PageSeoSetting;
 use App\Modules\Content\Domain\Models\VenueCatalogLanding;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\Location;
@@ -13,6 +14,7 @@ use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
@@ -90,6 +92,57 @@ final class VenueCatalogLandingRoutingTest extends TestCase
         $this->get($this->url())->assertOk()->assertSee($landing->h1)
             ->assertSee('MatchingHall01')->assertDontSee('OtherCityHall')->assertDontSee('HiddenHall')
             ->assertSeeInOrder(['Unique editorial intro', 'MatchingHall01', 'Unique editorial body']);
+    }
+
+    public function test_private_preview_of_draft_works_without_public_feature_gate(): void
+    {
+        $this->theme('mskba_app');
+        config(['features.venue_catalog_landings.enabled' => false]);
+        $city = City::factory()->create();
+        $other = City::factory()->create();
+        $landing = $this->landing($city);
+        $landing->update(['is_active' => false, 'intro_text' => '<p>Draft editorial intro</p>',
+            'body_text' => '<h2>Draft editorial body</h2>']);
+        foreach (range(1, 5) as $i) {
+            $this->venue($city, 'PreviewHall0'.$i);
+        }
+        $this->venue($other, 'DifferentCityHall');
+        $this->venue($city, 'HiddenPreviewHall', false);
+        $preview = fn (array $query = []) => route('admin.content.catalog-landings.preview', ['landingId' => $landing->id] + $query);
+        $this->getJson($preview())->assertUnauthorized();
+        $editor = User::factory()->create();
+        $this->actingAs($editor);
+        Gate::define('manage-content', fn (User $user): bool => false);
+        $this->get($preview())->assertForbidden();
+        Gate::define('manage-content', fn (User $user): bool => true);
+
+        $response = $this->get($preview(['city_id' => $other->id]))->assertOk()
+            ->assertSee($landing->h1)->assertSee('Предпросмотр сохранённой посадочной')
+            ->assertSeeInOrder(['Draft editorial intro', 'PreviewHall01', 'Draft editorial body'])
+            ->assertDontSee('DifferentCityHall')->assertDontSee('HiddenPreviewHall')
+            ->assertSee(e($preview(['page' => 2])), false)
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $this->assertStringContainsString('private', $response->headers->get('Cache-Control'));
+
+        $this->getJson($preview(['page' => 2, 'fragment' => 'items']))
+            ->assertOk()->assertJsonPath('total', 5)->assertJsonPath('has_more', false)
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        $this->get($preview(['page' => 2]))->assertOk()->assertSee('PreviewHall05')
+            ->assertDontSee('data-venue-landing-editorial="intro"', false)
+            ->assertDontSee('data-venue-landing-editorial="body"', false)
+            ->assertDontSee('<p>Draft editorial intro</p>', false)
+            ->assertDontSee('Draft editorial body')
+            ->assertSee('name="description" content="Draft editorial intro"', false)
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        $this->get($this->url())->assertNotFound();
+        $this->get(route('venues', ['city_id' => $city->id]))->assertOk()
+            ->assertDontSee('Draft editorial intro');
+        $this->assertFalse($landing->fresh()->is_active);
+
+        $this->theme('mskba_dark');
+        $this->get($preview())->assertOk()->assertSeeInOrder(['Draft editorial intro', 'PreviewHall01', 'Draft editorial body'])
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     public function test_existing_venue_and_court_routes_are_not_captured(): void

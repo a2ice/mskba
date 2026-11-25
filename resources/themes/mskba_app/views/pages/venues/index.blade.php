@@ -33,9 +33,11 @@
         \Illuminate\Support\Arr::except($filters, ['page', 'fragment']),
         fn ($value) => $value !== null && $value !== '',
     );
-    $venuePageUrl = fn (int $number) => isset($landing)
+    $venuePageUrl = fn (int $number) => ($isLandingPreview ?? false)
+        ? app(\App\Modules\Content\Application\Services\VenueCatalogLandingNavigation::class)->previewUrl($landing, $venuePageQuery + ($number > 1 ? ['page' => $number] : []))
+        : (isset($landing)
         ? app(\App\Modules\Content\Application\Services\VenueCatalogLandingNavigation::class)->url($landing, $venuePageQuery + ($number > 1 ? ['page' => $number] : []))
-        : route('venues', $venuePageQuery + ($number > 1 ? ['page' => $number] : []));
+        : route('venues', $venuePageQuery + ($number > 1 ? ['page' => $number] : [])));
     $paginationPrevUrl = $currentView !== 'map' && $page > 1 ? $venuePageUrl($page - 1) : null;
     $paginationNextUrl = $currentView !== 'map' && $hasMore ? $venuePageUrl($page + 1) : null;
     // Only the default catalog's numbered pages are new indexable targets.

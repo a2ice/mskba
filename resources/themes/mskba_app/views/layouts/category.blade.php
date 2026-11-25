@@ -31,7 +31,8 @@
     <header class="{{ $categoryHeaderClass }}">
         <div>
             <h1 id="{{ $categoryHeadingId }}">{{ $categoryTitle }}</h1>
-            @if($categoryDescription !== '' && !($categoryRootId === 'venues-catalog' && isset($landing) && $landing->is_active && config('features.venue_catalog_landings.enabled', false) && (int) ($page ?? 1) === 1 && filled($landing->intro_text)))<p class="muted">{{ $categoryDescription }}</p>@endif
+            @if($isLandingPreview ?? false)<p class="muted">Предпросмотр сохранённой посадочной. Не опубликована этим действием.</p>@endif
+            @if($categoryDescription !== '' && !($categoryRootId === 'venues-catalog' && isset($landing) && (($isLandingPreview ?? false) || ($landing->is_active && config('features.venue_catalog_landings.enabled', false))) && (int) ($page ?? 1) === 1 && filled($landing->intro_text)))<p class="muted">{{ $categoryDescription }}</p>@endif
         </div>
         @yield('category-heading-action')
     </header>

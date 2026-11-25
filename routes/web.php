@@ -375,6 +375,9 @@ Route::prefix('backoffice/content')
         Route::get('/create', [AdminContentController::class, 'create'])
             ->name('admin.content.create')
             ->defaults('breadcrumb', 'Новый материал');
+        Route::get('/catalog-landings/{landingId}/preview', [VenueController::class, 'index'])
+            ->whereNumber('landingId')
+            ->name('admin.content.catalog-landings.preview');
         Route::get('/seo', [AdminPageSeoController::class, 'index'])
             ->name('admin.content.seo')
             ->defaults('breadcrumb', 'SEO страниц');

@@ -7,11 +7,21 @@ use App\Modules\Content\Application\Services\VenueCatalogLandingEditor;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Content\Domain\Models\PageSeoSetting;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 
 final class EditVenueCatalogLanding extends EditRecord
 {
     protected static string $resource = VenueCatalogLandingResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('preview')->label('Предпросмотр')
+                ->url(fn (): string => route('admin.content.catalog-landings.preview', ['landingId' => $this->record->getKey()]))
+                ->openUrlInNewTab(),
+        ];
+    }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {

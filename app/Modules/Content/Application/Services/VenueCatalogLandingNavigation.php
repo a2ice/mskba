@@ -38,6 +38,22 @@ final readonly class VenueCatalogLandingNavigation
         return $landing;
     }
 
+    public function preparePreview(Request $request): VenueCatalogLanding
+    {
+        \Illuminate\Support\Facades\Gate::authorize('manage-content');
+        $landing = VenueCatalogLanding::query()->findOrFail((int) $request->route('landingId'));
+
+        // Preview always uses saved criteria; query overrides cannot change them.
+        $request->query->replace($landing->criteria() + Arr::only($request->query(), self::PRESENTATION));
+
+        return $landing;
+    }
+
+    public function previewUrl(VenueCatalogLanding $landing, array $query = []): string
+    {
+        return route('admin.content.catalog-landings.preview', ['landingId' => $landing->id] + Arr::only($query, self::PRESENTATION));
+    }
+
     public function match(Request $request, array $validated): ?VenueCatalogLanding
     {
         if (! $this->enabled()) {

@@ -78,7 +78,10 @@ class VenueController extends Controller
     public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse|RedirectResponse
     {
         $navigation = app(VenueCatalogLandingNavigation::class);
-        $requestedLanding = $navigation->prepare($request, $request->route('landingSlug'));
+        $isLandingPreview = $request->routeIs('admin.content.catalog-landings.preview');
+        $requestedLanding = $isLandingPreview
+            ? $navigation->preparePreview($request)
+            : $navigation->prepare($request, $request->route('landingSlug'));
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'city_id' => ['nullable', 'integer', 'min:1', 'exists:cities,id'],
@@ -99,9 +102,9 @@ class VenueController extends Controller
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'fragment' => ['nullable', Rule::in(['items'])],
         ]);
-        $landing = $navigation->match($request, $filters);
+        $landing = $isLandingPreview ? $requestedLanding : $navigation->match($request, $filters);
         $isFragment = ($filters['fragment'] ?? null) === 'items';
-        if (! $isFragment && ! $request->expectsJson()) {
+        if (! $isLandingPreview && ! $isFragment && ! $request->expectsJson()) {
             if ($landing !== null && ! $landing->is($requestedLanding)) {
                 return redirect()->to($navigation->url($landing, $navigation->presentationQuery($request, $filters)));
             }
@@ -149,14 +152,15 @@ class VenueController extends Controller
                 $canonical,
             ) + [
                 'landing' => $landing,
-                'landingUrl' => $navigation->url($landing),
+                'landingUrl' => $isLandingPreview ? $navigation->previewUrl($landing) : $navigation->url($landing),
+                'isLandingPreview' => $isLandingPreview,
                 // Indexing and sitemap eligibility are deliberately deferred.
                 'metaRobots' => 'noindex, nofollow, noarchive',
             ];
         }
 
         if (app(ThemeResolver::class)->active() !== 'mskba_app') {
-            return ThemeResolver::page('venues.index', $landingData + [
+            $response = ThemeResolver::page('venues.index', $landingData + [
                 'venues' => $venues,
                 'filters' => $filters,
                 'types' => VenueTypeEnum::cases(),
@@ -164,6 +168,8 @@ class VenueController extends Controller
                 'myInterests' => $myInterests,
                 'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
             ]);
+
+            return $isLandingPreview ? $this->privateLandingPreview($response) : $response;
         }
 
         $total = count($venues);
@@ -201,15 +207,17 @@ class VenueController extends Controller
         $hasMore = $page * $perPage < $total;
 
         if (($filters['fragment'] ?? null) === 'items') {
-            return response()->json([
+            $response = response()->json([
                 'html' => view('theme::pages.venues.partials.index-items', compact('venues', 'page'))->render(),
                 'has_more' => $hasMore,
                 'next_page' => $hasMore ? $page + 1 : null,
                 'total' => $total,
             ])->header('Cache-Control', 'private, no-store');
+
+            return $isLandingPreview ? $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive') : $response;
         }
 
-        return ThemeResolver::page('venues.index', $landingData + compact(
+        $response = ThemeResolver::page('venues.index', $landingData + compact(
             'venues', 'filters', 'total', 'page', 'hasMore', 'currentView', 'mapPoints',
         ) + [
             'types' => VenueTypeEnum::cases(),
@@ -217,6 +225,14 @@ class VenueController extends Controller
             'myInterests' => $myInterests,
             'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
         ]);
+
+        return $isLandingPreview ? $this->privateLandingPreview($response) : $response;
+    }
+
+    private function privateLandingPreview(Response $response): Response
+    {
+        return $response->header('Cache-Control', 'private, no-store')
+            ->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     public function search(
