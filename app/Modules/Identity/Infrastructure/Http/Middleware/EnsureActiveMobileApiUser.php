@@ -21,6 +21,10 @@ final class EnsureActiveMobileApiUser
                 match (true) {
                     $request->routeIs('api.v1.auth.logout') => 'auth:logout',
                     $request->routeIs('api.v1.me.destroy') => 'account:delete',
+                    $request->routeIs('api.v1.me.profile.update') => 'profile:write',
+                    $request->routeIs('api.v1.me.contacts.index') => 'contacts:read',
+                    $request->routeIs('api.v1.me.contacts.*') => 'contacts:write',
+                    $request->routeIs('api.v1.account.confirmation.complete') => 'account:confirm',
                     default => 'profile:read',
                 },
             );
