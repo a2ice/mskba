@@ -3,6 +3,11 @@
 namespace Tests\Feature\Dashboard;
 
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Models\Event as PortalEvent;
+use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardChangedBroadcast;
 use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardWidgetsInvalidatedBroadcast;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -55,6 +60,37 @@ final class DashboardDataTest extends TestCase
         $this->postJson(route('account.settings.dashboard.update'), ['visible_widget_ids' => [$widget->id]])->assertOk();
         $widget->update(['source_key' => 'unregistered']);
         $this->getJson($url)->assertNotFound();
+    }
+
+    public function test_dynamic_interest_content_renders_personal_data_and_clears_on_refresh(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user->createProfile([]);
+        $other->createProfile([]);
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED, 'is_published' => true]);
+        VenueSubscription::query()->create(['user_id' => $user->id, 'venue_id' => $venue->id, 'status' => 'active']);
+        $event = PortalEvent::factory()->create(['venue_id' => $venue->id, 'type' => EventTypeEnum::TRAINING, 'title' => 'Тестовая тренировка']);
+        $widget = AccountDashboardWidget::query()->where('kind', 'message_summary')->firstOrFail()->replicate();
+        $widget->forceFill([
+            'kind' => 'dynamic', 'source_key' => 'my_interests', 'title' => 'Мои интересы',
+            'source_settings' => ['limit' => 5], 'enabled' => true, 'can_hide' => true, 'actions' => [],
+        ])->save();
+
+        $this->actingAs($user)->get(route('account'))->assertOk()->assertSee($event->title);
+        $html = $this->getJson(route('account.dashboard.widgets'))->assertOk()->json('html');
+        $this->assertStringContainsString($event->title, $html);
+
+        $html = $this->actingAs($other)->getJson(route('account.dashboard.widgets'))->assertOk()->json('html');
+        $this->assertStringNotContainsString($event->title, $html);
+        $this->assertStringContainsString('Пока нет предстоящих мероприятий по твоим интересам.', $html);
+
+        VenueSubscription::query()->where('user_id', $user->id)->update(['status' => 'cancelled']);
+        $html = $this->actingAs($user)->getJson(route('account.dashboard.widgets'))->assertOk()->json('html');
+        $this->assertStringNotContainsString($event->title, $html);
+        $widget->update(['exclude_user_ids' => [$user->id]]);
+        $html = $this->getJson(route('account.dashboard.widgets'))->assertOk()->json('html');
+        $this->assertStringNotContainsString('Мои интересы', $html);
     }
 
     public function test_personal_invalidation_contains_no_personal_payload(): void

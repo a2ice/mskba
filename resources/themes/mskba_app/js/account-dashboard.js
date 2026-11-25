@@ -92,7 +92,8 @@ if (dashboard) {
                 continue;
             }
             const delay = Math.max(0, Math.min(60, Number(incoming.dataset.widgetRefreshDelay) || 0));
-            if (delay === 0) {
+            // Personal data must not be kept on screen for the admin-edit countdown.
+            if (delay === 0 || incoming.dataset.widgetKind === 'dynamic' || current.dataset.widgetKind === 'dynamic') {
                 clearPending(id);
                 nextChildren.push(incoming);
                 continue;
@@ -133,7 +134,20 @@ if (dashboard) {
                 const oldIds = ids(dashboard.children);
                 const newIds = ids(snapshot.content.children);
                 if (oldIds.length === newIds.length
-                    && oldIds.every((id, index) => id === newIds[index])) return;
+                    && oldIds.every((id, index) => id === newIds[index])) {
+                    // Preserve drag order but reconcile private data even during a drag.
+                    const incomingById = new Map(Array.from(snapshot.content.children)
+                        .filter(node => node.hasAttribute('data-dashboard-widget'))
+                        .map(node => [node.dataset.dashboardWidget, node]));
+                    for (const current of dashboard.querySelectorAll('[data-dashboard-widget]')) {
+                        const incoming = incomingById.get(current.dataset.dashboardWidget);
+                        if (current.dataset.widgetKind !== 'dynamic' && incoming?.dataset.widgetKind !== 'dynamic') continue;
+                        const content = current.querySelector('.app-dashboard-widget__content');
+                        const replacement = incoming?.querySelector('.app-dashboard-widget__content');
+                        if (content && replacement && content.outerHTML !== replacement.outerHTML) content.replaceWith(replacement);
+                    }
+                    return;
+                }
 
                 document.dispatchEvent(new Event('mskba:dashboard-edit-cancel'));
             }

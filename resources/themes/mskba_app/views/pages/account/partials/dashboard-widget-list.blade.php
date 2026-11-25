@@ -86,6 +86,11 @@
                 <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body ?: $messagesDefault, ['unread_count' => $dashboardUnread]) !!}</div>
 
                 @break
+            @case('dynamic')
+                @include('theme::pages.account.partials.dashboard-dynamic-content', [
+                    'source' => $widget->source_key,
+                ])
+                @break
             @case('custom_html')
                 @php
                     // The iframe intentionally has an opaque origin: never allow-same-origin.

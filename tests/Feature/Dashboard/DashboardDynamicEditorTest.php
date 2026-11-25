@@ -30,7 +30,7 @@ final class DashboardDynamicEditorTest extends TestCase
         return $admin;
     }
 
-    public function test_filament_saves_dynamic_draft_and_cannot_publish_it_yet(): void
+    public function test_filament_saves_and_publishes_dynamic_widget(): void
     {
         $this->actingAs($this->admin());
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
@@ -38,14 +38,14 @@ final class DashboardDynamicEditorTest extends TestCase
         $widget->forceFill(['title' => 'Черновик интересов', 'enabled' => false, 'refresh_delay_seconds' => 0])->save();
 
         Livewire::test(EditAccountDashboardWidget::class, ['record' => $widget->id])
-            ->fillForm(['kind' => 'dynamic', 'source_key' => 'my_interests', 'source_settings' => ['limit' => 7]])
+            ->fillForm(['kind' => 'dynamic', 'source_key' => 'my_interests', 'source_settings' => ['limit' => 7], 'enabled' => true])
             ->call('save')->assertHasNoFormErrors();
 
         $widget->refresh();
         $this->assertSame('dynamic', $widget->kind);
         $this->assertSame('my_interests', $widget->source_key);
         $this->assertSame(['limit' => 7], $widget->source_settings);
-        $this->assertFalse($widget->enabled);
+        $this->assertTrue($widget->enabled);
     }
 
     public function test_server_validates_source_and_normalizes_settings(): void
@@ -68,7 +68,7 @@ final class DashboardDynamicEditorTest extends TestCase
 
         $data = ['kind' => 'dynamic', 'source_key' => 'unread_messages', 'source_settings' => ['limit' => 9, 'unknown' => true], 'enabled' => true];
         AccountDashboardWidgetResource::assertSafeData($data);
-        $this->assertFalse($data['enabled']);
+        $this->assertTrue($data['enabled']);
         $this->assertSame([], $data['source_settings']);
         $data['kind'] = 'information';
         AccountDashboardWidgetResource::assertSafeData($data);
