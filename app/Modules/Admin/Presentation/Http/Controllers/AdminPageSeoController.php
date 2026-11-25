@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Content\Domain\Models\PageSeoSetting;
+use App\Modules\Content\Domain\Models\VenueCatalogLanding;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Models\Team;
@@ -85,6 +86,7 @@ final class AdminPageSeoController extends Controller
     {
         return match ($type) {
             SeoEntityTypeEnum::VENUE => Venue::query(),
+            SeoEntityTypeEnum::VENUE_CATALOG_LANDING => VenueCatalogLanding::query(),
             SeoEntityTypeEnum::EVENT => Event::query(),
             SeoEntityTypeEnum::TEAM => Team::query()->whereNull('temporary_for_event_id'),
             SeoEntityTypeEnum::TOURNAMENT => Tournament::query(),
