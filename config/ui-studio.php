@@ -9,6 +9,28 @@ return [
     'user' => env('UI_STUDIO_USER'),
     'password_hash' => env('UI_STUDIO_PASSWORD_HASH'),
     'cases' => [
+        'dynamic-dashboard' => [
+            'title' => 'Личный кабинет — динамические виджеты',
+            'issue' => 1073,
+            'revision' => 1,
+            'sources' => [
+                'resources/views/ui-studio/cases/dynamic-dashboard.blade.php',
+                'resources/views/ui-studio/cases/dynamic-dashboard-candidate.blade.php',
+                'resources/themes/mskba_app/views/pages/account/partials/dashboard-dynamic-content.blade.php',
+                'resources/themes/mskba_app/css/account-overview.css',
+            ],
+            'kit_changes' => [],
+            'status' => 'Кандидат на визуальную приёмку',
+            'templates' => ['mskba_app'],
+            'states' => [
+                'normal' => 'Данные',
+                'empty' => 'Пустые списки',
+                'loading' => 'Загрузка',
+                'error' => 'Ошибка обновления',
+                'restricted' => 'Отзыв доступа',
+                'overflow' => 'Длинные названия',
+            ],
+        ],
         'unified-chat' => [
             'title' => 'Единый чат — редактор сообщения',
             'issue' => 933,
