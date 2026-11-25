@@ -34,6 +34,7 @@ use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationControlle
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
 use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardRefreshController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardWidgetDataController;
 use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardPreferencesController;
 use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardController;
 use App\Modules\Event\Presentation\Http\Controllers\AccountMyGamesController;
@@ -1038,6 +1039,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 
         Route::get('/dashboard/widgets', AccountDashboardRefreshController::class)
             ->middleware('throttle:30,1')->name('account.dashboard.widgets');
+        Route::get('/dashboard/widgets/{widget}/data', AccountDashboardWidgetDataController::class)
+            ->whereNumber('widget')->middleware('throttle:60,1')->name('account.dashboard.widgets.data');
         Route::patch('/dashboard/widgets/order', [AccountDashboardPreferencesController::class, 'reorder'])
             ->middleware('throttle:20,1')->name('account.dashboard.widgets.order');
         Route::get('/settings/dashboard', [AccountDashboardPreferencesController::class, 'index'])
