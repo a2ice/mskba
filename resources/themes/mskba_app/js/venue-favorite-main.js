@@ -3,6 +3,7 @@ import { addFavorite } from './favorite-action.js';
 (() => {
     const modal=document.querySelector('[data-venue-favorite-dialog]');
     const buttons=[...document.querySelectorAll('[data-venue-favorite-main]')];
+    const footerButtons=[...document.querySelectorAll('[data-venue-favorite-footer]')];
     const followSections=[...document.querySelectorAll('[data-venue-favorite-follow]')];
     if(!modal||!buttons.length)return;
     const id=Number(modal.dataset.venueId);
@@ -35,12 +36,18 @@ import { addFavorite } from './favorite-action.js';
     const paint=()=>{
         const saved=state==='active';
         buttons.forEach(button=>{
-            button.textContent=(saved?'В избранном':'В избранное')+' ('+venueFavoriteCount+')';
+            const label=button.querySelector?.('[data-venue-favorite-main-label]')??button;
+            label.textContent=(saved?'В избранном':'В избранное')+(venueFavoriteCount>0?' ('+venueFavoriteCount+')':'');
             button.setAttribute('aria-pressed',String(saved));
             button.disabled=busy;
         });
         const loading=state==='unknown'&&isAuthenticated();
         const failed=state==='error'&&isAuthenticated();
+        for(const button of footerButtons){
+            button.querySelector('[data-venue-favorite-footer-label]').textContent=saved?'Уже в избранном':loading?'Проверяем избранное…':failed?'Повторить':'Добавить в избранное';
+            button.disabled=busy||saved||loading;
+            button.setAttribute('aria-pressed',String(saved));
+        }
         for(const section of followSections){
             const message=section.querySelector('[data-venue-favorite-follow-message]');
             const label=section.querySelector('[data-venue-favorite-follow-label]');
@@ -107,11 +114,10 @@ import { addFavorite } from './favorite-action.js';
             throw error;
         }
     };
-    followSections.forEach(section=>section.querySelector('[data-venue-favorite-follow-action]')
-        ?.addEventListener('click',async event=>{
+    const follow=async(event,section=null)=>{
             if(busy)return;
             if(state==='active'){
-                const url=section.dataset.createEventUrl;
+                const url=section?.dataset.createEventUrl;
                 if(url)window.location.assign(url);
                 return;
             }
@@ -132,7 +138,10 @@ import { addFavorite } from './favorite-action.js';
             busy=true;paint();
             try{await addFavorite('venue',id);}
             finally{busy=false;paint();}
-        }));
+    };
+    followSections.forEach(section=>section.querySelector('[data-venue-favorite-follow-action]')
+        ?.addEventListener('click',event=>follow(event,section)));
+    footerButtons.forEach(button=>button.addEventListener('click',event=>follow(event)));
     buttons.forEach(button=>button.addEventListener('click',async()=>{
         if(busy)return;
         busy=true;paint();

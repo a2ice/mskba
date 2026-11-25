@@ -92,9 +92,10 @@ if (sectionNav) {
     function updateActiveSection() {
         scheduled = false;
         const threshold = navOffset() + 16;
-        let active = sections[0];
-        for (const section of sections) {
-            if (section && section.getBoundingClientRect().top <= threshold) active = section;
+        const visibleSections = sections.filter(section => section && !section.hidden);
+        let active = visibleSections[0];
+        for (const section of visibleSections) {
+            if (section.getBoundingClientRect().top <= threshold) active = section;
             else break;
         }
         links.forEach((link, index) => {
@@ -124,6 +125,7 @@ if (sectionNav) {
     window.addEventListener('scroll', scheduleActiveUpdate, { passive: true });
     window.addEventListener('resize', refreshNavHeight, { passive: true });
     window.addEventListener('hashchange', scheduleActiveUpdate);
+    window.addEventListener('mskba:venue-interest:visibility', scheduleActiveUpdate);
     let activeTransitionFrame = null;
     window.addEventListener('mskba:header-visibility', () => {
         const deadline = performance.now() + 340;
@@ -156,7 +158,9 @@ for (const dialog of [playersDialog, playerDetailsDialog, slotDialog, createEven
         if (event.target === dialog) dialog.close();
     });
 }
-document.querySelector('[data-venue-interests-open]')?.addEventListener('click', () => playersDialog?.showModal());
+document.addEventListener('click', event => {
+    if (event.target.closest?.('[data-venue-interests-open]')) playersDialog?.showModal();
+});
 document.querySelector('[data-venue-nearby-criteria-open]')?.addEventListener('click', () => nearbyCriteriaDialog?.showModal());
 if (nearbyCriteriaDialog) {
     nearbyCriteriaDialog.querySelector('[data-venue-overlay-close]')
