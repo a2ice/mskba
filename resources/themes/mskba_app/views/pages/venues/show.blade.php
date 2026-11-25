@@ -77,6 +77,7 @@
     $venueAboutPromotions = collect($venuePromotions)
         ->concat($venueSlotPromotions)
         ->unique('promotion_code')
+        ->filter(fn ($promotion) => !str_contains(mb_strtolower((string) ($promotion['title'] ?? '')), 'арендуй зал') || collect($venue->courtSchedules)->contains(fn ($group) => ($group['bookingEnabled'] ?? false) && (!$venue->isCourtPage || (int) $group['id'] === (int) $venue->selectedCourt['id'])))
         ->values();
 @endphp
 @php
@@ -311,7 +312,16 @@
                             @forelse(collect($scheduleGroup['weeklyHours'] ?? [])->groupBy(fn ($day) => json_encode($day['intervals'])) as $days)
                                 @php $hours = $days->first()['intervals']; @endphp
                                 <p aria-label="Часы работы"><svg aria-hidden="true" width="16" height="16"><use href="#clock"/></svg>
-                                    <strong>{{ $days->pluck('weekday')->implode(', ') }}</strong> —
+                                    @php
+                                        $labels = $days->pluck('weekday')->all();
+                                        $label = match (true) {
+                                            count($labels) === 7 => '',
+                                            $labels === ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'] => 'Будни',
+                                            $labels === ['Сб', 'Вс'] => 'Выходные',
+                                            default => implode(', ', $labels),
+                                        };
+                                    @endphp
+                                    @if($label !== '')<strong>{{ $label }}</strong> — @endif
                                     @if($hours === null)Режим работы не указан
                                     @elseif($hours === [])Не работает
                                     @else{{ collect($hours)->map(fn ($interval) => $interval['startsAt'].'–'.($interval['endsAt'] === '24:00' ? '00:00' : $interval['endsAt']))->implode(', ') }}
