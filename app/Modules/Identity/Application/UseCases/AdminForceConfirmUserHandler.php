@@ -54,22 +54,7 @@ final class AdminForceConfirmUserHandler
                 throw new AuthorizationException('Принудительное подтверждение недоступно.');
             }
 
-            $profile = $locked->profile()->first();
-            $missing = [];
-            if (! $locked->hasVerifiedPrimaryContact()) {
-                $missing[] = 'primary_verified_contact';
-            }
-            foreach (['first_name', 'last_name'] as $field) {
-                if (blank(trim((string) $profile?->$field))) {
-                    $missing[] = $field;
-                }
-            }
-            if ($profile?->birth_date === null || $profile->birth_date->greaterThanOrEqualTo(today())) {
-                $missing[] = 'birth_date';
-            }
-            if ($profile?->gender === null) {
-                $missing[] = 'gender';
-            }
+            $missing = $locked->missingAccountConfirmationRequirements();
 
             if ($missing === []) {
                 throw ValidationException::withMessages([
