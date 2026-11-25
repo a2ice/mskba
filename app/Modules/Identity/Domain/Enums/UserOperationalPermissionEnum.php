@@ -25,6 +25,9 @@ enum UserOperationalPermissionEnum: string
 
     case BACKOFFICE_ACCESS = 'backoffice.access';
     case BACKOFFICE_USER_CREATE = 'backoffice.user.create';
+    case BACKOFFICE_INVITATION_VIEW = 'backoffice.invitation.view';
+    case BACKOFFICE_INVITATION_ISSUE = 'backoffice.invitation.issue';
+    case BACKOFFICE_INVITATION_MANAGE = 'backoffice.invitation.manage';
     case BACKOFFICE_WIDGET_VIEW = 'backoffice.widget.view';
     case BACKOFFICE_WIDGET_CREATE = 'backoffice.widget.create';
     case BACKOFFICE_WIDGET_EDIT = 'backoffice.widget.edit';
@@ -84,6 +87,9 @@ enum UserOperationalPermissionEnum: string
         return [
             self::BACKOFFICE_ACCESS,
             self::BACKOFFICE_USER_CREATE,
+            self::BACKOFFICE_INVITATION_VIEW,
+            self::BACKOFFICE_INVITATION_ISSUE,
+            self::BACKOFFICE_INVITATION_MANAGE,
             self::BACKOFFICE_WIDGET_VIEW,
             self::BACKOFFICE_WIDGET_CREATE,
             self::BACKOFFICE_WIDGET_EDIT,
@@ -167,6 +173,9 @@ enum UserOperationalPermissionEnum: string
             self::OPERATOR_MARKETING_SEND => 'Отправлять разрешённые рекламные обращения',
             self::BACKOFFICE_ACCESS => 'Вход в Filament /backoffice',
             self::BACKOFFICE_USER_CREATE => 'Создание пользователей в Filament',
+            self::BACKOFFICE_INVITATION_VIEW => 'Просмотр приглашений в пределах полномочий',
+            self::BACKOFFICE_INVITATION_ISSUE => 'Отправка приглашений в пределах полномочий',
+            self::BACKOFFICE_INVITATION_MANAGE => 'Управление приглашениями в пределах полномочий',
             self::BACKOFFICE_WIDGET_VIEW => 'Просмотр виджетов дашборда',
             self::BACKOFFICE_WIDGET_CREATE => 'Создание виджетов дашборда',
             self::BACKOFFICE_WIDGET_EDIT => 'Изменение виджетов дашборда',
