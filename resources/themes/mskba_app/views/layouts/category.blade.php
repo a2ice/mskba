@@ -35,14 +35,14 @@
             @if($categoryDescription !== '' && !($categoryRootId === 'venues-catalog' && isset($landing) && (($isLandingPreview ?? false) || ($landing->is_active && config('features.venue_catalog_landings.enabled', false))) && (int) ($page ?? 1) === 1 && filled($landing->intro_text)))<p class="muted">{{ $categoryDescription }}</p>@endif
         </div>
         @yield('category-heading-action')
+        @if($categoryRootId === 'venues-catalog')
+            @include('partials.venues.catalog-landing-editorial', [
+                'editorialPosition' => 'intro',
+                'editorialClass' => 'venue-catalog-editorial venue-catalog-editorial--intro muted',
+                'editorialPage' => $page ?? 1,
+            ])
+        @endif
     </header>
-    @if($categoryRootId === 'venues-catalog')
-        @include('partials.venues.catalog-landing-editorial', [
-            'editorialPosition' => 'intro',
-            'editorialClass' => 'app-venue-block__description app-venue-description',
-            'editorialPage' => $page ?? 1,
-        ])
-    @endif
     <div class="{{ $categoryLayoutClass }}">
         <aside class="{{ $categorySidebarClass }} panel" aria-label="{{ $categorySidebarLabel }}">
             @yield('category-sidebar')
@@ -82,7 +82,7 @@
     @if($categoryRootId === 'venues-catalog')
         @include('partials.venues.catalog-landing-editorial', [
             'editorialPosition' => 'body',
-            'editorialClass' => 'app-venue-block__description app-venue-description',
+            'editorialClass' => 'venue-catalog-editorial app-venue-description',
             'editorialPage' => $page ?? 1,
         ])
     @endif
