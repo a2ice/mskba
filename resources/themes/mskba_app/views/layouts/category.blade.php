@@ -31,10 +31,17 @@
     <header class="{{ $categoryHeaderClass }}">
         <div>
             <h1 id="{{ $categoryHeadingId }}">{{ $categoryTitle }}</h1>
-            @if($categoryDescription !== '')<p class="muted">{{ $categoryDescription }}</p>@endif
+            @if($categoryDescription !== '' && !($categoryRootId === 'venues-catalog' && isset($landing) && $landing->is_active && config('features.venue_catalog_landings.enabled', false) && (int) ($page ?? 1) === 1 && filled($landing->intro_text)))<p class="muted">{{ $categoryDescription }}</p>@endif
         </div>
         @yield('category-heading-action')
     </header>
+    @if($categoryRootId === 'venues-catalog')
+        @include('partials.venues.catalog-landing-editorial', [
+            'editorialPosition' => 'intro',
+            'editorialClass' => 'app-venue-block__description app-venue-description',
+            'editorialPage' => $page ?? 1,
+        ])
+    @endif
     <div class="{{ $categoryLayoutClass }}">
         <aside class="{{ $categorySidebarClass }} panel" aria-label="{{ $categorySidebarLabel }}">
             @yield('category-sidebar')
@@ -71,5 +78,12 @@
             @endif
         </main>
     </div>
+    @if($categoryRootId === 'venues-catalog')
+        @include('partials.venues.catalog-landing-editorial', [
+            'editorialPosition' => 'body',
+            'editorialClass' => 'app-venue-block__description app-venue-description',
+            'editorialPage' => $page ?? 1,
+        ])
+    @endif
 </section>
 @endsection
