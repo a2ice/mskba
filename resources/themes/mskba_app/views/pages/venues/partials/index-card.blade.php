@@ -22,15 +22,11 @@
             @include('venues.partials.catalog-payment-row', ['paymentStates' => $paymentStates, 'operationalStates' => $venue->cardOperationalStates($court), 'courtCount' => $courtCount, 'conditions' => $conditions, 'zoneCard' => $court !== null])
         </div>
         <h2><a href="{{ $url }}">{{ $venue->name }}</a></h2>
-        @include('venues.partials.catalog-address', ['venue' => $venue])
-        @if(isset($distanceMeters))
-            @php
-                $originName = (string) ($distanceOriginName ?? '');
-                $originTruncated = mb_strlen($originName) > 15;
-                $originLabel = $originTruncated ? mb_substr($originName, 0, 15).'...' : $originName;
-            @endphp
-            <p class="app-venues-catalog__distance"><svg aria-hidden="true" width="16" height="16"><use href="#pin"/></svg> <span>{{ number_format($distanceMeters / 1000, 1, ',', ' ') }} км от <span @if($originTruncated) title="{{ $originName }}" @endif>{{ $originLabel !== '' ? $originLabel : 'площадки' }}</span></span></p>
-        @endif
+        @include('venues.partials.catalog-address', [
+            'venue' => $venue,
+            'catalogDistanceMeters' => $distanceMeters ?? null,
+            'catalogDistanceOriginName' => $distanceOriginName ?? null,
+        ])
         @if($courtName !== null)
             <p class="app-venues-catalog__matched-court">Подходящий зал: {{ $courtName }}</p>
         @endif
