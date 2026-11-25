@@ -9,6 +9,12 @@ use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 
 final class EffectiveCourtPolicy
 {
+    /** Configuration only: not a quote, a free slot or permission to transact. */
+    public function hasConfiguredRental(VenueCourt $court, array $effective): bool
+    {
+        return $effective['rental_enabled'] && ($court->allowsScope(true) || $court->allowsScope(false));
+    }
+
     /** @return array<string, mixed> */
     public function resolve(Venue $venue, VenueCourt $court, ?VenueBookingPolicy $policy = null): array
     {

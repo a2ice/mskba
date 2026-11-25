@@ -8,6 +8,8 @@ use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\District;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Application\Services\RentalSeoInventory;
+use App\Modules\Venue\Application\Services\RentalSeoLandingData;
+use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -23,8 +25,8 @@ final class RentalSeoInventoryTest extends TestCase
     public function test_inventory_distinguishes_paid_from_configured_rental_and_excludes_non_public_venues(): void
     {
         config(['features.venue_rental.rental_flow' => false]);
-        $city = City::factory()->create();
-        $district = District::factory()->for($city)->create();
+        $city = City::factory()->create(['alias' => 'seo-test-city']);
+        $district = District::factory()->for($city)->create(['alias' => 'seo-test-district']);
         $address = Address::factory()->create(['city_id' => $city->id, 'district_id' => $district->id]);
         $location = Location::factory()->create(['address_id' => $address->id]);
 
@@ -97,5 +99,45 @@ final class RentalSeoInventoryTest extends TestCase
         $this->assertEquals($city->id, $report['geography'][0]['city_id']);
         $this->assertEquals($district->id, $report['geography'][0]['district_id']);
         $this->artisan('mskba:seo:rental-inventory')->assertSuccessful();
+
+        $landing = app(RentalSeoLandingData::class);
+        $this->assertNull($landing->forGeography('missing-city'));
+        $this->assertNull($landing->forGeography($city->alias, 'missing-district'));
+        $data = $landing->forGeography($city->alias, $district->alias);
+        $this->assertFalse($data['rental_flow_enabled']);
+        $this->assertSame(1, $data['venue_count']);
+        $this->assertSame($configured->id, $data['venues'][0]->id);
+        $this->assertSame($configured->primaryCourt()->firstOrFail()->publicName(), $data['venues'][0]->matchedCourtName);
+        $this->assertSame(route('venues.courts.show', [
+            $configured->routeIdentifier(), $configured->primaryCourt()->firstOrFail()->routeIdentifier(),
+        ]), $data['venues'][0]->matchedCourtUrl);
+        $this->assertStringContainsString('city_id='.$city->id, $data['catalog_url']);
+        $this->assertStringContainsString('district_id='.$district->id, $data['catalog_url']);
+
+        // Existing catalog remains broader than the rental-specific projection.
+        $catalog = app(ListVenuesHandler::class)->handle(null, filters: [
+            'city_id' => $city->id, 'type' => 'sports_hall', 'operational_status' => 'active',
+        ]);
+        $this->assertCount(3, $catalog);
+
+        // A venue may have several halls. Never direct visitors to a hall
+        // without configured rental merely because it is the first in order.
+        $first = $configured->primaryCourt()->firstOrFail();
+        $second = $first->replicate();
+        $second->fill([
+            'name' => 'Configured secondary hall', 'alias' => 'configured-secondary-hall',
+            'is_primary' => false, 'sort_order' => 100, 'rental_enabled' => true,
+        ]);
+        $second->save();
+        $first->update(['rental_enabled' => false]);
+        $data = $landing->forGeography($city->alias);
+        $this->assertSame(1, $data['venue_count']);
+        $this->assertSame($second->publicName(), $data['venues'][0]->matchedCourtName);
+        $this->assertSame(route('venues.courts.show', [
+            $configured->routeIdentifier(), $second->routeIdentifier(),
+        ]), $data['venues'][0]->matchedCourtUrl);
+
+        $second->update(['rental_enabled' => false]);
+        $this->assertSame(0, $landing->forGeography($city->alias)['venue_count']);
     }
 }
