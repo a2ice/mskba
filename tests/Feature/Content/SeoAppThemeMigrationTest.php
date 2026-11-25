@@ -46,19 +46,25 @@ final class SeoAppThemeMigrationTest extends TestCase
         $favicon = public_path('favicon-production-32.png');
         $this->assertFileExists($favicon);
         $this->assertSame([32, 32], array_slice(getimagesize($favicon), 0, 2));
+        $developmentFavicon = public_path('favicon-development-32.png');
+        $this->assertFileExists($developmentFavicon);
+        $this->assertSame([32, 32], array_slice(getimagesize($developmentFavicon), 0, 2));
+        $this->assertNotSame(hash_file('sha256', $favicon), hash_file('sha256', $developmentFavicon));
 
         $this->get('https://mskba.ru/venues')
             ->assertOk()
-            ->assertSee('favicon-production-32.png?v=20261118', false)
+            ->assertSee('favicon-production-32.png?v=20261125', false)
+            ->assertDontSee('favicon-development-32.png', false)
             ->assertDontSee('favicon.ico', false);
 
         $this->get('https://www.mskba.ru/venues')
             ->assertOk()
-            ->assertSee('favicon-production-32.png?v=20261118', false);
+            ->assertSee('favicon-production-32.png?v=20261125', false);
 
         $this->get('https://dev.mskba.ru/venues')
             ->assertOk()
-            ->assertSee('favicon.ico', false)
+            ->assertSee('favicon-development-32.png?v=20261125', false)
+            ->assertDontSee('favicon.ico', false)
             ->assertDontSee('favicon-production-32.png', false);
     }
 
