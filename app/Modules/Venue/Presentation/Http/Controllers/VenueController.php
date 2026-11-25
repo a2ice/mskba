@@ -207,12 +207,14 @@ class VenueController extends Controller
         $hasMore = $page * $perPage < $total;
 
         if (($filters['fragment'] ?? null) === 'items') {
-            return response()->json([
+            $response = response()->json([
                 'html' => view('theme::pages.venues.partials.index-items', compact('venues', 'page'))->render(),
                 'has_more' => $hasMore,
                 'next_page' => $hasMore ? $page + 1 : null,
                 'total' => $total,
             ])->header('Cache-Control', 'private, no-store');
+
+            return $isLandingPreview ? $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive') : $response;
         }
 
         $response = ThemeResolver::page('venues.index', $landingData + compact(
