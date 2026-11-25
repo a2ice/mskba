@@ -43,5 +43,13 @@ final class VenueAppMetroColorTest extends TestCase
         $this->assertSame(2, substr_count($html, '--metro-color: #BED12C'));
         $this->assertSame(1, substr_count($html, '--metro-color: #758392'));
         $response->assertSee('Яхромская')->assertSee('Селигерская');
+
+        $catalog = $this->get(route('venues', ['search' => $venue->name]))->assertOk();
+        $catalog->assertSee('Яхромская')->assertSee('Селигерская')
+            ->assertSee('data-venue-map-open', false)->assertSee('data-venue-map-dialog', false);
+        $this->assertSame(2, substr_count($catalog->getContent(), '--metro-color: #BED12C'));
+        $this->assertSame(1, substr_count($catalog->getContent(), '--metro-color: #758392'));
+        $this->assertSame(1, substr_count($catalog->getContent(), 'data-venue-map-dialog'));
+
     }
 }
