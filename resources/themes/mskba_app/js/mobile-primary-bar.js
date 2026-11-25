@@ -54,6 +54,8 @@ if (dock) {
     let expanded = false;
 
     const selectedScope = () => {
+        const landingCount = original?.getAttribute('data-venue-landing-filter-count');
+        if (landingCount !== null && landingCount !== undefined) return Number(landingCount);
         const url = new URL(window.location.href);
         const keys = new Set(['q', 'search', 'type', 'status', 'period', 'date_from', 'date_to',
             'outcome', 'venue_id', 'has_mini_games', 'query', 'season', 'training_mode',

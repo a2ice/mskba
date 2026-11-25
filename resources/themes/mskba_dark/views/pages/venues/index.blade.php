@@ -1,5 +1,5 @@
 @php
-    $title = 'Площадки';
+    $title = $landing->h1 ?? 'Площадки';
     $currentView = in_array(($filters['view'] ?? null), ['list', 'map'], true) ? $filters['view'] : 'cards';
     $activeFilterCount = collect(['type', 'operational_status', 'access', 'radius_km', 'city_id', 'district_id'])
         ->filter(fn ($key) => filled($filters[$key] ?? null))

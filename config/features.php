@@ -1,6 +1,10 @@
 <?php
 
 return [
+    // Remains off until catalogue UI acceptance; does not authorize indexing.
+    'venue_catalog_landings' => [
+        'enabled' => (bool) env('FEATURE_VENUE_CATALOG_LANDINGS', false),
+    ],
     // Temporary manual QA entry to personal chats. Not a general messenger feature.
     // Override explicitly with FEATURE_DIRECT_MESSAGE_TEST_ENTRY in any environment.
     'direct_messages' => [

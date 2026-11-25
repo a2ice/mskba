@@ -645,6 +645,10 @@ Route::prefix('venues')->group(function () {
         ->name('venues.preview');
     Route::get('/{venue}/interest-group', VenueInterestGroupController::class)
         ->whereNumber('venue')->name('venues.interest-group');
+    Route::get('/collections/{landingSlug}', [VenueController::class, 'index'])
+        ->where('landingSlug', \App\Modules\Content\Application\Services\VenueCatalogLandingNavigation::SLUG_PATTERN)
+        ->name('venues.collections.show')
+        ->defaults('breadcrumb', 'Подборки площадок');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 

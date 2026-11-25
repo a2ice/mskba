@@ -24,7 +24,7 @@ final readonly class VenueCatalogLandingEditor
         $data = Validator::make($data, [
             'name' => ['required', 'string', 'max:255'],
             'h1' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:180', 'regex:~^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,3}$~D', Rule::unique('venue_catalog_landings', 'slug')->ignore($record?->getKey())],
+            'slug' => ['required', 'string', 'max:180', 'regex:~\A'.VenueCatalogLandingNavigation::SLUG_PATTERN.'\z~D', Rule::unique('venue_catalog_landings', 'slug')->ignore($record?->getKey())],
             'city_id' => ['nullable', 'integer', 'exists:cities,id'],
             'district_id' => ['nullable', 'integer', Rule::exists('districts', 'id')->where('city_id', $data['city_id'] ?? null)],
             'type' => ['nullable', Rule::enum(\App\Modules\Venue\Domain\Enums\VenueTypeEnum::class)],

@@ -6,6 +6,7 @@ use App\Filament\Backoffice\Resources\VenueCatalogLandings\Pages\CreateVenueCata
 use App\Filament\Backoffice\Resources\VenueCatalogLandings\Pages\EditVenueCatalogLanding;
 use App\Filament\Backoffice\Resources\VenueCatalogLandings\Pages\ListVenueCatalogLandings;
 use App\Modules\Content\Domain\Models\VenueCatalogLanding;
+use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\District;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
@@ -51,8 +52,8 @@ final class VenueCatalogLandingResource extends Resource
             Section::make('Посадочная страница')->columns(2)->schema([
                 TextInput::make('name')->label('Внутреннее название')->required()->maxLength(255),
                 TextInput::make('slug')->label('ЧПУ')->required()->maxLength(180)
-                    ->regex('~^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,3}$~D')
-                    ->unique(ignoreRecord: true)->helperText('Например rent/moscow. Публичный маршрут подключается отдельным этапом.'),
+                    ->regex('~\A'.VenueCatalogLandingNavigation::SLUG_PATTERN.'\z~D')
+                    ->unique(ignoreRecord: true)->helperText('Например rent/moscow → /venues/collections/rent/moscow. Публичная выдача пока отключена.'),
                 TextInput::make('h1')->label('H1')->required()->maxLength(255)->columnSpanFull(),
                 Toggle::make('is_active')->label('Активна')->default(false)
                     ->helperText('Черновик не участвует в сопоставлении фильтров. Публичный маршрут пока не подключён.'),
