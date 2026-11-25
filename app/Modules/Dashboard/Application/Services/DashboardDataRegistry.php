@@ -7,6 +7,8 @@ use App\Modules\Dashboard\Application\Data\DashboardWidgetData;
 use App\Modules\Dashboard\Application\Providers\UnreadMessagesProvider;
 use App\Modules\Dashboard\Application\Providers\MyInterestsProvider;
 use App\Modules\Dashboard\Application\Providers\WalletSummaryProvider;
+use App\Modules\Dashboard\Application\Providers\UpcomingEventsProvider;
+use App\Modules\Dashboard\Application\Providers\MyRentalRequestsProvider;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Identity\Domain\Models\User;
 
@@ -17,6 +19,8 @@ final class DashboardDataRegistry
         'unread_messages' => UnreadMessagesProvider::class,
         'my_interests' => MyInterestsProvider::class,
         'wallet_summary' => WalletSummaryProvider::class,
+        'upcoming_events' => UpcomingEventsProvider::class,
+        'my_rental_requests' => MyRentalRequestsProvider::class,
     ];
 
     private function resolve(AccountDashboardWidget $widget): ?DashboardDataProvider
