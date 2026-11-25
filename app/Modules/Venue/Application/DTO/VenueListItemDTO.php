@@ -34,6 +34,8 @@ final readonly class VenueListItemDTO
         public ?string $matchedCourtName = null,
         public ?bool $matchedRequiresBooking = null,
         public ?bool $matchedRequiresApproval = null,
+        /** @var list<VenueMetroStationDTO> */
+        public array $metroStations = [],
     ) {}
 
     /**
@@ -98,6 +100,50 @@ final readonly class VenueListItemDTO
         return $this->matchedCourtUrl !== null
             ? (int) in_array($state, $this->paymentBadgeStates(), true)
             : count($this->courtAccessSummary[$state] ?? []);
+    }
+
+    /** Truncate at the closest complete word around the preferred 50 characters. */
+    public static function catalogDescription(?string $description): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $description)) ?? '');
+        if (mb_strlen($text) <= 50) {
+            return $text;
+        }
+
+        $best = '';
+        $prefix = '';
+        foreach (explode(' ', $text) as $word) {
+            $prefix = $prefix === '' ? $word : $prefix.' '.$word;
+            $candidate = preg_replace('/[\s\p{P}]+$/u', '', $prefix) ?? '';
+            if (mb_strlen($candidate) > 58) {
+                break;
+            }
+            if ($candidate !== '' && ($best === '' || abs(mb_strlen($candidate) - 50) < abs(mb_strlen($best) - 50))) {
+                $best = $candidate;
+            }
+        }
+
+        // A single long word must never be cut in half.
+        if ($best === '') {
+            $best = preg_replace('/[\s\p{P}]+$/u', '', explode(' ', $text)[0]) ?? '';
+        }
+
+        return $best === '' ? '' : $best.'…';
+    }
+
+    /** @return array{approval: bool, booking: bool} */
+    public function cardConditions(?array $court = null): array
+    {
+        $courts = $court !== null ? [$court] : array_merge(
+            $this->courtAccessSummary['free'] ?? [],
+            $this->courtAccessSummary['paid'] ?? [],
+            $this->courtAccessSummary['unknown'] ?? [],
+        );
+
+        return [
+            'approval' => collect($courts)->contains(fn (array $item): bool => (bool) ($item['requires_booking_approval'] ?? false)),
+            'booking' => collect($courts)->contains(fn (array $item): bool => (bool) ($item['requires_booking'] ?? false)),
+        ];
     }
 
     public function hasFreeAccess(): bool
