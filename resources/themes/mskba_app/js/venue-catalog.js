@@ -1,5 +1,6 @@
 import './venue-catalog-nearby.js';
 import './venue-catalog-geography.js';
+import './venue-catalog-types.js';
 import { loadYandexMaps } from '../../mskba_dark/js/core/yandex-maps.js';
 import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
 
