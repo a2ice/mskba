@@ -265,3 +265,7 @@ planned / deferred / needs-verification`. Ничего не закрываем �
 
 - [x] 339 - Общий визард создания подписок и динамическое подменю «Мои подписки» ([описание](tasks/339/description.md))
 - [ ] 340 - Контрольные точки main/dev, проверка фактических деплоев ([описание](tasks/340/description.md))
+
+## SEO и органическое привлечение
+
+- [ ] 1034 - SEO: аренда баскетбольных залов Москвы и Московской области (ID эпика GitHub; [описание](tasks/seo-rental-1034/description.md), [план](tasks/seo-rental-1034/plan.md), [регламент](tasks/seo-rental-1034/runbook.md))
