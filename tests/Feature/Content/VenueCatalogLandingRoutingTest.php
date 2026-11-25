@@ -129,7 +129,12 @@ final class VenueCatalogLandingRoutingTest extends TestCase
             ->assertOk()->assertJsonPath('total', 5)->assertJsonPath('has_more', false)
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
         $this->get($preview(['page' => 2]))->assertOk()->assertSee('PreviewHall05')
-            ->assertDontSee('Draft editorial intro')->assertDontSee('Draft editorial body');
+            ->assertDontSee('data-venue-landing-editorial="intro"', false)
+            ->assertDontSee('data-venue-landing-editorial="body"', false)
+            ->assertDontSee('<p>Draft editorial intro</p>', false)
+            ->assertDontSee('Draft editorial body')
+            ->assertSee('name="description" content="Draft editorial intro"', false)
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
         $this->get($this->url())->assertNotFound();
         $this->get(route('venues', ['city_id' => $city->id]))->assertOk()
             ->assertDontSee('Draft editorial intro');
