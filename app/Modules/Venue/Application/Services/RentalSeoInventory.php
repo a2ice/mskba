@@ -60,7 +60,7 @@ final readonly class RentalSeoInventory
                         }
                         // Configured rental is not a promise of available slots,
                         // a final quote, or operational eligibility to transact.
-                        if ($effective['rental_enabled'] && ($court->allowsScope(true) || $court->allowsScope(false))) {
+                        if ($this->effectivePolicies->hasConfiguredRental($court, $effective)) {
                             $counts['rental_configured_indoor_courts']++;
                             if ($payment === true) {
                                 $counts['paid_rental_configured_indoor_courts']++;
