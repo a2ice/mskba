@@ -83,6 +83,7 @@ class VenueController extends Controller
             'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
+            'rental_configured' => ['nullable', 'boolean'],
             'has_upcoming_events' => ['nullable', 'boolean'],
             'my_interests' => ['nullable', 'boolean'],
             'interest_id' => ['nullable', 'integer', 'min:1'],
@@ -116,7 +117,10 @@ class VenueController extends Controller
         $matchingInterests = $request->boolean('my_interests')
             ? ($chosenInterest !== null ? $myInterests->where('id', $chosenInterest)->values() : $myInterests)
             : null;
-        $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request), $filters, $matchingInterests);
+        $venues = $useCase->handle(
+            $request->user(), $actors->resolveForRequest($request), $filters, $matchingInterests,
+            configuredRentalOnly: $request->boolean('rental_configured'),
+        );
         if (app(ThemeResolver::class)->active() !== 'mskba_app') {
             return ThemeResolver::page('venues.index', [
                 'venues' => $venues,
