@@ -13,6 +13,7 @@ use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
+use App\Modules\Venue\Application\Services\VenueTypeFilter;
 use App\Modules\Venue\Application\Services\AccountVenueEditorAccess;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
@@ -86,7 +87,7 @@ class VenueController extends Controller
             'search' => ['nullable', 'string', 'max:100'],
             'city_id' => ['nullable', 'integer', 'min:1', 'exists:cities,id'],
             'district_id' => ['nullable', 'integer', 'min:1', 'exists:districts,id'],
-            'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
+            ...VenueTypeFilter::rules($request->query('type')),
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
             'rental_configured' => ['nullable', 'boolean'],
@@ -102,6 +103,9 @@ class VenueController extends Controller
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'fragment' => ['nullable', Rule::in(['items'])],
         ]);
+        if (array_key_exists('type', $filters)) {
+            $filters['type'] = VenueTypeFilter::canonical($filters['type']);
+        }
         $landing = $isLandingPreview ? $requestedLanding : $navigation->match($request, $filters);
         $isFragment = ($filters['fragment'] ?? null) === 'items';
         if (! $isLandingPreview && ! $isFragment && ! $request->expectsJson()) {
