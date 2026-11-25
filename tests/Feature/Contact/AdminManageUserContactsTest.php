@@ -120,6 +120,38 @@ final class AdminManageUserContactsTest extends TestCase
         $handler->sendCode($admin, $target, $contact->id);
     }
 
+    public function test_contact_revision_preserves_old_record_and_label(): void
+    {
+        $admin = $this->user(Role::SUPERADMIN, Status::CONFIRMED);
+        $target = $this->user();
+        $handler = app(AdminManageUserContactsHandler::class);
+        $old = $handler->add($admin, $target, Type::EMAIL, 'typo@example.test', 'Рабочий');
+        $new = $handler->replacePending($admin, $target, $old->id, 'correct@example.test', 'Исправление опечатки в адресе');
+
+        $this->assertSoftDeleted($old);
+        $this->assertNotSame($old->id, $new->id);
+        $this->assertSame('correct@example.test', $new->value);
+        $this->assertSame('Рабочий', $new->label);
+        $this->assertTrue($new->is_primary);
+        $this->assertNull($new->verified_at);
+        $this->assertDatabaseHas('audit_logs', ['auditable_id' => $target->id, 'event' => 'admin_user_contact_replaced']);
+    }
+
+    public function test_contact_label_change_and_deletion_are_audited(): void
+    {
+        $admin = $this->user(Role::SUPERADMIN, Status::CONFIRMED);
+        $target = $this->user();
+        $handler = app(AdminManageUserContactsHandler::class);
+        $contact = $handler->add($admin, $target, Type::EMAIL, 'office@example.test', null);
+
+        $handler->updateLabel($admin, $target, $contact->id, 'Рабочий', 'Уточнение названия контакта');
+        $this->assertSame('Рабочий', $contact->fresh()->label);
+        $handler->delete($admin, $target, $contact->id, 'Контакт добавлен по ошибке');
+        $this->assertSoftDeleted($contact);
+        $this->assertDatabaseHas('audit_logs', ['auditable_id' => $target->id, 'event' => 'admin_user_contact_label_changed']);
+        $this->assertDatabaseHas('audit_logs', ['auditable_id' => $target->id, 'event' => 'admin_user_contact_deleted']);
+    }
+
     private function user(Role $role = Role::USER, Status $status = Status::UNCONFIRMED): User
     {
         return User::factory()->create(['system_role' => $role, 'status' => $status]);

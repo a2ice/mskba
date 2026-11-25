@@ -93,6 +93,15 @@
                                 @elseif($contact->type === ContactTypeEnum::PHONE && !$contact->hasBeenVerified())
                                     <span class="text-sm text-gray-500">SMS-подтверждение пока недоступно</span>
                                 @endif
+                                @if(in_array($contact->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true))
+                                    <x-filament::button size="sm" type="button" color="gray" wire:click="mountAction('editUserContactLabel', { contact_id: {{ $contact->id }} })">Изменить название</x-filament::button>
+                                    @if(!$contact->hasBeenVerified())
+                                        <x-filament::button size="sm" type="button" color="gray" wire:click="mountAction('replaceUserContact', { contact_id: {{ $contact->id }} })">Изменить контакт</x-filament::button>
+                                    @endif
+                                    @if(!$contact->is_primary || !$contact->hasBeenVerified())
+                                        <x-filament::button size="sm" type="button" color="danger" wire:click="mountAction('deleteUserContact', { contact_id: {{ $contact->id }} })">Удалить</x-filament::button>
+                                    @endif
+                                @endif
                                 @if($contact->hasBeenVerified() && !$contact->is_primary)
                                     <x-filament::button size="sm" type="button" color="gray" wire:click="mountAction('setUserPrimaryContact', { contact_id: {{ $contact->id }} })">Сделать основным</x-filament::button>
                                 @endif

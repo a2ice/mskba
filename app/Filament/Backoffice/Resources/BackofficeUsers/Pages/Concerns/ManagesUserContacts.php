@@ -2,6 +2,7 @@
 
 namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages\Concerns;
 
+use App\Modules\Contact\Application\Exceptions\ContactDeletionException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationDeliveryException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
@@ -10,6 +11,7 @@ use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -93,6 +95,73 @@ trait ManagesUserContacts
                         throw ValidationException::withMessages(['code' => $exception->getMessage()]);
                     }
                     Notification::make()->success()->title('Email подтверждён')->send();
+                }),
+            Action::make('editUserContactLabel')
+                ->label('Изменить название')
+                ->extraAttributes(['style' => 'display:none'])
+                ->visible($visible)
+                ->fillForm(function (array $arguments) use ($visible): array {
+                    abort_unless($visible(), 403);
+                    $contact = $this->getRecord()->identityContactsQuery()->findOrFail((int) ($arguments['contact_id'] ?? 0));
+
+                    return ['label' => $contact->label];
+                })
+                ->schema([
+                    TextInput::make('label')->label('Название')->maxLength(100),
+                    Textarea::make('reason')->label('Основание')->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $arguments, array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminManageUserContactsHandler::class)->updateLabel(
+                        $actor, $this->getRecord(), (int) ($arguments['contact_id'] ?? 0), $data['label'] ?? null, $data['reason'],
+                    );
+                    Notification::make()->success()->title('Название изменено')->send();
+                }),
+            Action::make('replaceUserContact')
+                ->label('Изменить контакт')
+                ->extraAttributes(['style' => 'display:none'])
+                ->visible($visible)
+                ->modalHeading('Заменить неподтверждённый контакт')
+                ->modalDescription('Старый контакт и его история сохранятся в удалённых. Новый контакт потребует отдельного подтверждения.')
+                ->schema([
+                    TextInput::make('value')->label('Новое значение')->required()->maxLength(254),
+                    Textarea::make('reason')->label('Основание')->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $arguments, array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    try {
+                        app(AdminManageUserContactsHandler::class)->replacePending(
+                            $actor, $this->getRecord(), (int) ($arguments['contact_id'] ?? 0), $data['value'], $data['reason'],
+                        );
+                    } catch (InvalidArgumentException $exception) {
+                        throw ValidationException::withMessages(['value' => $exception->getMessage()]);
+                    }
+                    Notification::make()->success()->title('Контакт заменён')->send();
+                }),
+            Action::make('deleteUserContact')
+                ->label('Удалить контакт')
+                ->extraAttributes(['style' => 'display:none'])
+                ->visible($visible)
+                ->color('danger')
+                ->modalHeading('Удалить контакт')
+                ->modalDescription('Контакт перестанет использоваться для входа. История сохранится. Подтверждённый основной контакт удалить нельзя.')
+                ->modalSubmitActionLabel('Удалить')
+                ->schema([
+                    Textarea::make('reason')->label('Основание')->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $arguments, array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    try {
+                        app(AdminManageUserContactsHandler::class)->delete(
+                            $actor, $this->getRecord(), (int) ($arguments['contact_id'] ?? 0), $data['reason'],
+                        );
+                    } catch (ContactDeletionException $exception) {
+                        throw ValidationException::withMessages(['reason' => $exception->getMessage()]);
+                    }
+                    Notification::make()->success()->title('Контакт удалён')->send();
                 }),
             Action::make('setUserPrimaryContact')
                 ->label('Сделать основным')
