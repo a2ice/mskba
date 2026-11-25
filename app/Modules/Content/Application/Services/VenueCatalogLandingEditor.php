@@ -5,6 +5,7 @@ namespace App\Modules\Content\Application\Services;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Content\Domain\Models\PageSeoSetting;
 use App\Modules\Content\Domain\Models\VenueCatalogLanding;
+use App\Modules\Venue\Application\Services\VenueTypeFilter;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -27,7 +28,7 @@ final readonly class VenueCatalogLandingEditor
             'slug' => ['required', 'string', 'max:180', 'regex:~\A'.VenueCatalogLandingNavigation::SLUG_PATTERN.'\z~D', Rule::unique('venue_catalog_landings', 'slug')->ignore($record?->getKey())],
             'city_id' => ['nullable', 'integer', 'exists:cities,id'],
             'district_id' => ['nullable', 'integer', Rule::exists('districts', 'id')->where('city_id', $data['city_id'] ?? null)],
-            'type' => ['nullable', Rule::enum(\App\Modules\Venue\Domain\Enums\VenueTypeEnum::class)],
+            ...VenueTypeFilter::rules($data['type'] ?? null),
             'operational_status' => ['nullable', Rule::enum(\App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
             'rental_configured' => ['required', 'boolean'],
@@ -40,6 +41,7 @@ final readonly class VenueCatalogLandingEditor
             'meta_description' => ['nullable', 'string', 'max:320'],
         ])->validate();
 
+        $data['type'] = VenueTypeFilter::canonical($data['type'] ?? null);
         foreach (['intro_text', 'body_text'] as $key) {
             $data[$key] = isset($data[$key]) ? $this->sanitizer->sanitize($data[$key]) : null;
         }
