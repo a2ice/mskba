@@ -65,7 +65,6 @@ final class ListVenuesHandler
                     }
                 })
                 ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->whereDiscoveryType($type))
-                ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status))
                 ->when((bool) ($filters['has_upcoming_events'] ?? false), function ($filtered) use ($filters): void {
                     $now = now();
                     $until = $now->copy()->addDays((int) ($filters['event_days'] ?? 7));
@@ -114,24 +113,25 @@ final class ListVenuesHandler
 
         $accessFilter = $filters['access'] ?? null;
         $environment = VenueTypeEnum::tryFrom((string) ($filters['type'] ?? ''))?->discoveryEnvironment();
+        $statusFilter = $filters['operational_status'] ?? null;
+        $zoneMode = $environment !== null || filled($accessFilter);
 
         return $venues
-            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment): array {
-                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id));
-                $eligible = $access[$accessFilter ?? ''] ?? [];
+            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment, $statusFilter, $zoneMode): array {
+                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id), includeClosed: true);
+                $matched = VenueCourtDiscoveryAccess::select(
+                    $access,
+                    $environment?->value,
+                    VenueCourtDiscoveryAccess::paymentFilter($accessFilter),
+                    $accessFilter === 'approval' ? true : null,
+                    $statusFilter,
+                );
 
-                if ($environment !== null) {
-                    $ids = $venue->courts->filter(fn ($court): bool => $court->environment === $environment)
-                        ->pluck('id')->map(fn ($id): int => (int) $id)->all();
-                    $eligible = array_values(array_filter($eligible, fn (array $court): bool =>
-                        in_array($court['court_id'], $ids, true)));
-                }
-
-                return ['venue' => $venue, 'access' => $access, 'matched' => $eligible[0] ?? null];
+                return ['venue' => $venue, 'access' => $access, 'matched' => $matched];
             })
-            ->filter(fn (array $row): bool => $accessFilter === null
-                || $accessFilter === ''
-                || $row['matched'] !== null)
+            ->filter(fn (array $row): bool => $zoneMode
+                ? $row['matched'] !== null
+                : ($statusFilter === null || $row['venue']->operational_status->value === $statusFilter))
             ->map(function (array $row) use (
                 $contractViewableVenueIds, $contractEditableVenueIds,
                 $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds,

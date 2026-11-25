@@ -38,7 +38,7 @@ final readonly class VenueListItemDTO
 
     /**
      * Use the actual destination court (including similar-nearby cards) or
-     * all active courts on a venue card. Never fall back to the parent price.
+     * all non-deleted courts on a venue card. Never fall back to the parent price.
      *
      * @return list<string>
      */
@@ -60,6 +60,44 @@ final readonly class VenueListItemDTO
         }
 
         return $courtUrl !== null ? ['unknown'] : $states;
+    }
+
+    /** The destination metadata also works for nearby cards with an explicit URL. */
+    public function cardCourt(?string $url = null): ?array
+    {
+        $url ??= $this->matchedCourtUrl;
+        if ($url === null) {
+            return null;
+        }
+
+        foreach (['free', 'paid', 'unknown'] as $state) {
+            foreach ($this->courtAccessSummary[$state] ?? [] as $court) {
+                if ($court['url'] === $url) {
+                    return $court;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function courtCount(): int
+    {
+        return count($this->courtAccessSummary['free'] ?? [])
+            + count($this->courtAccessSummary['paid'] ?? [])
+            + count($this->courtAccessSummary['unknown'] ?? []);
+    }
+
+    public function cardCourtCount(?string $url = null): int
+    {
+        return $this->cardCourt($url) === null ? $this->courtCount() : 0;
+    }
+
+    public function cardPaymentCount(string $state): int
+    {
+        return $this->matchedCourtUrl !== null
+            ? (int) in_array($state, $this->paymentBadgeStates(), true)
+            : count($this->courtAccessSummary[$state] ?? []);
     }
 
     public function hasFreeAccess(): bool
