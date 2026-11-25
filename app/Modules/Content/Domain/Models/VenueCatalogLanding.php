@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Domain\Models;
 
 use App\Modules\Content\Application\Services\VenueCatalogLandingCriteria;
+use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
 use App\Modules\Location\Domain\Models\District;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -38,7 +39,7 @@ final class VenueCatalogLanding extends Model
     {
         static::saving(function (self $landing): void {
             if (! is_string($landing->slug) || strlen($landing->slug) > 180
-                || preg_match('~^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,3}$~D', $landing->slug) !== 1) {
+                || ! VenueCatalogLandingNavigation::validSlug($landing->slug)) {
                 throw new InvalidArgumentException('Invalid landing slug.');
             }
 
