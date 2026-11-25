@@ -60,6 +60,23 @@ class AccountInvitation extends Model
             ? 'expired' : $this->status;
     }
 
+    public function canManageLink(): bool
+    {
+        return $this->status === 'pending' && $this->accepted_user_id === null;
+    }
+
+    public function invitationStatusLabel(): string
+    {
+        return match (true) {
+            $this->accepted_user_id !== null => 'Принято',
+            $this->status === 'revoked' => 'Аннулировано',
+            $this->isExpired() => 'Просрочено',
+            $this->viewed_at !== null => 'Ссылка открыта',
+            $this->sent_at !== null => 'Отправлено',
+            default => 'Создано',
+        };
+    }
+
     public function statusLabel(): string
     {
         return match ($this->effectiveStatus()) {
