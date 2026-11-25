@@ -294,3 +294,7 @@
         min-width: 0;
     }
 }
+
+.venue-catalog-payment-row{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;flex-basis:100%}
+.venue-catalog-payment-row__badges{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0}
+.venue-catalog-payment-row__count{margin-left:auto;white-space:nowrap;flex-shrink:0;font-size:12px;font-weight:400;text-align:right}

@@ -14,9 +14,11 @@
             'address' => $venue->displayAddress,
             'url' => $venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()),
             'matched_court' => $venue->matchedCourtName,
-            'free_courts' => count($venue->courtAccessSummary['free'] ?? []),
-            'paid_courts' => count($venue->courtAccessSummary['paid'] ?? []),
-            'approval_courts' => count($venue->courtAccessSummary['approval'] ?? []),
+                    'matched_court_details' => $venue->cardCourt(),
+                    'court_count' => $venue->cardCourtCount(),
+            'free_courts' => $venue->cardPaymentCount('free'),
+            'paid_courts' => $venue->cardPaymentCount('paid'),
+            'approval_courts' => ($venue->matchedCourtUrl !== null ? (int) $venue->matchedRequiresApproval : count($venue->courtAccessSummary['approval'] ?? [])),
         ])->values();
 @endphp
 
