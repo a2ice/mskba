@@ -56,6 +56,19 @@ final class AccountInvitationController
         ]);
     }
 
+    public function interest(Request $request, AccountInvitationManager $manager): RedirectResponse
+    {
+        $token = (string) $request->session()->get('account_invitation_token', '');
+        $invitation = $manager->findByToken($token);
+        $manager->markInterested($invitation);
+
+        return redirect()->route('account-invitations.continue')->withHeaders([
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'Referrer-Policy' => 'no-referrer',
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+        ]);
+    }
+
     public function register(
         InvitationRegisterRequest $request, AccountInvitationManager $manager,
         RegisterUserHandler $register, AuthHandler $authHandler
