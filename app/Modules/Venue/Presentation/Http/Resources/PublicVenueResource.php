@@ -72,7 +72,7 @@ final class PublicVenueResource extends JsonResource
                 ),
             'latitude' => $address?->latitude === null ? null : (float) $address->latitude,
             'longitude' => $address?->longitude === null ? null : (float) $address->longitude,
-            'image_url' => $selected['image_url'] ?? ($photo === null ? null : url($photo->publicUrl())),
+            'image_url' => isset($selected['image_url']) ? url($selected['image_url']) : ($photo === null ? null : url($photo->publicUrl())),
             'url' => $selected['url'] ?? route('venues.show', $venue->routeIdentifier()),
             'venue_url' => route('venues.show', $venue->routeIdentifier()),
         ];
