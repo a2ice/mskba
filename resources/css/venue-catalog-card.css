@@ -1,10 +1,21 @@
 /* Shared compact venue card metadata; no global button or tooltip changes. */
-.venue-catalog-payment-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;width:100%;min-width:0}
-.venue-catalog-card-icons{display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;margin-left:auto;flex:none;white-space:nowrap;color:var(--muted, #b7bcb5)}
-.venue-catalog-card-icons__item{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:inherit;padding:2px 0;min-height:26px;cursor:pointer;font:inherit;font-size:13px;line-height:1}
-.venue-catalog-card-icons__item svg{display:block;width:18px;height:18px;flex:none}
-.venue-catalog-card-icons__item:is(:hover,:focus-visible,[aria-expanded="true"]){color:var(--accent,#ff7a1a)}
-.venue-catalog-card-icons__separator{font-size:12px;line-height:1;opacity:.55}
+.venue-catalog-card-top{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;min-width:0}
+.venue-catalog-card-top>.app-venues-catalog__badges,.venue-catalog-card-top>.venue-catalog-item__badges{margin:0;min-width:0}
+.venue-catalog-card-icons{display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;margin-left:auto;flex:none;max-width:100%;flex-wrap:wrap;white-space:nowrap;color:var(--muted,#b7bcb5)}
+.venue-catalog-card-icons__group{display:inline-flex;align-items:center;flex:none;gap:0}
+.venue-catalog-card-icons__group--pill{border-radius:999px;border:1px solid var(--line,#ffffff24);overflow:hidden}
+.venue-catalog-card-icons__item{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:3px;border:0;background:none;color:inherit;padding:2px 0;min-height:24px;cursor:pointer;font:inherit;font-size:12px;line-height:1}
+.venue-catalog-card-icons__item svg{display:block;width:16px;height:16px;flex:none}
+.venue-catalog-card-icons__group--pill .venue-catalog-card-icons__item{padding:2px 4px;min-height:22px}
+.venue-catalog-card-icons__item--positive{color:var(--success,#2c9b66);background:var(--success-bg,#dff3e7)}
+.venue-catalog-card-icons__item--warning{color:var(--warning,#95640e);background:var(--warning-bg,#fff2d3)}
+.venue-catalog-card-icons__item--negative{color:var(--danger,#c44747);background:var(--danger-bg,#fce5e5)}
+.venue-catalog-card-icons__item--neutral{background:var(--surface-raised,#333a35)}
+.venue-catalog-card-icons__item:is(:hover,[aria-expanded="true"]){filter:brightness(.9)}
+.venue-catalog-card-icons__group--pill .venue-catalog-card-icons__item:focus-visible{outline-offset:-2px}
+.venue-catalog-card-icons__separator{font-size:11px;line-height:1;opacity:.55}
+@media(max-width:520px){.venue-catalog-card-top{gap:4px}.venue-catalog-card-icons__item svg{width:15px;height:15px}.venue-catalog-card-icons__group--pill .venue-catalog-card-icons__item{padding-inline:3px}}
+@media(max-width:360px){.venue-catalog-card-icons{flex-wrap:wrap;white-space:normal}}
 .venue-card-tooltip{position:fixed;z-index:10000;box-sizing:border-box;width:max-content;max-width:min(280px,calc(100vw - 16px));padding:8px 11px;border-radius:8px;background:#222831;color:#fff;font:500 12px/1.4 system-ui,sans-serif;box-shadow:0 4px 14px #0003;text-align:center;pointer-events:none}
 .venue-card-tooltip[hidden]{display:none}
 .venue-catalog-address{appearance:none;display:inline-flex;align-items:center;gap:7px;align-self:flex-start;max-width:100%;padding:0;border:0;background:none;text-align:left;color:var(--muted,#b7bcb5);font:inherit;font-size:14px;line-height:1.4;cursor:pointer}

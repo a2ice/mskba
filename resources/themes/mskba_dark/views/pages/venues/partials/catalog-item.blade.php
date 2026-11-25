@@ -19,9 +19,9 @@
     </a>
 
     <div class="catalog-card__body venue-catalog-item__body">
-        <div class="catalog-card__badges venue-catalog-item__badges">
-            <span class="catalog-card__badge">{{ $court['type_label'] ?? $venue->type }}</span>
-            <span @class(['catalog-card__badge', 'is-closed' => ($court['operational_status'] ?? $venue->operationalStatusSlug) !== 'active'])>{{ $court['operational_status_label'] ?? $venue->operationalStatus }}</span>
+        <div class="venue-catalog-card-top">
+            <div class="catalog-card__badges venue-catalog-item__badges"><span class="catalog-card__badge">{{ $court['type_label'] ?? $venue->type }}</span></div>
+            @include('venues.partials.catalog-payment-row', ['paymentStates' => $paymentStates, 'operationalStates' => $venue->cardOperationalStates($court), 'courtCount' => $courtCount, 'conditions' => $conditions, 'zoneCard' => $court !== null])
         </div>
 
         <h2 class="catalog-card__title"><a href="{{ $venueUrl }}">{{ $venue->name }}</a></h2>
@@ -35,9 +35,6 @@
             <p class="venue-catalog-item__match"><i class="ti ti-layout-grid" aria-hidden="true"></i>Подходящий зал: {{ $courtName }}</p>
         @endif
 
-        <div class="venue-catalog-item__access">
-            @include('venues.partials.catalog-payment-row', ['paymentStates' => $paymentStates, 'courtCount' => $courtCount, 'conditions' => $conditions, 'zoneCard' => $court !== null, 'legacyPayment' => true])
-        </div>
         @if($description !== '')
             <p class="venue-catalog-card-description">{{ $description }}</p>
         @endif
