@@ -11,6 +11,9 @@
   display:block;width:29px;height:29px;transform:rotate(45deg);
   background:url('/images/logo-mark-100.png') center / contain no-repeat;
 }
+.mskba-venues-map__pin.mskba-venues-map__pin--reference{
+  background:#302018;
+}
 .mskba-venues-map__pin.is-active{
   background:#ff5500;
   box-shadow:0 0 0 6px rgba(255,100,0,.21),0 4px 12px rgba(12,32,49,.35);

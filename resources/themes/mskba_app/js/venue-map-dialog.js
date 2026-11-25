@@ -121,10 +121,9 @@ if (dialog) {
             if (reference) {
                 const name = initialContext.data.name || 'Площадка';
                 map.geoObjects.add(venuePlacemark(reference, {
-                    hintContent: name + ' — исходная площадка',
+                    hintContent: name,
                     balloonContentHeader: safeHtml(name),
-                    balloonContentBody: 'Исходная площадка',
-                }));
+                }, 'reference'));
             }
             metroCollection = new window.ymaps.GeoObjectCollection();
             metroStations().forEach(station => {
