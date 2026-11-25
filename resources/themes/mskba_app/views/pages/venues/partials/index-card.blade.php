@@ -17,8 +17,9 @@
         <svg aria-hidden="true"><use href="#heart"/></svg>
     </button>
     <div class="app-venues-catalog__card-body">
-        <div class="app-venues-catalog__badges">
-            <span>{{ $court['type_label'] ?? $venue->type }}</span><span>{{ $court['operational_status_label'] ?? $venue->operationalStatus }}</span>
+        <div class="venue-catalog-card-top">
+            <div class="app-venues-catalog__badges"><span>{{ $court['type_label'] ?? $venue->type }}</span></div>
+            @include('venues.partials.catalog-payment-row', ['paymentStates' => $paymentStates, 'operationalStates' => $venue->cardOperationalStates($court), 'courtCount' => $courtCount, 'conditions' => $conditions, 'zoneCard' => $court !== null])
         </div>
         <h2><a href="{{ $url }}">{{ $venue->name }}</a></h2>
         @include('venues.partials.catalog-address', ['venue' => $venue])
@@ -28,9 +29,6 @@
         @if($courtName !== null)
             <p class="app-venues-catalog__matched-court">Подходящий зал: {{ $courtName }}</p>
         @endif
-        <div class="app-venues-catalog__access">
-            @include('venues.partials.catalog-payment-row', ['paymentStates' => $paymentStates, 'courtCount' => $courtCount, 'conditions' => $conditions, 'zoneCard' => $court !== null])
-        </div>
         @if($description !== '')
             <p class="venue-catalog-card-description">{{ $description }}</p>
         @endif

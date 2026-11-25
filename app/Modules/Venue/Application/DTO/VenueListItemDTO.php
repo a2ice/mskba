@@ -102,6 +102,27 @@ final readonly class VenueListItemDTO
             : count($this->courtAccessSummary[$state] ?? []);
     }
 
+    /** @return list<string> Effective operational states of the actual destination or all courts. */
+    public function cardOperationalStates(?array $court = null): array
+    {
+        $court ??= $this->cardCourt();
+        $courts = $court !== null ? [$court] : array_merge(
+            $this->courtAccessSummary['free'] ?? [],
+            $this->courtAccessSummary['paid'] ?? [],
+            $this->courtAccessSummary['unknown'] ?? [],
+        );
+
+        $states = [];
+        foreach ($courts as $item) {
+            $states[] = $item['operational_status'] ?? $this->operationalStatusSlug;
+        }
+
+        return array_values(array_intersect(
+            ['active', 'temporarily_closed'],
+            $states !== [] ? $states : [$this->operationalStatusSlug],
+        ));
+    }
+
     /** Truncate at the closest complete word around the preferred 50 characters. */
     public static function catalogDescription(?string $description): string
     {
