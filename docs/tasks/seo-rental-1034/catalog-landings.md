@@ -39,3 +39,7 @@ Acceptance: гостевой и авторизованный каталог не
 ## Этап Filament
 
 [Контракт редактора и приёмки](../../mskba_app/tasks/1039-landing-filament/description.md). Стандартный ресурс, manage-content, общий sanitizer и PageSeoSetting; публичная маршрутизация ещё не подключена.
+
+## Интеграция ЧПУ (внутренний этап)
+
+Выбран безопасный namespace `/venues/collections/{slug}`; первый кандидат `/venues/collections/rent/moscow`. Старые адреса площадок/залов не перехватываются. [Контракт маршрутизации и флаг](../../mskba_app/tasks/1036-landing-routing/description.md). Feature gate по умолчанию выключен, noindex без исключений; HTML-композиция и визуальная приёмка отдельно, production не затрагивается.
