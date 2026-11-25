@@ -199,6 +199,12 @@
                         @include('venues.partials.payment-badge', ['paymentStates' => ['free', 'paid']])
                         @include('venues.partials.payment-badge', ['paymentStates' => ['unknown']])
                     </div>
+                    <div class="panel" style="padding:12px">
+                        @include('venues.partials.catalog-payment-row', ['paymentStates' => ['free', 'paid'], 'courtCount' => 2])
+                    </div>
+                    <div class="panel" style="padding:12px">
+                        @include('venues.partials.catalog-payment-row', ['paymentStates' => ['paid'], 'courtCount' => 0])
+                    </div>
                     <div class="filter-group" role="group" aria-label="Демонстрационные фильтры" data-kit-chips>
                         <button type="button" class="chip" aria-pressed="true">Все</button>
                         <button type="button" class="chip" aria-pressed="false">5×5</button>
