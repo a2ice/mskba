@@ -124,7 +124,7 @@ class VenueController extends Controller
                 'types' => VenueTypeEnum::cases(),
                 'operationalStatuses' => VenueOperationalStatusEnum::cases(),
                 'myInterests' => $myInterests,
-            'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
+                'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
             ]);
         }
 
@@ -177,6 +177,7 @@ class VenueController extends Controller
             'types' => VenueTypeEnum::cases(),
             'operationalStatuses' => VenueOperationalStatusEnum::cases(),
             'myInterests' => $myInterests,
+            'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
         ]);
     }
 
