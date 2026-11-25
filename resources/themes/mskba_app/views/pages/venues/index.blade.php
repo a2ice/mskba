@@ -1,6 +1,7 @@
 @php
-    $title = 'Площадки';
+    $title = $landing->h1 ?? 'Площадки';
     $breadcrumbs = [['label' => 'Площадки', 'url' => route('venues')]];
+    if (isset($landing)) $breadcrumbs[] = ['label' => $title, 'url' => $landingUrl];
     $categoryTitle = $title;
     $categoryDescription = 'Найдите подходящий зал или уличную площадку для игры.';
     $categoryHeadingId = 'venue-catalog-title';
@@ -15,8 +16,9 @@
     $categoryItemsListClass = 'app-venues-catalog__items--list';
     $categoryView = $currentView;
     $categoryHasMap = true;
-    $categoryBaseUrl = route('venues');
+    $categoryBaseUrl = $landingUrl ?? route('venues');
     $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
+    if (isset($landing)) $categoryViewQuery = \Illuminate\Support\Arr::except($categoryViewQuery, \App\Modules\Content\Application\Services\VenueCatalogLandingCriteria::KEYS);
     $categoryResetUrl = route('venues', in_array($currentView, ['list', 'map'], true) ? ['view' => $currentView] : []);
     $categoryEnableSorting = true;
     $categorySortValue = $filters['sort'] ?? '';
@@ -31,12 +33,14 @@
         \Illuminate\Support\Arr::except($filters, ['page', 'fragment']),
         fn ($value) => $value !== null && $value !== '',
     );
-    $venuePageUrl = fn (int $number) => route('venues', $venuePageQuery + ($number > 1 ? ['page' => $number] : []));
+    $venuePageUrl = fn (int $number) => isset($landing)
+        ? app(\App\Modules\Content\Application\Services\VenueCatalogLandingNavigation::class)->url($landing, $venuePageQuery + ($number > 1 ? ['page' => $number] : []))
+        : route('venues', $venuePageQuery + ($number > 1 ? ['page' => $number] : []));
     $paginationPrevUrl = $currentView !== 'map' && $page > 1 ? $venuePageUrl($page - 1) : null;
     $paginationNextUrl = $currentView !== 'map' && $hasMore ? $venuePageUrl($page + 1) : null;
     // Only the default catalog's numbered pages are new indexable targets.
     // Existing facet indexing policy is not changed by this pagination patch.
-    if ($venuePageQuery === [] && $page > 1) {
+    if (!isset($landing) && $venuePageQuery === [] && $page > 1) {
         $canonicalUrl = $venuePageUrl($page);
         $metaTitle = 'Баскетбольные площадки Москвы — страница '.$page.' | MSKBA';
     }
@@ -52,7 +56,7 @@
 
 @section('category-sidebar')
             <h2>Поиск площадок</h2>
-            <form method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters">
+            <form method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters" @if(isset($landing)) data-venue-landing-filter-count="{{ count($landing->criteria()) }}" @endif>
                 @if(in_array($currentView, ['list', 'map'], true))<input type="hidden" name="view" value="{{ $currentView }}">@endif
                 @if(filled($filters['sort'] ?? null))<input type="hidden" name="sort" value="{{ $filters['sort'] }}">@endif
                 <label><span>Поиск площадки</span>
