@@ -68,6 +68,33 @@ final class AccountInvitationLifecycleTest extends TestCase
         $this->assertNull($invitation->revoked_at);
     }
 
+    public function test_accepted_invitation_prevents_duplicate_after_link_expiry(): void
+    {
+        [$issuer, $invitation] = $this->invitation();
+        $manager = app(AccountInvitationManager::class);
+        $manager->accept($invitation, User::factory()->create());
+        $this->travel(8)->days();
+        $invitation->refresh();
+
+        $this->assertTrue($invitation->isExpired());
+        $this->assertSame('pending', $invitation->effectiveStatus());
+        $this->assertFalse($invitation->canManageLink());
+
+        try {
+            $manager->create(
+                $issuer, $invitation->contact_value, 'venue', $invitation->scope_id,
+                'owner', 'Duplicate', null, 7,
+            );
+            $this->fail('An accepted pending invitation must prevent duplicates after link expiry.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('email', $exception->errors());
+        }
+
+        $this->assertSame(1, $invitation->newQuery()
+            ->where('contact_value', $invitation->contact_value)
+            ->where('scope_id', $invitation->scope_id)->count());
+    }
+
     public function test_renewal_records_actor_and_both_expiration_dates(): void
     {
         [$issuer, $invitation] = $this->invitation();
