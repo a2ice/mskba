@@ -106,7 +106,7 @@ class VenueController extends Controller
                 return redirect()->to($navigation->url($landing, $navigation->presentationQuery($request, $filters)));
             }
             if ($requestedLanding !== null && $landing === null) {
-                return redirect()->route('venues', $filters);
+                return redirect()->route('venues', $request->query());
             }
         }
 
