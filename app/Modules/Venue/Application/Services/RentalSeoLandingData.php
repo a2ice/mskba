@@ -40,7 +40,7 @@ final readonly class RentalSeoLandingData
 
         // Deliberately use guest visibility even for an authenticated owner.
         // The landing must never display owner-only previews or private inventory.
-        $items = $this->venues->handle(null, filters: $filters, configuredRentalOnly: true);
+        $items = array_values($this->venues->handle(null, filters: $filters, configuredRentalOnly: true));
 
         return [
             'city' => ['id' => $city->id, 'name' => $city->name, 'alias' => $city->alias],
