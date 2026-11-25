@@ -53,7 +53,8 @@ final class AccountInvitationResource extends Resource
     {
         return parent::getEloquentQuery()
             ->when(! self::canViewAny(), fn (Builder $query) => $query->whereRaw('1 = 0'))
-            ->with(['issuer', 'acceptedUser']);
+            ->with(['issuer', 'acceptedUser'])
+            ->withExists(['events as has_restoration' => fn (Builder $query) => $query->where('event', 'restored')]);
     }
 
     public static function table(Table $table): Table
@@ -74,13 +75,15 @@ final class AccountInvitationResource extends Resource
                     }),
                 TextColumn::make('invitation_status')->label('Приглашение')->badge()
                     ->state(fn (AccountInvitation $record): string => $record->invitationStatusLabel()),
+                TextColumn::make('system_status')->label('Системный статус')->badge()
+                    ->state(fn (AccountInvitation $record): string => $record->systemStatusLabel()),
                 TextColumn::make('status')->label('Процедура')->badge()
                     ->formatStateUsing(fn ($state, AccountInvitation $record): string => $record->statusLabel()),
                 TextColumn::make('progress')->label('Этап')
                     ->formatStateUsing(fn ($state, AccountInvitation $record): string => $record->progressLabel()),
                 TextColumn::make('issuer.username')->label('Отправитель')->placeholder('—'),
                 TextColumn::make('sent_at')->label('Отправлено')->dateTime('d.m.Y H:i')->sortable()->placeholder('—'),
-                TextColumn::make('viewed_at')->label('Открыто')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('viewed_at')->label('Открыто')->tooltip('Техническое открытие ссылки, в том числе почтовым сканером')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('contact_verified_at')->label('Принято / контакт подтверждён')->dateTime('d.m.Y H:i')->sortable()->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('views_count')->label('Открытия')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('expires_at')->label('Ссылка до')->dateTime('d.m.Y H:i')->sortable(),
@@ -150,35 +153,80 @@ final class AccountInvitationResource extends Resource
                     ->modalContent(fn (AccountInvitation $record) => view(
                         'filament.backoffice.account-invitation-history',
                         ['invitation' => $record->load(['events', 'acceptedUser', 'issuer'])],
-                    )),
-                Action::make('renew')->label('Продлить / обновить ссылку')->icon('heroicon-o-arrow-path')
-                    ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
-                    ->schema([
-                        Select::make('days')->label('Новый срок')->required()->default(7)
-                            ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
-                    ])
-                    ->requiresConfirmation()
-                    ->action(function (AccountInvitation $record, array $data): void {
-                        abort_unless(self::canViewAny(), 403);
-                        try {
-                            $url = app(AccountInvitationManager::class)->renew($record, auth('web')->user(), (int) $data['days']);
-                            Notification::make()->success()->title('Новая ссылка отправлена')
-                                ->body('Старая ссылка недействительна. Новая: '.$url)
-                                ->persistent()->send();
-                        } catch (Throwable $e) {
-                            report($e);
-                            Notification::make()->danger()->title('Не удалось отправить новую ссылку')->send();
-                        }
-                    }),
-                Action::make('revoke')->label('Аннулировать')->color('danger')
-                    ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
-                    ->requiresConfirmation()
-                    ->action(function (AccountInvitation $record): void {
-                        app(AccountInvitationManager::class)->revoke($record, auth('web')->user());
-                        Notification::make()->success()->title('Приглашение отозвано')->send();
-                    }),
+                    ))
+                    ->extraModalFooterActions(fn (AccountInvitation $record): array => [
+                        self::renewAction('renewFromDetails')->record($record)->cancelParentActions(),
+                        self::revokeAction('revokeFromDetails')->record($record)->cancelParentActions(),
+                        self::restoreAction('restoreFromDetails')->record($record)->cancelParentActions(),
+                    ]),
+                self::renewAction(),
+                self::revokeAction(),
+                self::restoreAction(),
             ])
             ->defaultSort('id', 'desc');
+    }
+
+    private static function renewAction(string $name = 'renew'): Action
+    {
+        return Action::make($name)->label('Продлить / обновить ссылку')
+            ->icon('heroicon-o-arrow-path')
+            ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
+            ->schema([
+                Select::make('days')->label('Новый срок')->required()->default(7)
+                    ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
+            ])
+            ->modalDescription('Предыдущая ссылка перестанет действовать. Получателю будет отправлена новая.')
+            ->action(function (AccountInvitation $record, array $data): void {
+                abort_unless(self::canViewAny(), 403);
+                try {
+                    app(AccountInvitationManager::class)->renew($record, auth('web')->user(), (int) $data['days']);
+                    Notification::make()->success()->title('Новая ссылка отправлена')->send();
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    throw $e;
+                } catch (Throwable $e) {
+                    report($e);
+                    Notification::make()->danger()->title('Не удалось отправить новую ссылку')
+                        ->body('Обновите список и проверьте состояние приглашения.')->send();
+                }
+            });
+    }
+
+    private static function revokeAction(string $name = 'revoke'): Action
+    {
+        return Action::make($name)->label('Аннулировать')->color('danger')
+            ->visible(fn (AccountInvitation $record): bool => $record->canManageLink())
+            ->requiresConfirmation()
+            ->action(function (AccountInvitation $record): void {
+                app(AccountInvitationManager::class)->revoke($record, auth('web')->user());
+                Notification::make()->success()->title('Приглашение аннулировано')->send();
+            });
+    }
+
+    private static function restoreAction(string $name = 'restore'): Action
+    {
+        return Action::make($name)->label('Восстановить')->icon('heroicon-o-arrow-path')
+            ->visible(fn (AccountInvitation $record): bool => $record->canRestoreLink())
+            ->modalDescription('Приглашение снова станет активным. Получателю будет отправлена новая ссылка.')
+            ->schema([
+                Select::make('days')->label('Новый срок')->required()->default(7)
+                    ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
+                Textarea::make('reason')->label('Причина восстановления')->required()->minLength(5)->maxLength(2000)->rows(3),
+            ])
+            ->action(function (AccountInvitation $record, array $data): void {
+                abort_unless(self::canViewAny(), 403);
+                try {
+                    app(AccountInvitationManager::class)->restore(
+                        $record, auth('web')->user(), (int) $data['days'], (string) $data['reason']
+                    );
+                    Notification::make()->success()->title('Приглашение восстановлено, новая ссылка отправлена')->send();
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    throw $e;
+                } catch (Throwable $e) {
+                    report($e);
+                    Notification::make()->danger()->title('Не удалось отправить новую ссылку')
+                        ->body('Обновите список и проверьте состояние приглашения.')->send();
+                }
+            });
     }
 
     public static function getPages(): array
