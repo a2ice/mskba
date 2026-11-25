@@ -194,7 +194,7 @@ if (dialog) {
         referenceVenueId = referenceId;
         dialog.dataset.currentVenueLink = 'true';
         const name = String(venue.name || 'Площадка');
-        title.textContent = name + ' — на карте';
+        title.textContent = name;
         address.textContent = String(venue.address || '');
         canvas.dataset.name = name;
         canvas.dataset.venueUrl=String(venue.venue_url || venue.url || '');
@@ -244,7 +244,7 @@ if (dialog) {
         generation++;
         destroyMap();
         resetNearby();
-        title.textContent = 'Площадка — на карте';
+        title.textContent = 'Площадка';
         address.textContent = '';
         canvas.textContent = 'Загружаем площадку…';
         if (!dialog.open) dialog.showModal();
