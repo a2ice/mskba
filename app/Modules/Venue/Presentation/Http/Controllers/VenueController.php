@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
+use App\Modules\Location\Domain\Models\City;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
 use App\Modules\Venue\Application\Services\AccountVenueEditorAccess;
@@ -77,6 +78,8 @@ class VenueController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
+            'city_id' => ['nullable', 'integer', 'min:1', 'exists:cities,id'],
+            'district_id' => ['nullable', 'integer', 'min:1', 'exists:districts,id'],
             'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
@@ -121,6 +124,7 @@ class VenueController extends Controller
                 'types' => VenueTypeEnum::cases(),
                 'operationalStatuses' => VenueOperationalStatusEnum::cases(),
                 'myInterests' => $myInterests,
+            'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
             ]);
         }
 
