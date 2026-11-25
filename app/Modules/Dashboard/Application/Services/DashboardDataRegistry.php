@@ -14,19 +14,30 @@ use App\Modules\Identity\Domain\Models\User;
 
 final class DashboardDataRegistry
 {
-    /** @var array<string, class-string<DashboardDataProvider>> */
+    /** @var array<string, array{provider: class-string<DashboardDataProvider>, label: string, limit: bool}> */
     private const PROVIDERS = [
-        'unread_messages' => UnreadMessagesProvider::class,
-        'my_interests' => MyInterestsProvider::class,
-        'wallet_summary' => WalletSummaryProvider::class,
-        'upcoming_events' => UpcomingEventsProvider::class,
-        'my_rental_requests' => MyRentalRequestsProvider::class,
+        'unread_messages' => ['provider' => UnreadMessagesProvider::class, 'label' => 'Непрочитанные сообщения', 'limit' => false],
+        'my_interests' => ['provider' => MyInterestsProvider::class, 'label' => 'Мои интересы', 'limit' => true],
+        'wallet_summary' => ['provider' => WalletSummaryProvider::class, 'label' => 'Мои финансы', 'limit' => true],
+        'upcoming_events' => ['provider' => UpcomingEventsProvider::class, 'label' => 'Моё расписание', 'limit' => true],
+        'my_rental_requests' => ['provider' => MyRentalRequestsProvider::class, 'label' => 'Мои заявки на аренду', 'limit' => true],
     ];
+
+    /** @return array<string, string> */
+    public static function options(): array
+    {
+        return array_map(static fn (array $source): string => $source['label'], self::PROVIDERS);
+    }
+
+    public static function supportsLimit(mixed $source): bool
+    {
+        return is_string($source) && (self::PROVIDERS[$source]['limit'] ?? false);
+    }
 
     private function resolve(AccountDashboardWidget $widget): ?DashboardDataProvider
     {
         $key = $widget->source_key;
-        $class = is_string($key) && $widget->kind === 'dynamic' ? (self::PROVIDERS[$key] ?? null) : null;
+        $class = is_string($key) && $widget->kind === 'dynamic' ? (self::PROVIDERS[$key]['provider'] ?? null) : null;
 
         return $class === null ? null : app($class);
     }

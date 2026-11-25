@@ -27,8 +27,8 @@ final class AdminAccountDashboardController extends Controller
         $this->authorizeWidgetAction($request, BackofficePermission::BACKOFFICE_WIDGET_VIEW);
         abort_unless(app(ThemeResolver::class)->active() === 'mskba_app', 404);
         return ThemeResolver::page('admin.account-dashboard', [
-            'widgets' => AccountDashboardWidget::query()->orderBy('sort_order')->orderBy('id')->get(),
-            'kinds' => AccountDashboardService::KINDS,
+            'widgets' => AccountDashboardWidget::query()->where('kind', '!=', 'dynamic')->orderBy('sort_order')->orderBy('id')->get(),
+            'kinds' => array_diff_key(AccountDashboardService::KINDS, ['dynamic' => true]),
             'statuses' => UserStatusEnum::cases(),
             'systemRoles' => UserSystemRoleEnum::cases(),
             'participationRoles' => UserParticipationRoleEnum::cases(),
@@ -49,6 +49,7 @@ final class AdminAccountDashboardController extends Controller
     {
         $this->authorizeWidgetAction($request, BackofficePermission::BACKOFFICE_WIDGET_EDIT);
         abort_unless($request->user()?->can('update', $widget), 403);
+        abort_if($widget->kind === 'dynamic', 404);
         $data = $this->validated($request, $widget);
         DB::transaction(fn () => $widget->update($data));
         $this->changed();
@@ -59,6 +60,7 @@ final class AdminAccountDashboardController extends Controller
     {
         $this->authorizeWidgetAction($request, BackofficePermission::BACKOFFICE_WIDGET_DELETE);
         abort_unless($request->user()?->can('delete', $widget), 403);
+        abort_if($widget->kind === 'dynamic', 404);
         $widget->delete();
         $this->changed();
         return back()->with('status', 'Виджет удалён.');
@@ -68,7 +70,7 @@ final class AdminAccountDashboardController extends Controller
     private function validated(Request $request, ?AccountDashboardWidget $existing = null): array
     {
         $data = $request->validate([
-            'kind' => ['required', Rule::in(array_keys(AccountDashboardService::KINDS))],
+            'kind' => ['required', Rule::in(array_keys(array_diff_key(AccountDashboardService::KINDS, ['dynamic' => true])))],
             'title' => ['required', 'string', 'max:150'],
             'body' => ['nullable', 'string', 'max:10000'],
             'status_confirmed_html' => ['nullable', 'string', 'max:10000'],
