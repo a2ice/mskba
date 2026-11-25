@@ -1,4 +1,5 @@
 import '../../../mskba_app/js/venue-catalog-nearby.js';
+import '../../../mskba_app/js/venue-catalog-geography.js';
 import '../../../mskba_app/js/venue-map-dialog.js';
 import '../../../../js/components/venue-card-tooltips.js';
 import '../../../../css/venue-catalog-card.css';
