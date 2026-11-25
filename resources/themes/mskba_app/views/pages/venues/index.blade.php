@@ -27,6 +27,19 @@
     ];
     $categorySidebarLabel = 'Фильтры площадок';
     $categoryResultTotal = $total;
+    $venuePageQuery = array_filter(
+        \Illuminate\Support\Arr::except($filters, ['page', 'fragment']),
+        fn ($value) => $value !== null && $value !== '',
+    );
+    $venuePageUrl = fn (int $number) => route('venues', $venuePageQuery + ($number > 1 ? ['page' => $number] : []));
+    $paginationPrevUrl = $currentView !== 'map' && $page > 1 ? $venuePageUrl($page - 1) : null;
+    $paginationNextUrl = $currentView !== 'map' && $hasMore ? $venuePageUrl($page + 1) : null;
+    // Only the default catalog's numbered pages are new indexable targets.
+    // Existing facet indexing policy is not changed by this pagination patch.
+    if ($venuePageQuery === [] && $page > 1) {
+        $canonicalUrl = $venuePageUrl($page);
+        $metaTitle = 'Баскетбольные площадки Москвы — страница '.$page.' | MSKBA';
+    }
 @endphp
 @extends('theme::layouts.category')
 
@@ -150,6 +163,16 @@
 @endsection
 
 @section('category-after-items')
+    @if($paginationPrevUrl || $paginationNextUrl)
+        <nav class="app-category__pagination" data-venue-page-navigation aria-label="Страницы площадок">
+            @if($paginationPrevUrl)
+                <a class="button secondary" href="{{ $paginationPrevUrl }}" rel="prev">Предыдущая страница</a>
+            @endif
+            @if($paginationNextUrl)
+                <a class="button secondary" href="{{ $paginationNextUrl }}" rel="next" data-venue-next-page>Следующая страница</a>
+            @endif
+        </nav>
+    @endif
     <div class="app-venues-catalog__loader" data-venue-loader hidden role="status" aria-live="polite">
                 <span class="image-upload-loading__spinner" aria-hidden="true"></span>
                 <span>Загружаем площадки…</span>
