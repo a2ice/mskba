@@ -79,10 +79,37 @@ if (dialog) {
         loading = null;
         canvas.replaceChildren();
     };
-    const fitMap = () => {
+    const fitMap = (includeNearby = false) => {
         if (!map) return;
-        // The station collection stays in geoObjects when nearby pins are hidden,
-        // so the bounds always include the venue and all linked metro stations.
+        const own = ownCoords();
+        const reference = referenceCoords();
+        // In the two-venue view the clicked venue is the visual anchor.
+        // Work in projected pixels, not geographic degrees: the limiting
+        // edge depends on both the direction and the actual viewport size.
+        if (own && reference && !includeNearby) {
+            const [width, height] = map.container.getSize();
+            // 20px free space plus the existing pin's ~30px outer extent.
+            const halfWidth = width / 2 - 50;
+            const halfHeight = height / 2 - 50;
+            if (halfWidth > 0 && halfHeight > 0) {
+                const projection = map.options.get('projection');
+                const baseZoom = 16;
+                const center = projection.toGlobalPixels(own, baseZoom);
+                const point = projection.toGlobalPixels(reference, baseZoom);
+                const dx = Math.abs(point[0] - center[0]);
+                const dy = Math.abs(point[1] - center[1]);
+                const factor = Math.min(dx ? halfWidth / dx : Infinity, dy ? halfHeight / dy : Infinity);
+                const zoom = Math.max(0, Math.min(20, baseZoom + Math.log2(factor)));
+                if (Number.isFinite(zoom)) {
+                    map.options.set('avoidFractionalZoom', false);
+                    Promise.resolve(map.setCenter(own, zoom, { useMapMargin: false })).catch(() => {});
+                    return;
+                }
+            }
+        }
+        // Additional nearby results and ordinary maps keep the original
+        // all-visible-objects framing, including linked metro stations.
+        map.options.set('avoidFractionalZoom', true);
         const bounds = map.geoObjects.getBounds();
         if (bounds) {
             const fittingMap = map;
@@ -299,7 +326,7 @@ if (dialog) {
                 ));
             });
             setStatus(venues.length ? 'Найдено площадок: ' + venues.length : 'Рядом нет подходящих площадок.');
-            fitMap();
+            fitMap(true);
         } catch (error) {
             if (error.name !== 'AbortError') setStatus(error.message);
         } finally {
