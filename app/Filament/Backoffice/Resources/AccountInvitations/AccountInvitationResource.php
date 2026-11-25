@@ -157,15 +157,34 @@ final class AccountInvitationResource extends Resource
                             ['invitation' => $record->load(['events', 'acceptedUser', 'issuer'])]);
                     })
                     ->extraModalFooterActions(fn (AccountInvitation $record): array => [
+                        self::approveCompletionAction('approveCompletionFromDetails')->record($record)->cancelParentActions(),
                         self::renewAction('renewFromDetails')->record($record)->cancelParentActions(),
                         self::revokeAction('revokeFromDetails')->record($record)->cancelParentActions(),
                         self::restoreAction('restoreFromDetails')->record($record)->cancelParentActions(),
                     ]),
+                self::approveCompletionAction(),
                 self::renewAction(),
                 self::revokeAction(),
                 self::restoreAction(),
             ])
             ->defaultSort('id', 'desc');
+    }
+
+    private static function approveCompletionAction(string $name = 'approveCompletion'): Action
+    {
+        return Action::make($name)->label('Согласовать назначение роли')
+            ->icon('heroicon-o-check-circle')
+            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user())
+                && $record->status === 'pending' && $record->progress === 'awaiting_authorization')
+            ->modalDescription('Проверьте основание назначения роли. Получатель должен выполнить условия подтверждения аккаунта и сохранить подтверждённый email приглашения.')
+            ->schema([
+                Textarea::make('reason')->label('Основание согласования')->required()->minLength(10)->maxLength(500)->rows(3),
+            ])
+            ->action(function (AccountInvitation $record, array $data): void {
+                abort_unless(app(AccountInvitationAccess::class)->canMutate(auth('web')->user()), 403);
+                app(AccountInvitationManager::class)->approveCompletion($record, auth('web')->user(), (string) $data['reason']);
+                Notification::make()->success()->title('Назначение роли согласовано')->send();
+            });
     }
 
     private static function renewAction(string $name = 'renew'): Action
