@@ -30,6 +30,7 @@
 
             <header class="default-category__header">
                 <h1>{{ $title }}</h1>
+                @if($isLandingPreview ?? false)<p>Предпросмотр сохранённой посадочной. Не опубликована этим действием.</p>@endif
             </header>
 
             @if($categoryId === 'venues')
