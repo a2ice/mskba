@@ -21,6 +21,12 @@
 .venue-catalog-address{appearance:none;display:inline-flex;align-items:center;gap:7px;align-self:flex-start;max-width:100%;padding:0;border:0;background:none;text-align:left;color:var(--muted,#b7bcb5);font:inherit;font-size:14px;line-height:1.4;cursor:pointer}
 .venue-catalog-address svg{width:17px;height:17px;flex:none}
 .venue-catalog-address:hover span{text-decoration:underline;text-underline-offset:3px}
+.venue-catalog-address-row{display:flex;align-items:center;gap:4px;min-width:0;max-width:100%;align-self:flex-start}
+.venue-catalog-address-row .venue-catalog-address{flex:0 1 auto;min-width:0;align-self:center}
+.venue-catalog-address-row .venue-catalog-address span{min-width:0;overflow-wrap:anywhere}
+.venue-catalog-address-distance{appearance:none;flex:none;padding:0;border:0;background:none;color:var(--muted,#b7bcb5);font:inherit;font-size:14px;line-height:1.4;white-space:nowrap;cursor:pointer}
+.venue-catalog-address-distance:focus-visible{outline:2px solid var(--accent,#ff7a1a);outline-offset:2px;border-radius:4px}
+.venue-catalog-address-distance:is(:hover,[aria-expanded="true"]){text-decoration:underline;text-underline-offset:3px}
 .venue-catalog-metro{display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px;color:var(--text,#f2f3ef);font-size:12px;line-height:1.35}
 .venue-catalog-metro__station{display:inline-flex;align-items:center;gap:5px}
 .venue-catalog-metro__dot{width:9px;height:9px;flex:none;border-radius:50%;background:var(--metro-color,#758392);border:1px solid #0002}

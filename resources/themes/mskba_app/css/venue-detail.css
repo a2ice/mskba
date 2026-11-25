@@ -794,7 +794,6 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-venue-nearby__toolbar svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
 .app-venue-nearby__cards{grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
 .app-venue-nearby__cards .app-venues-catalog__card{min-width:0}
-.app-venue-nearby__cards .app-venues-catalog__distance{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
 .app-venue-nearby__cards .app-venues-catalog__matched-court{color:var(--accent);font-size:13px;font-weight:700}
 .app-venue-nearby-criteria-dialog{max-width:min(520px,calc(100vw - 24px))}
 .app-venue-nearby-criteria-dialog>form{display:flex;flex-direction:column;min-height:0}
