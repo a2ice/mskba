@@ -27,6 +27,7 @@
 
     @include('components.venue-catalog-geography-filter', ['geographyTheme' => 'dark'])
     @include('components.venue-catalog-nearby-filter', ['scope' => $scope])
+    @include('components.venue-catalog-rental-filter')
 
     <label class="default-category-filter__field">
         <span>Тип площадки</span>
