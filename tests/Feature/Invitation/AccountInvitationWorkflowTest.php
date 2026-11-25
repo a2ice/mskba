@@ -65,7 +65,10 @@ final class AccountInvitationWorkflowTest extends TestCase
         [, , $invitation, $token] = $this->invite();
         $this->followingRedirects()->get(route('account-invitations.show', $token))->assertOk();
         $this->assertNull($invitation->fresh()->interested_at);
-        $this->get(route('account-invitations.interest'))->assertStatus(405);
+        // The public PageBuilder GET fallback resolves unknown pages to 404.
+        $this->get(route('account-invitations.interest'))->assertNotFound();
+        $this->assertSame(['POST'], app('router')->getRoutes()
+            ->getByName('account-invitations.interest')->methods());
         $this->assertNull($invitation->fresh()->interested_at);
 
         $this->post(route('account-invitations.interest'))->assertRedirect(route('account-invitations.continue'));
