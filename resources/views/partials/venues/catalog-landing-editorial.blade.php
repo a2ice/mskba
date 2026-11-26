@@ -4,9 +4,18 @@
         $editorialHtml = app(\App\Modules\Content\Application\Services\ContentBodySanitizer::class)
             ->sanitize((string) ($editorialPosition === 'intro' ? $landing->intro_text : $landing->body_text));
     @endphp
-    @if(trim($editorialHtml) !== '')
+    @php($relatedLinks = $editorialPosition === 'body' ? ($landingRelatedLinks ?? []) : [])
+    @if(trim($editorialHtml) !== '' || $relatedLinks !== [])
         <div class="{{ $editorialClass }}" data-venue-landing-editorial="{{ $editorialPosition }}">
             {!! $editorialHtml !!}
+            @if($relatedLinks !== [])
+                <h2>Другие подборки площадок</h2>
+                <ul data-venue-landing-related>
+                    @foreach($relatedLinks as $relatedLink)
+                        <li><a href="{{ $relatedLink['url'] }}">{{ $relatedLink['label'] }}</a></li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
     @endif
 @endif
