@@ -3,6 +3,10 @@
 namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\VenueCatalogLandingIndexPolicy;
+use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
+use App\Modules\Content\Domain\Models\VenueCatalogLanding;
+use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -100,6 +104,25 @@ final class SeoSitemapController extends Controller
             fn (SportsSection $section): string => route('sports-sections.show', $section->alias),
         );
 
+        $policy = app(VenueCatalogLandingIndexPolicy::class);
+        if ($policy->enabled(request())) {
+            $this->appendSource(
+                $urls,
+                'venue_catalog_landings',
+                VenueCatalogLanding::query()->where('is_active', true)
+                    ->where('allow_indexing', true)->where('include_in_sitemap', true)->orderBy('id'),
+                function (VenueCatalogLanding $landing) use ($policy): ?string {
+                    $criteria = $landing->criteria();
+                    $matches = app(ListVenuesHandler::class)->handle(null, null, $criteria,
+                        configuredRentalOnly: (bool) ($criteria['rental_configured'] ?? false));
+
+                    return $policy->eligible($landing, count($matches))
+                        ? app(VenueCatalogLandingNavigation::class)->url($landing)
+                        : null;
+                },
+            );
+        }
+
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
             .view('seo.sitemap', ['urls' => $urls->unique('loc')->sortBy('loc')->values()])->render();
 
@@ -118,8 +141,12 @@ final class SeoSitemapController extends Controller
         try {
             foreach ($query->cursor() as $model) {
                 try {
+                    $url = $urlResolver($model);
+                    if ($url === null) {
+                        continue;
+                    }
                     $urls->push($this->entry(
-                        $urlResolver($model),
+                        $url,
                         $model->updated_at?->toAtomString(),
                     ));
                 } catch (Throwable $exception) {
