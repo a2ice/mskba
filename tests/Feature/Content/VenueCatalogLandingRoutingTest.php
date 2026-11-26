@@ -194,6 +194,37 @@ final class VenueCatalogLandingRoutingTest extends TestCase
             ->assertDontSee('OutdoorSchoolExcluded')->assertSee('name="type[]"', false);
     }
 
+    public function test_related_links_use_current_public_slugs_and_never_expose_drafts(): void
+    {
+        $this->theme('mskba_app');
+        config(['features.venue_catalog_landings.enabled' => true]);
+        $city = City::factory()->create();
+        $landing = $this->landing($city);
+        $target = VenueCatalogLanding::query()->create([
+            'name' => 'Related target', 'h1' => 'Unique related heading',
+            'slug' => 'rent/related', 'city_id' => City::factory()->create()->id, 'is_active' => true,
+        ]);
+        $draft = VenueCatalogLanding::query()->create([
+            'name' => 'Draft target', 'h1' => 'Private related heading',
+            'slug' => 'rent/secret', 'city_id' => City::factory()->create()->id, 'is_active' => false,
+        ]);
+        $landing->update(['related_landing_ids' => [$target->id, $draft->id, $landing->id, $target->id]]);
+        $target->update(['slug' => 'rent/renamed']);
+        $url = route('venues.collections.show', ['landingSlug' => $target->slug]);
+
+        $this->get($this->url())->assertOk()
+            ->assertSee('data-venue-landing-related', false)
+            ->assertSee('href="'.$url.'"', false)->assertSee('Unique related heading')
+            ->assertDontSee('Private related heading')->assertDontSee('/venues/collections/rent/related');
+        $this->get($this->url(['page' => 2]))->assertOk()->assertDontSee('data-venue-landing-related', false);
+        $this->get(route('venues'))->assertOk()->assertDontSee('data-venue-landing-related', false);
+
+        $this->theme('mskba_dark');
+        $this->get($this->url())->assertOk()->assertSee('href="'.$url.'"', false)->assertDontSee('Private related heading');
+        $target->update(['is_active' => false]);
+        $this->get($this->url())->assertOk()->assertDontSee('data-venue-landing-related', false);
+    }
+
     public function test_existing_venue_and_court_routes_are_not_captured(): void
     {
         $this->assertSame('venues.show', Route::getRoutes()->match(Request::create('/venues/collections'))->getName());

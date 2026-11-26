@@ -13,7 +13,7 @@ use InvalidArgumentException;
 #[Fillable([
     'name', 'slug', 'h1', 'city_id', 'district_id', 'type', 'operational_status',
     'access', 'rental_configured', 'intro_text', 'body_text', 'is_active',
-    'allow_indexing', 'include_in_sitemap',
+    'allow_indexing', 'include_in_sitemap', 'related_landing_ids',
 ])]
 final class VenueCatalogLanding extends Model
 {
@@ -28,6 +28,7 @@ final class VenueCatalogLanding extends Model
     {
         return [
             'type_choices' => 'array',
+            'related_landing_ids' => 'array',
             'city_id' => 'integer',
             'district_id' => 'integer',
             'rental_configured' => 'boolean',

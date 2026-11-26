@@ -28,6 +28,7 @@ final class EditVenueCatalogLanding extends EditRecord
         $seo = PageSeoSetting::query()->where('entity_type', SeoEntityTypeEnum::VENUE_CATALOG_LANDING->value)
             ->where('entity_id', $this->record->getKey())->first();
 
+        $data['related_landing_ids'] = $this->record->related_landing_ids ?? [];
         $data['type'] = \App\Modules\Venue\Application\Services\VenueTypeFilter::values($this->record->type);
 
         return $data + ['meta_title' => $seo?->meta_title, 'meta_description' => $seo?->meta_description];
