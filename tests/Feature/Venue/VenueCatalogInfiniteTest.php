@@ -58,7 +58,7 @@ final class VenueCatalogInfiniteTest extends TestCase
             ->assertSee('data-venue-catalog-map', false)
             ->assertSee('name="view" value="map"', false)
             ->assertSee('data-default-category-view="map"', false)
-            ->assertSee('Показано')
+            ->assertSee('data-venue-visible-count>6</b>/6', false)
             // The map payload is embedded as @json, so Cyrillic is Unicode-escaped.
             ->assertSee(json_encode('Карта 01'), false)
             ->assertSee(json_encode('Карта 06'), false)
@@ -82,6 +82,8 @@ final class VenueCatalogInfiniteTest extends TestCase
             ->assertOk()
             ->assertSee('data-venue-infinite-catalog')
             ->assertSee('data-next-page="2"', false)
+            ->assertSee('data-venue-visible-count>4</b>/6', false)
+            ->assertSee('form="venue-catalog-filter-form"', false)
             ->assertSee('href="'.route('venues', ['page' => 2]).'" rel="next" data-venue-next-page', false)
             ->assertSee('image-upload-loading__spinner')
             ->assertSee('Тестовая площадка 01')

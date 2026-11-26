@@ -48,7 +48,8 @@
             @yield('category-sidebar')
         </aside>
         <main class="{{ $categoryMainClass }}">
-            <div class="{{ $categoryToolbarClass }}">
+            <div class="{{ $categoryToolbarClass }}{{ ($categoryCompactToolbar ?? false) ? ' panel app-category-toolbar--compact' : '' }}">
+                @yield('category-toolbar-search')
                 @hasSection('category-toolbar-count')
                     @yield('category-toolbar-count')
                 @else
@@ -60,6 +61,7 @@
                     'currentView' => $categoryView,
                     'enableMapView' => $categoryHasMap ?? false,
                     'resetUrl' => $categoryResetUrl,
+                    'showReset' => !($categoryCompactToolbar ?? false),
                     'enableSorting' => $categoryEnableSorting ?? false,
                     'sortValue' => $categorySortValue ?? '',
                     'sortChoices' => $categorySortChoices ?? null,

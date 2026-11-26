@@ -21,6 +21,8 @@
     if (isset($landing)) $categoryViewQuery = \Illuminate\Support\Arr::except($categoryViewQuery, \App\Modules\Content\Application\Services\VenueCatalogLandingCriteria::KEYS);
     $categoryResetUrl = route('venues', in_array($currentView, ['list', 'map'], true) ? ['view' => $currentView] : []);
     $categoryEnableSorting = true;
+    $categoryCompactToolbar = true;
+    $venueAdvancedFiltersActive = collect(['city_id', 'district_id', 'type', 'operational_status', 'access'])->contains(fn ($key) => filled($filters[$key] ?? null));
     $categorySortValue = ($filters['sort'] ?? '') === 'distance' && !$venueDistanceAvailable ? '' : ($filters['sort'] ?? '');
     $categorySortChoices = [
         '' => 'По названию (А–Я)',
@@ -57,16 +59,17 @@
     </a>
 @endsection
 
+@section('category-toolbar-search')
+    <input class="app-category-toolbar__search" type="search" name="search" form="venue-catalog-filter-form"
+        value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" aria-label="Поиск площадок">
+@endsection
+
 @section('category-sidebar')
             <h2>Поиск площадок</h2>
-            <form method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters" @if(isset($landing)) data-venue-landing-filter-count="{{ count($landing->criteria()) }}" @endif>
+            <form id="venue-catalog-filter-form" method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters" @if(isset($landing)) data-venue-landing-filter-count="{{ count($landing->criteria()) }}" @endif>
                 @if(in_array($currentView, ['list', 'map'], true))<input type="hidden" name="view" value="{{ $currentView }}">@endif
                 @if(filled($categorySortValue))<input type="hidden" name="sort" value="{{ $categorySortValue }}">@endif
                 <div class="app-venues-catalog__filter-fields">
-                    <label><span>Поиск площадки</span>
-                        <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание">
-                    </label>
-                    @include('components.venue-catalog-geography-filter', ['geographyTheme' => 'app'])
                     <div class="app-venues-catalog__checkbox-group">
                     @include('components.venue-catalog-nearby-filter', ['scope' => 'app'])
                     <div data-catalog-range-filter>
@@ -132,6 +135,10 @@
                     </div>
                     @endauth
                     </div>
+                    <details class="app-catalog-advanced" @if($venueAdvancedFiltersActive) open @endif>
+                        <summary>Расширенные фильтры</summary>
+                        <div class="app-catalog-advanced__fields">
+                    @include('components.venue-catalog-geography-filter', ['geographyTheme' => 'app'])
                     @include('components.venue-catalog-type-filter', ['typeFilterTheme' => 'app'])
                     <label><span>Состояние</span>
                         <span class="select-control"><select name="operational_status"><option value="">Любое</option>
@@ -148,8 +155,11 @@
                             <option value="approval" @selected(($filters['access'] ?? '') === 'approval')>По подтверждению</option>
                         </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                     </label>
+                        </div>
+                    </details>
                 </div>
                 <div class="app-venues-catalog__filter-actions">
+                    @include('theme::components.catalog-reset', ['resetUrl' => $categoryResetUrl])
                     <button class="button primary" type="submit">Применить</button>
                 </div>
             </form>
@@ -157,7 +167,7 @@
 @endsection
 
 @section('category-toolbar-count')
-    <span role="status" aria-live="polite">Показано <b data-venue-visible-count>{{ $currentView === 'map' ? count($mapPoints) : count($venues) }}</b> из {{ $total }} площадок</span>
+    <span class="app-category-toolbar__count" role="status" aria-live="polite" title="Показано / всего площадок"><b data-venue-visible-count>{{ $currentView === 'map' ? count($mapPoints) : count($venues) }}</b>/{{ $total }}</span>
 @endsection
 
 @section('category-items')
