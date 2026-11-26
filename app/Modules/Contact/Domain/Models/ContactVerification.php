@@ -31,6 +31,16 @@ class ContactVerification extends Model
         return $this->belongsTo(Contact::class);
     }
 
+    public function effectiveStatus(): ContactVerificationStatusEnum
+    {
+        if ($this->status === ContactVerificationStatusEnum::PENDING
+            && ($this->expires_at === null || $this->expires_at->isPast())) {
+            return ContactVerificationStatusEnum::EXPIRED;
+        }
+
+        return $this->status;
+    }
+
     public function isConfirmed(): bool
     {
         return $this->status === ContactVerificationStatusEnum::CONFIRMED;
