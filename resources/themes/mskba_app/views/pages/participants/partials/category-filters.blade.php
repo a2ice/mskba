@@ -4,11 +4,17 @@
     @if(($categoryView ?? 'cards') === 'list')
         <input type="hidden" name="view" value="list">
     @endif
+    @if(($scope ?? 'desktop') === 'mobile')
     <label><span>Поиск участника</span>
         <input type="search" name="q" value="{{ $filters['q'] ?? '' }}"
                maxlength="100" placeholder="Имя или никнейм">
     </label>
+    @endif
     @if($presetRole === null)
+
+    <details class="app-catalog-advanced" @if(filled($filters['role'] ?? null)) open @endif>
+        <summary>Расширенные фильтры</summary>
+        <div class="app-catalog-advanced__fields">
         <label><span>Роль</span>
             <span class="select-control">
                 <select name="role">
@@ -20,8 +26,11 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </span>
         </label>
+        </div>
+    </details>
     @endif
     <div class="app-category__filter-actions">
+        @include('theme::components.catalog-reset', ['resetUrl' => $categoryResetUrl])
         <button type="submit" class="button primary">Применить</button>
     </div>
 </form>
