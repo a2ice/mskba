@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
 use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
+use App\Modules\Content\Application\Services\VenueCatalogLandingIndexPolicy;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -79,6 +80,7 @@ class VenueController extends Controller
     public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse|RedirectResponse
     {
         $navigation = app(VenueCatalogLandingNavigation::class);
+        $originalQueryKeys = array_keys($request->query());
         $isLandingPreview = $request->routeIs('admin.content.catalog-landings.preview');
         $requestedLanding = $isLandingPreview
             ? $navigation->preparePreview($request)
@@ -159,9 +161,21 @@ class VenueController extends Controller
                 'landingUrl' => $isLandingPreview ? $navigation->previewUrl($landing) : $navigation->url($landing),
                 'isLandingPreview' => $isLandingPreview,
                 'landingRelatedLinks' => $pageNumber === 1 && ! $isFragment ? $navigation->relatedLinks($landing) : [],
-                // Indexing and sitemap eligibility are deliberately deferred.
-                'metaRobots' => 'noindex, nofollow, noarchive',
+                'metaRobots' => app(VenueCatalogLandingIndexPolicy::class)->robots(
+                    $request, $landing, count($venues),
+                    ! $isLandingPreview && ! $isFragment && ! $request->expectsJson()
+                        && $request->routeIs('venues.collections.show'),
+                    $originalQueryKeys === [],
+                ),
             ];
+        }
+
+        // Arbitrary catalogue facets must not become indexable alternatives
+        // to an editorial landing. Preserve the original clean catalogue and
+        // its page-only pagination, and leave the old behaviour when gate off.
+        if ($landing === null && array_diff($originalQueryKeys, ['page']) !== []
+            && app(VenueCatalogLandingIndexPolicy::class)->enabled($request)) {
+            $landingData['metaRobots'] = 'noindex, follow';
         }
 
         if (app(ThemeResolver::class)->active() !== 'mskba_app') {
@@ -219,7 +233,8 @@ class VenueController extends Controller
                 'total' => $total,
             ])->header('Cache-Control', 'private, no-store');
 
-            return $isLandingPreview ? $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive') : $response;
+            return $landing !== null || isset($landingData['metaRobots'])
+                ? $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive') : $response;
         }
 
         $response = ThemeResolver::page('venues.index', $landingData + compact(

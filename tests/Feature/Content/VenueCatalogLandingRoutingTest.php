@@ -227,7 +227,7 @@ final class VenueCatalogLandingRoutingTest extends TestCase
 
     public function test_indexing_and_sitemap_remain_disabled_even_when_editor_flags_are_enabled(): void
     {
-        config(['features.venue_catalog_landings.enabled' => true]);
+        config(['features.venue_catalog_landings.enabled' => true, 'features.venue_catalog_landings.indexing' => false]);
         $city = City::factory()->create();
         $landing = $this->landing($city);
         $landing->update([
@@ -249,6 +249,69 @@ final class VenueCatalogLandingRoutingTest extends TestCase
                 $this->get($base.'/sitemap.xml')->assertOk()->assertDontSee('/venues/collections/rent/test', false);
             }
         }
+    }
+
+    public function test_index_release_gate_only_allows_ready_canonical_production_pages_and_sitemap_entries(): void
+    {
+        config([
+            'features.venue_catalog_landings.enabled' => true,
+            'features.venue_catalog_landings.indexing' => true,
+            'app.url' => 'https://mskba.ru',
+        ]);
+        $make = function (string $slug, bool $hasVenue = true, array $overrides = []): VenueCatalogLanding {
+            $city = City::factory()->create();
+            $landing = VenueCatalogLanding::query()->create(array_replace([
+                'name' => $slug, 'h1' => 'Heading '.$slug, 'slug' => 'index/'.$slug,
+                'city_id' => $city->id, 'is_active' => true,
+                'allow_indexing' => true, 'include_in_sitemap' => true,
+                'intro_text' => '<p>Introduction</p>', 'body_text' => '<p>Editorial body</p>',
+            ], $overrides));
+            PageSeoSetting::query()->create([
+                'entity_type' => 'venue_catalog_landing', 'entity_id' => $landing->id,
+                'meta_title' => 'Title '.$slug, 'meta_description' => 'Description '.$slug,
+            ]);
+            if ($hasVenue) {
+                $this->venue($city, 'Hall '.$slug);
+            }
+
+            return $landing;
+        };
+        $ready = $make('ready');
+        $empty = $make('empty', false);
+        $draft = $make('draft', true, ['is_active' => false]);
+        $blocked = $make('blocked', true, ['allow_indexing' => false]);
+        $incomplete = $make('incomplete', true, ['body_text' => '<p>&nbsp;</p>']);
+        $noSitemap = $make('no-sitemap', true, ['include_in_sitemap' => false]);
+        $url = fn (VenueCatalogLanding $landing, string $host = 'mskba.ru') => 'https://'.$host.'/venues/collections/'.$landing->slug;
+
+        foreach (['mskba_app', 'mskba_dark'] as $theme) {
+            $this->theme($theme);
+            $this->get($url($ready))->assertOk()->assertSee('name="robots" content="index, follow"', false);
+            $this->get($url($noSitemap))->assertOk()->assertSee('name="robots" content="index, follow"', false);
+            foreach ([$empty, $blocked, $incomplete] as $landing) {
+                $this->get($url($landing))->assertOk()->assertSee('name="robots" content="noindex, nofollow, noarchive"', false);
+            }
+            $this->get($url($draft))->assertNotFound();
+            foreach (['?page=2', '?view=map', '?sort=new', '?utm_source=test'] as $query) {
+                $this->get($url($ready).$query)->assertOk()->assertSee('name="robots" content="noindex, follow"', false);
+            }
+            $this->get('https://mskba.ru/venues?search=nonmatching')->assertOk()
+                ->assertSee('name="robots" content="noindex, follow"', false);
+            $sitemap = $this->get('https://mskba.ru/sitemap.xml')->assertOk()->assertSee($url($ready), false);
+            foreach ([$empty, $draft, $blocked, $incomplete, $noSitemap] as $landing) {
+                $sitemap->assertDontSee($url($landing), false);
+            }
+            $this->get($url($ready, 'dev.mskba.ru'))->assertOk()
+                ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+                ->assertSee('name="robots" content="noindex, nofollow, noarchive"', false);
+            $this->get('https://dev.mskba.ru/sitemap.xml')->assertOk()
+                ->assertDontSee('/venues/collections/index/ready', false);
+        }
+
+        // Even a production-looking request cannot index a dev-configured app.
+        config(['app.url' => 'https://dev.mskba.ru']);
+        $this->get($url($ready))->assertOk()->assertSee('name="robots" content="noindex, nofollow, noarchive"', false);
+        $this->get('https://mskba.ru/sitemap.xml')->assertOk()->assertDontSee($url($ready), false);
     }
 
     public function test_existing_venue_and_court_routes_are_not_captured(): void
