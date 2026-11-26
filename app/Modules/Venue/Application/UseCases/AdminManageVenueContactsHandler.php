@@ -90,6 +90,30 @@ final class AdminManageVenueContactsHandler
         }, 3);
     }
 
+    public function setRentalContact(User $actor, Venue $venue, int $contactId): void
+    {
+        DB::transaction(function () use ($actor, $venue, $contactId): void {
+            $venue = $this->authorize($actor, $venue);
+            $contact = $this->email($venue, $contactId);
+            if (! $contact->hasBeenVerified()) {
+                throw ValidationException::withMessages(['contact' => 'Для заявок на аренду нужен подтверждённый email.']);
+            }
+            foreach ($venue->contacts()->where('is_rental_contact', true)->whereKeyNot($contactId)->lockForUpdate()->get() as $old) {
+                $old->forceFill(['is_rental_contact' => false])->save();
+            }
+            $contact->forceFill(['is_rental_contact' => true])->save();
+        }, 3);
+    }
+
+    public function clearRentalContact(User $actor, Venue $venue, int $contactId): void
+    {
+        DB::transaction(function () use ($actor, $venue, $contactId): void {
+            $venue = $this->authorize($actor, $venue);
+            $contact = $venue->contacts()->whereKey($contactId)->lockForUpdate()->firstOrFail();
+            $contact->forceFill(['is_rental_contact' => false])->save();
+        }, 3);
+    }
+
     public function delete(User $actor, Venue $venue, int $contactId): void
     {
         DB::transaction(function () use ($actor, $venue, $contactId): void {
@@ -98,7 +122,7 @@ final class AdminManageVenueContactsHandler
             $this->assertEditable($contact);
             $primary = $contact->is_primary;
             $this->cancelCodes($contact);
-            $contact->update(['is_primary' => false, 'is_public' => false, 'verified_at' => null]);
+            $contact->forceFill(['is_primary' => false, 'is_public' => false, 'verified_at' => null, 'is_rental_contact' => false])->save();
             $contact->delete();
             if ($primary) {
                 $next = $venue->contacts()->orderByRaw('CASE WHEN verified_at IS NULL THEN 1 ELSE 0 END')
