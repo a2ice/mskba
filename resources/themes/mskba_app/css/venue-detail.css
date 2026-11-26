@@ -811,3 +811,13 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .venue-informational-hours__rows h4{margin:6px 0 0}
 
 .app-venues-catalog__access{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+
+/* Public venue directory: shared sticky stack, independent panels and mobile flow. */
+.app-venue-page__side-stack{min-width:0;display:grid;gap:20px;position:sticky;top:var(--venue-sidebar-sticky-top,calc(var(--app-sticky-offset,124px) + 15px));max-height:max(240px,calc(100dvh - var(--venue-sidebar-sticky-top,calc(var(--app-sticky-offset,124px) + 15px)) - 15px));overflow-y:auto;scrollbar-width:thin}
+.app-venue-page__side-stack>.app-venue-page__aside{position:static}
+.app-venue-public-contacts{padding:20px;min-width:0}
+.app-venue-public-contacts .venue-public-contact-list{display:grid;gap:12px;list-style:none;padding:0;margin:0;width:100%;min-width:0}
+.app-venue-public-contacts .venue-public-contact-list li{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.app-venue-public-contacts .venue-public-contact-list a{color:var(--accent);font-weight:650}
+.app-venue-public-contacts .venue-public-contact-list__label{color:var(--muted);font-size:13px}
+@media(max-width:900px){.app-venue-page__side-stack{position:static;max-height:none;overflow:visible}.app-venue-page__side-stack[data-venue-side-empty]{display:none}}
