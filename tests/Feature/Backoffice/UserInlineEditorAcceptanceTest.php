@@ -176,10 +176,10 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         ]);
 
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
-            ->fillForm(['backoffice_permissions' => [
+            ->fillForm(['backoffice_permissions' => \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups::split([
                 Permission::BACKOFFICE_ACCESS->value,
                 Permission::BACKOFFICE_BUILDER_VIEW->value,
-            ]])
+            ])])
             ->callAction('savePermissionsInline', data: ['reason' => 'Доступ только к конструктору страниц'])
             ->assertHasNoFormErrors();
 
@@ -221,10 +221,10 @@ final class UserInlineEditorAcceptanceTest extends TestCase
                     Permission::REVIEW_PROFILE_CHANGES->value,
                     Permission::WALLET_USER_BALANCE_CREDIT->value,
                 ],
-                'backoffice_permissions' => [
+                'backoffice_permissions' => \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups::split([
                     Permission::BACKOFFICE_ACCESS->value,
                     Permission::BACKOFFICE_VENUE_MANAGE->value,
-                ],
+                ]),
             ])
             ->callAction('savePermissionsInline', data: ['reason' => 'Назначение прав системному пользователю'])
             ->assertHasNoFormErrors();
