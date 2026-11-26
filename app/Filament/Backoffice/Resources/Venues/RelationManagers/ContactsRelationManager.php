@@ -13,6 +13,7 @@ use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\UseCases\AdminManageVenueContactsHandler;
 use App\Modules\Venue\Application\Services\VenueContactConnectionStatus;
+use App\Modules\Venue\Application\Services\VenueContactHistory;
 use App\Modules\Venue\Domain\Models\Venue;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -24,7 +25,10 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Validation\ValidationException;
 
 final class ContactsRelationManager extends RelationManager
@@ -75,7 +79,7 @@ final class ContactsRelationManager extends RelationManager
 
     private function editable(Contact $record): bool
     {
-        return in_array($record->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true);
+        return ! $record->trashed() && in_array($record->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true);
     }
 
     private function run(Action $action, callable $operation, string $success): void
@@ -99,7 +103,7 @@ final class ContactsRelationManager extends RelationManager
         $actor = auth('web')->user();
         $venue = $this->venue();
         if (! $this->manager()->canManage($actor, $venue)
-            || $contact->type !== ContactTypeEnum::EMAIL || ! $contact->hasBeenVerified()) {
+            || $contact->trashed() || $contact->type !== ContactTypeEnum::EMAIL || ! $contact->hasBeenVerified()) {
             return false;
         }
         foreach (['owner', 'staff', 'manager', 'booking_operator'] as $role) {
@@ -133,6 +137,8 @@ final class ContactsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withoutGlobalScope(SoftDeletingScope::class))
+            ->filters([TrashedFilter::make()->label('Архив контактов')])
             ->columns([
                 TextColumn::make('type')->label('Тип')->formatStateUsing(fn (ContactTypeEnum $state): string => $state->label()),
                 TextColumn::make('value')->label('Контакт')->searchable(),
@@ -141,6 +147,7 @@ final class ContactsRelationManager extends RelationManager
                 IconColumn::make('is_primary')->label('Основной')->boolean(),
                 IconColumn::make('is_public')->label('Публичный')->boolean(),
                 TextColumn::make('verified_at')->label('Подтверждён')->dateTime('d.m.Y H:i')->placeholder('Нет'),
+                TextColumn::make('deleted_at')->label('Удалён')->dateTime('d.m.Y H:i')->placeholder('—')->toggleable(),
                 TextColumn::make('connection_status')->label('Подключение')->wrap()
                     ->visible(fn (): bool => app(VenueContactConnectionStatus::class)->canView(auth('web')->user(), $this->venue()))
                     ->state(fn (Contact $record): string => $this->connectionStatus($record)),
@@ -156,14 +163,8 @@ final class ContactsRelationManager extends RelationManager
                 Action::make('contactHistory')->label('История')->icon('heroicon-o-clock')
                     ->modalHeading('История контакта')
                     ->modalSubmitAction(false)
-                    ->modalContent(function (Contact $record) {
-                        abort_unless($this->manager()->canManage($this->actor(), $this->venue()), 403);
-                        $contact = $this->venue()->contacts()->findOrFail($record->id);
-                        $attempts = $contact->verifications()->latest('id')->limit(50)
-                            ->get(['id', 'sent_to', 'status', 'attempts_count', 'created_at', 'verified_at', 'expires_at']);
-
-                        return view('filament.backoffice.venue-contact-history', ['contact' => $contact, 'attempts' => $attempts]);
-                    }),
+                    ->modalContent(fn (Contact $record) => view('filament.backoffice.venue-contact-history',
+                        app(VenueContactHistory::class)->resolve(auth('web')->user(), $this->venue(), $record->id))),
                 Action::make('editContact')->label('Редактировать')->icon('heroicon-o-pencil-square')
                     ->visible(fn (Contact $record): bool => $this->editable($record))
                     ->fillForm(fn (Contact $record): array => [
@@ -174,13 +175,13 @@ final class ContactsRelationManager extends RelationManager
                     ->action(fn (Action $action, Contact $record, array $data) => $this->run($action,
                         fn () => $this->manager()->edit($this->actor(), $this->venue(), $record->id, $data), 'Контакт сохранён')),
                 Action::make('sendCode')->label('Отправить код')->icon('heroicon-o-envelope')
-                    ->visible(fn (Contact $record): bool => $record->type === ContactTypeEnum::EMAIL && ! $record->hasBeenVerified())
+                    ->visible(fn (Contact $record): bool => ! $record->trashed() && $record->type === ContactTypeEnum::EMAIL && ! $record->hasBeenVerified())
                     ->requiresConfirmation()
                     ->modalDescription('Код будет отправлен на email контакта площадки. Это не подтверждает личность или договорные полномочия.')
                     ->action(fn (Action $action, Contact $record) => $this->run($action,
                         fn () => $this->manager()->sendCode($this->actor(), $this->venue(), $record->id), 'Код отправлен')),
                 Action::make('confirmCode')->label('Подтвердить')->icon('heroicon-o-check-circle')
-                    ->visible(fn (Contact $record): bool => $record->type === ContactTypeEnum::EMAIL && ! $record->hasBeenVerified())
+                    ->visible(fn (Contact $record): bool => ! $record->trashed() && $record->type === ContactTypeEnum::EMAIL && ! $record->hasBeenVerified())
                     ->schema([TextInput::make('code')->label('Код из письма')->required()->length(6)->regex('/^\d{6}$/D')])
                     ->action(fn (Action $action, Contact $record, array $data) => $this->run($action,
                         fn () => $this->manager()->confirmCode($this->actor(), $this->venue(), $record->id, $data['code']), 'Контакт подтверждён')),
@@ -217,7 +218,7 @@ final class ContactsRelationManager extends RelationManager
                         Notification::make()->success()->title('Приглашение #'.$invitation->id.' отправлено')->send();
                     }),
                 Action::make('setPrimary')->label('Сделать основным')->icon('heroicon-o-star')
-                    ->visible(fn (Contact $record): bool => ! $record->is_primary)
+                    ->visible(fn (Contact $record): bool => ! $record->trashed() && ! $record->is_primary)
                     ->requiresConfirmation()
                     ->action(fn (Action $action, Contact $record) => $this->run($action,
                         fn () => $this->manager()->setPrimary($this->actor(), $this->venue(), $record->id), 'Основной контакт изменён')),
