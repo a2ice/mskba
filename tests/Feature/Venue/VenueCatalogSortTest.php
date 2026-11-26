@@ -3,6 +3,9 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,6 +67,53 @@ final class VenueCatalogSortTest extends TestCase
             strpos($newest->getContent(), 'SortVenue Delta'),
             strpos($newest->getContent(), 'SortVenue Epsilon'),
         );
+    }
+
+    public function test_distance_order_applies_before_pagination_without_radius(): void
+    {
+        foreach (['Far' => 60, 'Mid' => 56, 'Near' => 55.8, 'Closest' => 55.71, 'Second' => 55.72, 'Unknown' => null] as $name => $latitude) {
+            $address = Address::factory()->create(['latitude' => $latitude, 'longitude' => $latitude === null ? null : 37.6]);
+            $location = Location::factory()->create(['address_id' => $address->id]);
+            Venue::factory()->create([
+                'name' => 'DistanceVenue '.$name,
+                'status' => VenueStatusEnum::CONFIRMED,
+                'location_id' => $location->id,
+            ]);
+        }
+
+        $this->postJson(route('venues.distance-location'), [
+            'action' => 'locate', 'latitude' => 55.7, 'longitude' => 37.6,
+        ])->assertOk()->assertJson(['available' => true, 'answered' => false]);
+
+        $firstPage = $this->get('/venues?sort=distance')
+            ->assertOk()->assertSeeInOrder(['DistanceVenue Closest', 'DistanceVenue Second', 'DistanceVenue Near', 'DistanceVenue Mid'])
+            ->assertDontSee('DistanceVenue Far')->assertDontSee('DistanceVenue Unknown');
+        $this->assertStringContainsString('private', $firstPage->headers->get('Cache-Control'));
+
+        $this->getJson('/venues?sort=distance&page=2&fragment=items')
+            ->assertOk()->assertJsonPath('total', 6)->assertJsonPath('has_more', false)
+            ->assertSeeInOrder(['DistanceVenue Far', 'DistanceVenue Unknown']);
+
+        $this->postJson(route('venues.distance-location'), ['action' => 'answer'])
+            ->assertOk()->assertJson(['answered' => true]);
+        $this->postJson(route('venues.distance-location'), ['action' => 'forget'])
+            ->assertOk()->assertJson(['available' => false, 'answered' => true]);
+    }
+
+    public function test_account_answer_survives_session_change_but_coordinates_do_not(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $endpoint = route('venues.distance-location');
+        $this->postJson($endpoint, ['action' => 'locate', 'latitude' => 95, 'longitude' => 37.6])
+            ->assertUnprocessable();
+        $this->postJson($endpoint, ['action' => 'locate', 'latitude' => 55.7, 'longitude' => 37.6])
+            ->assertOk()->assertJson(['answered' => false]);
+        $this->postJson($endpoint, ['action' => 'answer'])->assertOk()->assertJson(['answered' => true]);
+        $this->assertTrue($user->fresh()->venue_distance_sort_prompt_answered);
+        $this->app['session']->flush();
+        $this->postJson($endpoint, ['action' => 'locate', 'latitude' => 56, 'longitude' => 38])
+            ->assertOk()->assertJson(['answered' => true]);
     }
 
     public function test_unknown_sort_is_rejected_in_json_requests(): void
