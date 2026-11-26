@@ -37,6 +37,7 @@ final readonly class MyInterestsProvider implements DashboardDataProvider
         abort_unless($this->isAvailable($user, $settings), 404);
         $ids = $user->identityIds();
         $now = now();
+        $horizon = max(7, min(90, is_numeric($settings['horizon_days'] ?? null) ? (int) $settings['horizon_days'] : 30));
         $limit = max(1, min(10, is_numeric($settings['limit'] ?? null) ? (int) $settings['limit'] : 5));
         $intents = PlayIntent::query()->whereIn('user_id', $ids)->where('status', 'active')
             ->where(fn (Builder $q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now))
@@ -44,7 +45,7 @@ final readonly class MyInterestsProvider implements DashboardDataProvider
         $directIds = VenueSubscription::query()->whereIn('user_id', $ids)->where('status', 'active')
             ->pluck('venue_id')->map(fn ($id): int => (int) $id)->unique()->values()->all();
         if ($intents->isEmpty() && $directIds === []) {
-            return new DashboardWidgetData(0, [], ['horizon_days' => 30]);
+            return new DashboardWidgetData(0, [], ['horizon_days' => $horizon]);
         }
 
         $exactIds = array_values(array_unique(array_merge($directIds, $intents->pluck('venue_id')->filter()->map(fn ($id): int => (int) $id)->all())));
@@ -53,7 +54,7 @@ final readonly class MyInterestsProvider implements DashboardDataProvider
         $query = Event::query()->where('status', EventStatusEnum::PUBLISHED->value)
             ->where('visibility', EventVisibilityEnum::PUBLIC->value)
             ->whereIn('type', [EventTypeEnum::GAME->value, EventTypeEnum::TRAINING->value, EventTypeEnum::GAME_TRAINING->value])
-            ->where('starts_at', '>', $now)->where('starts_at', '<=', $now->copy()->addDays(30))
+            ->where('starts_at', '>', $now)->where('starts_at', '<=', $now->copy()->addDays($horizon))
             ->whereNotNull('ends_at')->whereNotNull('venue_id')
             ->whereDoesntHave('organizerActor', fn (Builder $q) => $q->whereIn('user_id', $ids))
             ->when(! $broad, fn (Builder $q) => $q->whereIn('venue_id', $exactIds))
@@ -102,6 +103,6 @@ final readonly class MyInterestsProvider implements DashboardDataProvider
             }
         }
 
-        return new DashboardWidgetData($total, $items, ['horizon_days' => 30]);
+        return new DashboardWidgetData($total, $items, ['horizon_days' => $horizon]);
     }
 }

@@ -138,6 +138,45 @@ final class DashboardDataTest extends TestCase
         $this->assertStringNotContainsString('Выборочные сообщения', $revoked->json('html'));
     }
 
+    public function test_empty_card_retains_preference_and_reappears_but_live_can_be_disabled(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user->createProfile([]);
+        $widget = AccountDashboardWidget::query()->where('kind', 'message_summary')->firstOrFail()->replicate();
+        $widget->forceFill([
+            'kind' => 'dynamic', 'source_key' => 'my_interests', 'title' => 'Автоскрытие интересов',
+            'source_settings' => ['hide_when_empty' => true, 'horizon_days' => 14], 'enabled' => true,
+            'can_hide' => true, 'include_user_ids' => [$user->id], 'actions' => [],
+        ])->save();
+        $url = route('account.dashboard.widgets', ['sources' => ['my_interests']]);
+        $article = function (string $html) use ($widget): \DOMElement {
+            $dom = new \DOMDocument;
+            @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $node = (new \DOMXPath($dom))->query('//article[@data-dashboard-widget="'.$widget->id.'"]')->item(0);
+            $this->assertInstanceOf(\DOMElement::class, $node);
+
+            return $node;
+        };
+        $response = $this->actingAs($user)->getJson($url)->assertOk();
+        $this->assertContains($widget->id, $response->json('visible_ids'));
+        $this->assertTrue($article($response->json('html'))->hasAttribute('hidden'));
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED, 'is_published' => true]);
+        VenueSubscription::query()->create(['user_id' => $user->id, 'venue_id' => $venue->id, 'status' => 'active']);
+        PortalEvent::factory()->create([
+            'venue_id' => $venue->id, 'type' => EventTypeEnum::TRAINING,
+            'starts_at' => now()->addDay(), 'ends_at' => now()->addDay()->addHour(),
+        ]);
+        $this->assertFalse($article($this->getJson($url)->assertOk()->json('html'))->hasAttribute('hidden'));
+        $widget->update(['source_settings' => ['hide_when_empty' => true, 'live_enabled' => false]]);
+        $partial = $this->getJson($url)->assertOk();
+        $this->assertContains($widget->id, $partial->json('visible_ids'));
+        $this->assertStringNotContainsString('Автоскрытие интересов', $partial->json('html'));
+        $full = $this->getJson(route('account.dashboard.widgets'))->assertOk();
+        $this->assertSame('0', $article($full->json('html'))->getAttribute('data-widget-live'));
+        $this->postJson(route('account.settings.dashboard.update'), ['visible_widget_ids' => []])->assertOk();
+        $this->assertStringNotContainsString('Автоскрытие интересов', $this->getJson(route('account.dashboard.widgets'))->assertOk()->json('html'));
+    }
+
     public function test_personal_invalidation_contains_no_personal_payload(): void
     {
         $user = User::factory()->create();

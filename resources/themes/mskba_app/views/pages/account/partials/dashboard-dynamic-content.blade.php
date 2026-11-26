@@ -1,16 +1,4 @@
 @php
-    // Only visible, targeted widgets reach this partial. The registry repeats
-    // domain authorization before reading anything personal.
-    $data = null;
-    try {
-        $data = app(\App\Modules\Dashboard\Application\Services\DashboardDataRegistry::class)
-            ->getData($widget, $dashboardUser)->toArray();
-    } catch (\Throwable $exception) {
-        if (! $exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
-            || ! in_array($exception->getStatusCode(), [403, 404], true)) {
-            report($exception);
-        }
-    }
     $money = static fn (int $minor): string => number_format($minor / 100, 2, ',', ' ').' ₽';
     $date = static fn (?string $value): string => $value
         ? \Carbon\CarbonImmutable::parse($value)->setTimezone(config('app.timezone', 'Europe/Moscow'))->format('d.m.Y, H:i')
@@ -57,7 +45,7 @@
                 <p>Непрочитанных сообщений и уведомлений: <strong>{{ $total }}</strong></p>
                 @break
             @case('my_interests')
-                <p>Совпадений на ближайшие 30 дней: <strong>{{ $total }}</strong></p>
+                <p>Совпадений на ближайшие {{ (int) ($summary['horizon_days'] ?? 30) }} дн.: <strong>{{ $total }}</strong></p>
                 @break
             @case('upcoming_events')
                 <p>Мероприятий в расписании: <strong>{{ $total }}</strong></p>

@@ -23,6 +23,11 @@ final class AccountDashboardWidget extends Model
         self::deleted($broadcast);
     }
 
+    public function usesLiveRefresh(): bool
+    {
+        return $this->kind === 'dynamic' && ($this->source_settings['live_enabled'] ?? true) !== false;
+    }
+
     protected function casts(): array
     {
         return [
