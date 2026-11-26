@@ -1553,3 +1553,8 @@
 .venue-informational-hours__rows{display:grid;gap:4px;min-width:0}
 .venue-informational-hours__rows p{margin:0;overflow-wrap:anywhere}
 .venue-informational-hours__rows h4{margin:6px 0 0}
+
+/* Public venue contacts follow the existing legacy section layout. */
+.venue-show-section .venue-public-contact-list{display:grid;gap:12px;list-style:none;padding:0;margin:0}
+.venue-show-section .venue-public-contact-list li{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.venue-show-section .venue-public-contact-list__label{font-size:.875em;color:var(--muted)}

@@ -491,6 +491,13 @@
                 </div>
             @endif
 
+            @if(!empty($venue->publicContacts))
+                <section class="venue-show-section" aria-labelledby="venue-public-contacts-title">
+                    <div class="venue-show-section__heading"><h2 id="venue-public-contacts-title">Контакты площадки</h2></div>
+                    @include('components.venue-public-contact-list', ['contacts' => $venue->publicContacts])
+                </section>
+            @endif
+
             <section id="address" class="venue-show-section">
                 <div class="venue-show-section__heading">
                     <h2>Адрес</h2>

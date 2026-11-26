@@ -356,6 +356,7 @@ final class ShowVenueHandler
             canEdit: $this->access->canEdit($user, $venue, $actor),
             canEditSchedule: $this->access->canEditSchedule($user, $venue, $actor),
             canRemove: $this->access->canRemove($user, $venue, $actor),
+            publicContacts: app(\App\Modules\Venue\Application\Services\PublicVenueContacts::class)->forVenue($venue),
         );
     }
 

@@ -260,7 +260,7 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
 
 // Follow the actual sticky navigation rather than a hard-coded height:
 // navigation can wrap and theme/header dimensions can change independently.
-const venueSidebar = document.querySelector('.app-venue-page__aside');
+const venueSidebar = document.querySelector('.app-venue-page__side-stack') || document.querySelector('.app-venue-page__aside');
 const venueAnchors = document.querySelector('.app-venue-page__anchors');
 if (venueSidebar && venueAnchors) {
     let pending = false;
