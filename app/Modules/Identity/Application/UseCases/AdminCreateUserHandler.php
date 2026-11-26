@@ -14,6 +14,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\ValueObjects\UsernameVO;
+use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ final class AdminCreateUserHandler
             && $this->permissions->allows($actor, Permission::EDIT_USER_PERSONAL_DATA);
     }
 
-    public function handle(User $actor, string $username): User
+    public function handle(User $actor, string $username, string $password, string $passwordConfirmation, bool $consentAttested): User
     {
         if (! $this->canCreate($actor)) {
             throw new AuthorizationException('Нет разрешения на создание пользователя.');
@@ -51,7 +52,19 @@ final class AdminCreateUserHandler
         }
 
         try {
-            return DB::transaction(function () use ($actor, $username): User {
+            $password = PasswordVO::fromString($password)->value;
+        } catch (InvalidIdentityValueException $exception) {
+            throw ValidationException::withMessages(['password' => $exception->getMessage()]);
+        }
+        if ($password !== $passwordConfirmation) {
+            throw ValidationException::withMessages(['password_confirmation' => 'Пароли не совпадают.']);
+        }
+        if (! $consentAttested) {
+            throw ValidationException::withMessages(['consent_attested' => 'Подтвердите получение согласия пользователя.']);
+        }
+
+        try {
+            return DB::transaction(function () use ($actor, $username, $password): User {
                 $actor = $actor->canonical()->fresh();
                 if (! $this->canCreate($actor)) {
                     throw new AuthorizationException('Нет разрешения на создание пользователя.');
@@ -63,10 +76,11 @@ final class AdminCreateUserHandler
 
                 $user = $this->accounts->handle(
                     username: $username,
-                    password: null,
+                    password: $password,
                     registrationChannel: UserRegistrationChannelEnum::OTHER,
                     systemRole: UserSystemRoleEnum::USER,
                     status: UserStatusEnum::UNCONFIRMED,
+                    isTemporaryPassword: true,
                 );
 
                 AuditLog::query()->create([
@@ -76,7 +90,13 @@ final class AdminCreateUserHandler
                     'event' => 'admin_user_created',
                     'old_values' => [],
                     'new_values' => ['username' => $username, 'status' => UserStatusEnum::UNCONFIRMED->value],
-                    'metadata' => ['source' => 'filament', 'actor_user_id' => $actor->id],
+                    'metadata' => [
+                        'source' => 'filament',
+                        'actor_user_id' => $actor->id,
+                        'consent_attested_by_admin' => true,
+                        'consent_document_version' => (string) config('legal.personal_data_consent_version'),
+                        'consent_attested_at' => now()->toIso8601String(),
+                    ],
                 ]);
 
                 return $user;
