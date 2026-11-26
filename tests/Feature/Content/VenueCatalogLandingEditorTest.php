@@ -68,6 +68,20 @@ final class VenueCatalogLandingEditorTest extends TestCase
         $this->assertTrue($landing->fresh()->rental_configured);
     }
 
+    public function test_related_references_can_be_saved_and_cleared_but_not_point_to_self(): void
+    {
+        $this->actingAs(User::factory()->create());
+        Gate::define('manage-content', fn (User $user): bool => true);
+        $editor = app(VenueCatalogLandingEditor::class);
+        $target = $editor->save(array_replace($this->data(), ['slug' => 'rent/other']));
+        $landing = $editor->save(array_replace($this->data(), ['related_landing_ids' => [(string) $target->id]]));
+        $this->assertSame([$target->id], $landing->fresh()->related_landing_ids);
+        $editor->save(array_replace($this->data(), ['related_landing_ids' => []]), $landing);
+        $this->assertSame([], $landing->fresh()->related_landing_ids);
+        $this->expectException(ValidationException::class);
+        $editor->save(array_replace($this->data(), ['related_landing_ids' => [$landing->id]]), $landing);
+    }
+
     public function test_duplicate_active_combination_is_reported_as_validation_error(): void
     {
         $this->actingAs(User::factory()->create());
