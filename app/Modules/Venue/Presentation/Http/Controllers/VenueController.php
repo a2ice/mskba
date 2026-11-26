@@ -158,6 +158,7 @@ class VenueController extends Controller
                 'landing' => $landing,
                 'landingUrl' => $isLandingPreview ? $navigation->previewUrl($landing) : $navigation->url($landing),
                 'isLandingPreview' => $isLandingPreview,
+                'landingRelatedLinks' => $pageNumber === 1 && ! $isFragment ? $navigation->relatedLinks($landing) : [],
                 // Indexing and sitemap eligibility are deliberately deferred.
                 'metaRobots' => 'noindex, nofollow, noarchive',
             ];
