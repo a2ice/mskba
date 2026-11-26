@@ -74,16 +74,16 @@ final class AccountInvitationResource extends Resource
                         'booking_operator' => 'Регистрация оператора бронирований',
                     ];
 
-                return array_filter($options, fn (string $role): bool =>
-                    app(AccountInvitationAccess::class)->canIssue($actor, $venue, $role), ARRAY_FILTER_USE_KEY);
-            }),
-        TextInput::make('email')->label('Email получателя')->email()->required()->maxLength(255)->readOnly($lockedEmail),
-        TextInput::make('title')->label('Название приглашения')->maxLength(160)
-            ->helperText('Необязательно: по умолчанию будет сформировано из роли и названия площадки.'),
-        Textarea::make('description')->label('Описание для получателя')
-            ->maxLength(2000)->rows(3),
-        Select::make('days')->label('Срок действия ссылки')->required()->default(7)
-            ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
+                    return array_filter($options, fn (string $role): bool =>
+                        app(AccountInvitationAccess::class)->canIssue($actor, $venue, $role), ARRAY_FILTER_USE_KEY);
+                }),
+            TextInput::make('email')->label('Email получателя')->email()->required()->maxLength(255)->readOnly($lockedEmail),
+            TextInput::make('title')->label('Название приглашения')->maxLength(160)
+                ->helperText('Необязательно: по умолчанию будет сформировано из роли и названия площадки.'),
+            Textarea::make('description')->label('Описание для получателя')
+                ->maxLength(2000)->rows(3),
+            Select::make('days')->label('Срок действия ссылки')->required()->default(7)
+                ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
         ];
     }
 
