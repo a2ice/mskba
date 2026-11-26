@@ -53,10 +53,10 @@ final class VenueCatalogLandingResource extends Resource
                 TextInput::make('name')->label('Внутреннее название')->required()->maxLength(255),
                 TextInput::make('slug')->label('ЧПУ')->required()->maxLength(180)
                     ->regex('~\A'.VenueCatalogLandingNavigation::SLUG_PATTERN.'\z~D')
-                    ->unique(ignoreRecord: true)->helperText('Например rent/moscow → /venues/collections/rent/moscow. Публичная выдача пока отключена.'),
+                    ->unique(ignoreRecord: true)->helperText('Например rent/moscow → /venues/collections/rent/moscow. Активная подборка доступна по этому адресу.'),
                 TextInput::make('h1')->label('H1')->required()->maxLength(255)->columnSpanFull(),
                 Toggle::make('is_active')->label('Активна')->default(false)
-                    ->helperText('Черновик не участвует в сопоставлении фильтров. Публичный маршрут пока не подключён.'),
+                    ->helperText('Активная подборка доступна по ЧПУ; черновик — только в предпросмотре.'),
             ]),
             Section::make('Условия выборки')->columns(2)->schema([
                 Select::make('city_id')->label('Город')->options(fn () => City::query()->orderBy('name')->pluck('name', 'id')->all())
@@ -72,6 +72,13 @@ final class VenueCatalogLandingResource extends Resource
             Section::make('Контент')->schema([
                 CodeEditor::make('intro_text')->label('Текст над каталогом')->language(Language::Html),
                 CodeEditor::make('body_text')->label('Текст под каталогом')->language(Language::Html),
+                Select::make('related_landing_ids')->label('Связанные подборки площадок')
+                    ->multiple()->searchable()->maxItems(12)->default([])
+                    ->options(fn (?VenueCatalogLanding $record) => VenueCatalogLanding::query()
+                        ->when($record !== null, fn ($query) => $query->where('id', '!=', $record->getKey()))
+                        ->orderBy('name')->get(['id', 'name', 'is_active'])
+                        ->mapWithKeys(fn ($landing) => [$landing->id => $landing->name.($landing->is_active ? '' : ' (черновик)')])->all())
+                    ->helperText('Ссылки на выбранные активные подборки появятся под каталогом. Черновики можно выбрать заранее: ссылки появятся после активации. Обратную ссылку настройте в другой подборке.'),
             ]),
             Section::make('SEO')->columns(2)->schema([
                 TextInput::make('meta_title')->label('Meta Title')->maxLength(255),
