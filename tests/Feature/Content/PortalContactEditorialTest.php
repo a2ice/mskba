@@ -3,7 +3,7 @@
 namespace Tests\Feature\Content;
 
 use App\Modules\Content\Application\Services\ContentBodyRenderer;
-use App\Modules\Content\Application\Services\PortalContactContentAudit;
+use App\Modules\Portal\Application\Services\PortalContactContentAudit;
 use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
