@@ -166,7 +166,9 @@ if (dock) {
                 shell?.classList.add('app-mobile-primary__origin-hidden');
                 activeForm = original.matches('form') ? original : original.querySelector('form');
             }
-            activeSearch = activeForm?.querySelector('input[type="search"]') ?? null;
+            // A compact toolbar may own a search input outside the form via its form attribute.
+            activeSearch = activeForm?.querySelector('input[type="search"]')
+                ?? activeForm?.elements?.namedItem('search') ?? null;
         } else {
             filterLabel.textContent = 'Поиск';
             filterTitle.textContent = 'Поиск по MSKBA';
