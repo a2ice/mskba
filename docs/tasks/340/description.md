@@ -28,3 +28,12 @@
 ## Исправление после production run #961 (24.11.2026)
 
 Штатное развёртывание и все 51 URL прошли успешно; отдельный шаг checkpoint завершился ошибкой `install: cannot change owner and permissions ... Operation not permitted`. Host user deploy не должен входить в группу www-data. На обоих окружениях приватную директорию создаёт root существующего PHP-контейнера с UID host deploy, группой www-data и режимом 2750 (setgid); файлы остаются 0640. Проверяется возможность записи на host и чтения latest.json от www-data. Не менять права других директорий, не ослаблять проверки fingerprint, не трогать БД. Повторный production deploy и checkpoint требуют отдельного подтверждения по логам.
+
+
+## Автоматическая синхронизация после production (26.11.2026)
+
+После успешного завершения workflow Deploy to production запускается отдельный Synchronize environments after production. Только успешный запуск main из собственного репозитория, exact verified release SHA = текущий main, dev является предком main и **все tracked files идентичны** (включая workflows/docs/generated) дают разрешение на автоматический fast-forward dev. Это исключение из ручного PR-процесса только для выравнивания истории без изменения содержимого; не меняет main и не обходится branch protection. Обычный non-force push, повторная проверка обоих refs перед записью. Если dev продвинулся независимо, деревья различаются, release устарел или branch protection блокирует push, штатный ручной PR и CI остаются обязательными. Никакого копирования .env/БД.
+
+GITHUB_TOKEN с contents:write/actions:write только у sync job. Поскольку push с этим токеном не запускает обычные push workflows, явно dispatch ci.yml на dev с deploy_dev_now=true и environment-checkpoints.yml на dev. Сам sync не утверждает успех DEV-деплоя — последующий CI/deploy записывает точку при выполнении существующих проверок. Если refs уже совпадают, обычный повторный запуск после нового production не дублирует деплой; rerun failed sync позволяет повторить dispatch после частичного сбоя. Не использовать пользовательский PAT, force-push или автоматический конфликтный merge.
+
+Тесты sync-plan: точное совпадение, ancestor, устаревший production SHA, отличие даже только workflow, независимый dev при одинаковом дереве. Первый реальный запуск возможен после включения workflow в main и успешного production deployment; проверить результат, отсутствие bypass, DEV CI/deploy и новые checkpoint. Текущий release #1119 синхронизирован обычным #1120 до добавления автоматизации.
