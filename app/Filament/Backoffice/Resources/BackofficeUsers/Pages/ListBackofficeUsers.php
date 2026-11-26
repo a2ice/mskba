@@ -6,6 +6,7 @@ use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Modules\Identity\Application\UseCases\AdminCreateUserHandler;
 use App\Modules\Identity\Application\Services\TestAccountSequence;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Hidden;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -50,6 +51,7 @@ final class ListBackofficeUsers extends ListRecords
                             $set('test_contact_verified', true);
                             $set('test_contact_type', 'email');
                             $set('test_contact_value', null);
+                            $set('test_contact_suggestion', null);
                         }),
                     Checkbox::make('consent_attested')
                         ->label(fn (Get $get): string => $get('is_test_account')
@@ -64,6 +66,7 @@ final class ListBackofficeUsers extends ListRecords
                             if (! $state) {
                                 $set('test_confirmed', false);
                                 $set('test_contact_value', null);
+                                $set('test_contact_suggestion', null);
                             }
                         }),
                     Checkbox::make('test_confirmed')->label('Подтверждённый аккаунт')
@@ -74,37 +77,53 @@ final class ListBackofficeUsers extends ListRecords
                             $set('test_contact_type', 'email');
                             $set('test_contact_verified', true);
                             $sequence = app(TestAccountSequence::class);
-                            $set('test_contact_value', $state ? $sequence->email($sequence->nextNumber()) : null);
+                            $suggestion = $state ? $sequence->email($sequence->nextNumber()) : null;
+                            $set('test_contact_value', $suggestion);
+                            $set('test_contact_suggestion', $suggestion);
                         }),
                     Section::make('Контакт тестового аккаунта')
                         ->visible(fn (Get $get): bool => $get('is_test_account') && $get('consent_attested') && $get('test_confirmed'))
                         ->schema([
+                            Hidden::make('test_contact_suggestion')->dehydrated(false),
                             Checkbox::make('test_contact_verified')->label('Подтверждённый контакт')
                                 ->default(true)->live()
-                                ->afterStateUpdated(function (?bool $state, Set $set, $livewire): void {
-                                    if ($state) {
+                                ->afterStateUpdated(function (?bool $state, Get $get, Set $set, $livewire): void {
+                                    $value = trim((string) $get('test_contact_value'));
+                                    if ($state && $value === '' && $get('test_contact_type') === 'email') {
                                         $sequence = app(TestAccountSequence::class);
-                                        $set('test_contact_type', 'email');
-                                        $set('test_contact_value', $sequence->email($sequence->nextNumber()));
-                                    } else {
+                                        $suggestion = $sequence->email($sequence->nextNumber());
+                                        $set('test_contact_value', $suggestion);
+                                        $set('test_contact_suggestion', $suggestion);
+                                    } elseif (! $state && ($value === '' || $value === $get('test_contact_suggestion'))) {
                                         $set('test_contact_value', null);
+                                        $set('test_contact_suggestion', null);
                                         $livewire->dispatch('focus-test-contact');
                                     }
                                 }),
                             Select::make('test_contact_type')->label('Тип контакта')
                                 ->options(['email' => 'Email', 'phone' => 'Телефон'])
                                 ->default('email')->required()->live()
-                                ->disabled(fn (Get $get): bool => (bool) $get('test_contact_verified'))
-                                ->dehydrated()
-                                ->afterStateUpdated(function (Set $set, $livewire): void {
+                                ->afterStateUpdated(function (Get $get, Set $set, $livewire): void {
+                                    $set('test_contact_suggestion', null);
                                     $set('test_contact_value', null);
+                                    if ($get('test_contact_type') === 'email' && $get('test_contact_verified')) {
+                                        $sequence = app(TestAccountSequence::class);
+                                        $suggestion = $sequence->email($sequence->nextNumber());
+                                        $set('test_contact_value', $suggestion);
+                                        $set('test_contact_suggestion', $suggestion);
+                                    }
                                     $livewire->dispatch('focus-test-contact');
                                 }),
                             TextInput::make('test_contact_value')->label('Контакт')
                                 ->required()->maxLength(254)
-                                ->readOnly(fn (Get $get): bool => (bool) $get('test_contact_verified'))
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function (?string $state, Get $get, Set $set): void {
+                                    if ($state !== $get('test_contact_suggestion')) {
+                                        $set('test_contact_suggestion', null);
+                                    }
+                                })
                                 ->extraInputAttributes(['x-on:focus-test-contact.window' => '$nextTick(() => $el.focus())'])
-                                ->helperText('Автоматически подтверждается только системный тестовый email. Реальный контакт остаётся неподтверждённым.'),
+                                ->helperText('Можно заменить предложенный email своим адресом или телефоном. Для реального контакта отметка подтверждения означает, что администратор удостоверился в его принадлежности тестировщику. Код не отправляется.'),
                         ]),
                 ])
                 ->action(function (array $data): void {
