@@ -81,6 +81,19 @@ final class PageBuilderFeatureTest extends TestCase
         $this->assertStringNotContainsString('mskba-portal-contacts', $html);
     }
 
+    public function test_portal_contacts_rejects_unknown_channel_before_publication(): void
+    {
+        $page = $this->home();
+        $page->update(['draft_html' => '<mskba-component name="portal-contacts" source="unknown"></mskba-component>']);
+        try {
+            app(PageBuilderPublisher::class)->publish($page);
+            $this->fail('Invalid portal contact source accepted.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('draft_html', $exception->errors());
+        }
+        $this->assertNull($page->refresh()->published_at);
+    }
+
     public function test_page_builder_spacing_utilities_are_scoped_and_preserve_html_classes(): void
     {
         $css = file_get_contents(resource_path('css/page-builder-spacing.css'));

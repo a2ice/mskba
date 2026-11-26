@@ -3,7 +3,7 @@ namespace Tests\Unit\Infrastructure;
 use PHPUnit\Framework\TestCase;
 final class DevMaintenanceFallbackTest extends TestCase
 {
-    public function test_html_is_independent_and_contains_official_contacts(): void
+    public function test_html_is_independent_and_contains_no_stale_contacts(): void
     {
         $html = file_get_contents(dirname(__DIR__, 3).'/public/maintenance.html');
         $this->assertIsString($html);
