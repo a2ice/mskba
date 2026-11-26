@@ -143,14 +143,15 @@ test('displays only three items and fills the freed slot without reading pending
 
     await region.children[0].querySelector('.app-message-toast__close').trigger('click');
     assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['3', '2', '1']);
-    assert.deepEqual(counts, []);
-    assert.equal(requests.length, 0, 'Dismissing does not acknowledge reading');
+    assert.deepEqual(counts, [2]);
+    assert.equal(requests.length, 1, 'Closing acknowledges only this notification');
+    assert.equal(requests[0].url, '/account/notifications/4/read');
 
     dock.reconcile([notification(3), notification(2), notification(1)]);
     assert.equal(dock.size(), 3);
 });
 
-test('new live toast preempts an older unread toast without acknowledging it', () => {
+test('new live toast preempts an older unread toast without acknowledging it', async () => {
     const { dock, region, requests } = setup();
     dock.reconcile([notification(1), notification(2), notification(3)]);
     dock.add(notification(4, { title: 'Получен перевод' }), true);
@@ -159,30 +160,31 @@ test('new live toast preempts an older unread toast without acknowledging it', (
     assert.equal(dock.size(), 3);
     assert.equal(requests.length, 0);
 
-    region.children[0].querySelector('.app-message-toast__close').trigger('click');
+    await region.children[0].querySelector('.app-message-toast__close').trigger('click');
     assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['1', '2', '3']);
-    assert.equal(requests.length, 0);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/account/notifications/4/read');
 });
 
-test('clicking an action navigates but does not automatically acknowledge', async () => {
+test('clicking an action acknowledges then navigates', async () => {
     const { dock, region, requests, visits, counts } = setup();
     dock.add(notification(8));
     const link = region.children[0].querySelector('.app-message-toast__link');
     assert.ok(link);
     await link.trigger('click');
 
-    assert.equal(requests.length, 0);
+    assert.equal(requests.length, 1);
     assert.deepEqual(visits, ['https://dev.mskba.ru/faq/welcome']);
-    assert.deepEqual(counts, []);
-    assert.equal(dock.size(), 1);
-    assert.equal(region.hidden, false);
+    assert.deepEqual(counts, [2]);
+    assert.equal(dock.size(), 0);
+    assert.equal(region.hidden, true);
 });
 
 test('failed read keeps the toast visible, shows an error and does not navigate', async () => {
     const { dock, region, visits, respondWith } = setup();
     respondWith({ ok: false });
     dock.add(notification(9));
-    await region.children[0].querySelector('.app-message-toast__read').trigger('click');
+    await region.children[0].querySelector('.app-message-toast__close').trigger('click');
     assert.equal(dock.size(), 1);
     assert.equal(region.hidden, false);
     assert.deepEqual(visits, []);
@@ -225,11 +227,11 @@ test('expansion does not mark a notification read or navigate', async () => {
     assert.equal(dock.size(), 1);
 });
 
-test('explicit read button calls PATCH and advances queued notifications', async () => {
+test('close button calls PATCH and advances queued notifications', async () => {
     const { region, counts, requests } = setup();
     const dock = createNotificationToastDock(region, (count) => counts.push(count));
     dock.reconcile([1, 2, 3, 4].map((id) => notification(id)));
-    await region.children[0].querySelector('.app-message-toast__read').trigger('click');
+    await region.children[0].querySelector('.app-message-toast__close').trigger('click');
     assert.deepEqual(counts, [2]);
     assert.equal(requests[0].url, '/account/notifications/1/read');
     assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['2', '3', '4']);
@@ -254,8 +256,7 @@ test('minimized conversation returns to original toast even when already read', 
     assert.equal(dock.size(), 3);
     const original = region.children[0];
     assert.equal(original.querySelector('.app-message-toast__heading').textContent, 'Техподдержка №3');
-    assert.equal(original.querySelector('.app-message-toast__read').disabled, true);
-    assert.equal(original.querySelector('.app-message-toast__read').hidden, true);
+    assert.equal(original.querySelector('.app-message-toast__read'), null);
     dock.reconcile([1, 2, 3, 4].map(id => notification(id)));
     assert.equal(region.children[0], original);
     dock.unpin(55);
@@ -275,20 +276,13 @@ test('a minimized unread notification is not duplicated after resynchronization'
     assert.equal(dock.size(), 2);
 });
 
-test('a new unread toast offers a read action; an acknowledged minimized toast does not', () => {
+test('no separate read action; closing a read minimized toast does not PATCH again', async () => {
     const { region, dock, requests } = setup();
-    const unread = notification(62, { title: 'Новое сообщение техподдержки №3' });
+    const unread = notification(62);
     dock.add(unread);
-    const read = region.children[0].querySelector('.app-message-toast__read');
-    assert.equal(read.textContent, 'Отметить прочитанным');
-    assert.equal(read.hidden, false);
-    assert.equal(read.disabled, false);
-
-    // The notice can be acknowledged in the expanded window, then minimized.
+    assert.equal(region.children[0].querySelector('.app-message-toast__read'), null);
     dock.pin({ ...unread, is_read: true });
-    const acknowledged = region.children[0].querySelector('.app-message-toast__read');
-    assert.equal(acknowledged.hidden, true);
-    assert.equal(acknowledged.disabled, true);
-    assert.equal(region.children[0].querySelector('.app-message-toast__expand'), null);
-    assert.equal(requests.length, 0, 'Minimize must not change read status');
+    await region.children[0].querySelector('.app-message-toast__close').trigger('click');
+    assert.equal(dock.size(), 0);
+    assert.equal(requests.length, 0);
 });
