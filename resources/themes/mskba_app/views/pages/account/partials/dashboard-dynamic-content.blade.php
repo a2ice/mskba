@@ -22,6 +22,7 @@
         'upcoming_events' => [['/account/my-games?scope=playing', 'Мои игры']],
         'my_rental_requests' => [['/account/venue-bookings', 'Мои заявки'], ['/account/venue-pre-requests', 'Предзаявки']],
         'venue_rental_inbox' => array_merge(! empty($data['summary']['bookings_url']) ? [[$data['summary']['bookings_url'], 'Входящие заявки']] : [], ! empty($data['summary']['pre_requests_url']) ? [[$data['summary']['pre_requests_url'], 'Предзаявки']] : []),
+        'venue_invitations' => ! empty($data['summary']['url']) ? [[$data['summary']['url'], 'Приглашения']] : [],
         'wallet_summary' => [['/account/wallet', 'Кошелёк']],
         'unread_messages' => [['/account/notifications', 'Сообщения']],
         default => [],
@@ -39,6 +40,7 @@
             'upcoming_events' => 'В расписании пока нет предстоящих мероприятий.',
             'my_rental_requests' => 'Активных заявок и предзаявок пока нет.',
             'venue_rental_inbox' => 'Входящих заявок и предзаявок пока нет.',
+            'venue_invitations' => 'По доступным площадкам пока нет приглашений.',
             'wallet_summary' => 'Операций пока нет.',
             'needs_attention' => 'Сейчас нет действий, требующих твоего внимания.',
             default => 'Новых сообщений нет.',
@@ -60,6 +62,10 @@
             @case('upcoming_events')
                 <p>Мероприятий в расписании: <strong>{{ $total }}</strong></p>
                 @break
+            @case('venue_invitations')
+                <p>В работе: <strong>{{ (int) ($summary['pending'] ?? 0) }}</strong> · Завершено: <strong>{{ (int) ($summary['completed'] ?? 0) }}</strong></p>
+                <p>Просрочено: <strong>{{ (int) ($summary['expired'] ?? 0) }}</strong> · Аннулировано: <strong>{{ (int) ($summary['revoked'] ?? 0) }}</strong></p>
+                @break
             @case('needs_attention')
                 <p>Требуют внимания: <strong>{{ $total }}</strong></p>
                 @break
@@ -78,6 +84,7 @@
                             'my_interests' => ($item['venue_name'] ?? '').' · '.(($item['reason'] ?? '') === 'criteria_match' ? 'По условиям' : 'По площадке'),
                             'upcoming_events' => ($item['venue_name'] ?? '').' · '.(($item['role'] ?? '') === 'organizer' ? 'Организатор' : 'Участвую'),
                             'my_rental_requests', 'venue_rental_inbox' => (($item['kind'] ?? '') === 'pre_request' ? 'Предзаявка' : 'Заявка').' · '.($item['status_label'] ?? ''),
+                            'venue_invitations' => ($item['invitation_status'] ?? '').' · '.($item['progress_label'] ?? '').(isset($item['deadline_at']) ? ' · Ссылка до '.$date($item['deadline_at']) : ''),
                             'wallet_summary' => $date($item['completed_at'] ?? null),
                             'needs_attention' => ($item['description'] ?? '').(isset($item['deadline_at']) ? ' · Ответить до '.$date($item['deadline_at']) : ''),
                             default => '',
