@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const template = menu.querySelector('[data-venue-distance-template]');
     const option = () => menu.querySelector('[data-venue-distance-option]');
+    const optionPrototype = (option() || template?.content.firstElementChild)?.cloneNode(true);
     const accept = dialog.querySelector('[data-distance-accept]');
     const manual = dialog.querySelector('[data-distance-manual]');
     const status = dialog.querySelector('[data-distance-status]');
@@ -40,7 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function showOption() {
-        if (!option() && template) template.after(template.content.cloneNode(true));
+        if (!option() && optionPrototype) {
+            menu.querySelector('.app-catalog-tools__sort-menu')?.append(optionPrototype.cloneNode(true));
+        }
     }
 
     function showOffer() {
@@ -108,7 +111,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.assign(sortUrl());
         } else {
             menu.open = true;
-            menu.querySelector('summary')?.focus({ preventScroll: true });
+            const summary = menu.querySelector('summary');
+            summary?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            summary?.focus({ preventScroll: true });
         }
     }
 
