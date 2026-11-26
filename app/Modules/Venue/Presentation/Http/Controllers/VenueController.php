@@ -260,6 +260,8 @@ class VenueController extends Controller
             $response->header('Cache-Control', 'private, no-store');
         }
 
+        app(RentalCatalogAnalytics::class)->record($request, $landing?->id, $filters, $total);
+
         return $isLandingPreview ? $this->privateLandingPreview($response) : $response;
     }
 
