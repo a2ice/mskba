@@ -167,6 +167,10 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         return card;
     };
 
+    const oldestUnpinned = () => [...region.children].reverse()
+        .map(card => card.dataset.messageToastId)
+        .find(id => cards.has(id) && !pinned.has(id));
+
     const add = (notification, live = false) => {
         if (!notification?.id || !notification?.read_url) return;
         const id = String(notification.id);
@@ -175,7 +179,7 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         // A freshly delivered notification must not be hidden behind three
         // older unread toasts. Make room without marking anything as read.
         if (live && cards.size >= MAX_VISIBLE_TOASTS) {
-            const displaced = [...cards.keys()].reverse().find((other) => !pinned.has(other));
+            const displaced = oldestUnpinned();
             if (displaced) {
                 cards.get(displaced)?.remove();
                 cards.delete(displaced);
@@ -214,7 +218,7 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         if (notification.is_read) notifications.delete(id);
         // Prefer the restored original toast to other waiting unread toasts.
         if (!cards.has(id) && cards.size >= MAX_VISIBLE_TOASTS) {
-            const evict = [...cards.keys()].reverse().find(other => !pinned.has(other));
+            const evict = oldestUnpinned();
             if (evict) {
                 cards.get(evict)?.remove();
                 cards.delete(evict);
