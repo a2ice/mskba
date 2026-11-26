@@ -33,14 +33,12 @@ final readonly class VenueCatalogLandingIndexPolicy
             && ! in_array(false, $this->readiness->checks($landing, $matchingVenues), true);
     }
 
-    public function robots(Request $request, VenueCatalogLanding $landing, int $matchingVenues, bool $cleanPublicUrl): string
+    public function robots(Request $request, VenueCatalogLanding $landing, int $matchingVenues, bool $publicPage, bool $cleanPublicUrl): string
     {
-        if (! $this->enabled($request)) {
+        if (! $this->enabled($request) || ! $publicPage || ! $this->eligible($landing, $matchingVenues)) {
             return self::BLOCKED;
         }
 
-        return $cleanPublicUrl && $this->eligible($landing, $matchingVenues)
-            ? 'index, follow'
-            : self::BLOCKED;
+        return $cleanPublicUrl ? 'index, follow' : 'noindex, follow';
     }
 }
