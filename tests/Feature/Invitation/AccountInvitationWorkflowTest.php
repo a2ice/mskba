@@ -10,6 +10,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Invitation\Application\Services\AccountInvitationManager;
 use App\Modules\Invitation\Domain\Models\AccountInvitation;
 use App\Modules\Invitation\Presentation\Mail\AccountInvitationMail;
+use App\Modules\Invitation\Presentation\Mail\AccountInvitationAcceptedMail;
+use Illuminate\Support\Facades\Hash;
 use App\Modules\Venue\Application\UseCases\SubmitVenueOwnershipClaimHandler;
 use App\Modules\Venue\Application\UseCases\ReviewVenueOwnershipClaimHandler;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -166,6 +168,62 @@ final class AccountInvitationWorkflowTest extends TestCase
         $this->assertSame('my_booking_login', User::findOrFail($invitation->fresh()->accepted_user_id)->username);
     }
 
+    public function test_system_password_is_generated_hashed_and_delivered_only_to_verified_invited_email(): void
+    {
+        [, , $invitation, $token] = $this->invite('systemdesk99@example.test');
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $this->post(route('account-invitations.interest'))->assertRedirect();
+        $this->post(route('account-invitations.register'), [
+            'proposed_username' => 'systemdesk',
+            'password' => 'ignored-invalid-password',
+            'privacy_consent' => '1',
+            'accept_invitation' => '1',
+        ])->assertRedirect(route('account-invitations.continue'));
+        $user = User::findOrFail($invitation->fresh()->accepted_user_id);
+        $this->assertTrue((bool) $user->is_temporary_password);
+        $this->assertTrue($user->hasVerifiedPrimaryContact());
+        $mail = Mail::sent(AccountInvitationAcceptedMail::class)->sole();
+        $this->assertTrue($mail->hasTo('systemdesk99@example.test'));
+        $this->assertNotNull($mail->generatedPassword);
+        $this->assertTrue(Hash::check($mail->generatedPassword, $user->password));
+        $this->assertNotSame($mail->generatedPassword, $user->password);
+        $this->assertStringNotContainsString($mail->generatedPassword, $invitation->events()->get()->toJson());
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_custom_password_is_never_included_in_acceptance_mail(): void
+    {
+        [, , $invitation, $token] = $this->invite('customdesk@example.test');
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $this->post(route('account-invitations.interest'))->assertRedirect();
+        $data = ['proposed_username' => 'customdesk', 'custom_password' => '1',
+            'password' => 'SafePass#2026', 'password_confirmation' => 'wrong',
+            'privacy_consent' => '1', 'accept_invitation' => '1'];
+        $this->post(route('account-invitations.register'), $data)->assertSessionHasErrors('password');
+        $this->assertNull($invitation->fresh()->accepted_user_id);
+        $data['password_confirmation'] = $data['password'];
+        $this->post(route('account-invitations.register'), $data)->assertRedirect(route('account-invitations.continue'));
+        $user = User::findOrFail($invitation->fresh()->accepted_user_id);
+        $this->assertFalse((bool) $user->is_temporary_password);
+        $this->assertTrue(Hash::check($data['password'], $user->password));
+        $this->assertNull(Mail::sent(AccountInvitationAcceptedMail::class)->sole()->generatedPassword);
+    }
+
+    public function test_non_delivering_mailer_does_not_log_system_password_or_undo_acceptance(): void
+    {
+        [, , $invitation, $token] = $this->invite('failuredesk@example.test');
+        config()->set('mail.default', 'log');
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $this->post(route('account-invitations.register'), [
+            'proposed_username' => 'failuredesk',
+            'privacy_consent' => '1',
+            'accept_invitation' => '1',
+        ])->assertRedirect(route('account-invitations.continue'))->assertSessionHas('warning');
+        $this->assertNotNull($invitation->fresh()->accepted_user_id);
+        $this->assertTrue($invitation->events()->where('event', 'acceptance_mail_failed')->exists());
+        Mail::assertNotSent(AccountInvitationAcceptedMail::class);
+    }
+
     public function test_registration_explicitly_verifies_invited_email_but_does_not_grant_ownership(): void
     {
         [$issuer, $venue, $invitation, $token] = $this->invite();
@@ -222,6 +280,10 @@ final class AccountInvitationWorkflowTest extends TestCase
 
         $this->assertTrue($user->hasVerifiedPrimaryContact());
         $this->assertSame($user->id, $invitation->fresh()->accepted_user_id);
+        $originalHash = $user->password;
+        $this->post(route('account-invitations.accept'), ['accept_invitation' => '1'])->assertRedirect();
+        $this->assertSame($originalHash, $user->fresh()->password);
+        $this->assertNull(Mail::sent(AccountInvitationAcceptedMail::class)->sole()->generatedPassword);
     }
 
     public function test_second_identity_cannot_accept_claimed_link(): void

@@ -20,6 +20,7 @@ use App\Modules\Venue\Application\UseCases\ManageVenueMembershipHandler;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Invitation\Presentation\Mail\AccountInvitationMail;
+use App\Modules\Invitation\Presentation\Mail\AccountInvitationAcceptedMail;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -479,6 +480,59 @@ final class AccountInvitationManager
         if ($role === 'owner' && app(VenueMembershipAccess::class)->hasActiveOwner($venue)) {
             throw ValidationException::withMessages(['role' => 'У площадки уже есть подтверждённый владелец. Нужна отдельная передача владения.']);
         }
+    }
+
+    /** Public contacts only; no access to transport credentials or private venue contacts. */
+    public function publicPortalContacts(): array
+    {
+        $contacts = [];
+        $email = trim((string) config('support.email', ''));
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+            $contacts[] = ['value' => $email, 'href' => 'mailto:'.$email];
+        }
+
+        return $contacts;
+    }
+
+    /**
+     * Called once by the acceptance HTTP flow, after the account transaction.
+     * Never queue, serialize, persist or report the generated secret.
+     * Delivery failure leaves the valid account intact and recovery available.
+     */
+    public function sendAcceptanceNotice(AccountInvitation $invitation, User $user, ?string $generatedPassword = null): bool
+    {
+        $invitation->refresh();
+        $user = $user->canonical();
+        if ($invitation->accepted_user_id === null || ! $user->isSameIdentity((int) $invitation->accepted_user_id)
+            || $user->isBlocked() || $user->trashed()
+            || ($generatedPassword !== null && ($invitation->registered_at === null || ! $user->is_temporary_password))
+            || ! $user->identityContactsQuery()->where('type', ContactTypeEnum::EMAIL->value)
+                ->where('value', $invitation->contact_value)->whereNotNull('verified_at')->exists()) {
+            return false;
+        }
+
+        try {
+            if ($this->containsNonDeliveringTransport((string) config('mail.default', 'log'))) {
+                $this->event($invitation, 'acceptance_mail_failed');
+                return false;
+            }
+            Mail::to($invitation->contact_value)->send(new AccountInvitationAcceptedMail(
+                $invitation->targetName(),
+                $invitation->role,
+                $invitation->contact_value,
+                $user->username,
+                $generatedPassword,
+                route('login'),
+                $this->publicPortalContacts(),
+            ));
+        } catch (\Throwable) {
+            // Mail exceptions may contain a rendered message. Do not report them.
+            $this->event($invitation, 'acceptance_mail_failed');
+            return false;
+        }
+        $this->event($invitation, 'acceptance_mail_sent');
+
+        return true;
     }
 
     private function send(AccountInvitation $invitation, string $token): void

@@ -11,6 +11,7 @@ use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Invitation\Presentation\Http\Requests\InvitationRegisterRequest;
 use App\Modules\Invitation\Application\Services\AccountInvitationManager;
 use App\Modules\Invitation\Domain\Models\AccountInvitation;
+use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,6 +62,7 @@ final class AccountInvitationController
             'currentUser' => $current,
             'started' => $started,
             'suggestedUsername' => $suggestedUsername,
+            'portalContacts' => $manager->publicPortalContacts(),
         ])->withHeaders([
             'Cache-Control' => 'private, no-store, max-age=0',
             'Referrer-Policy' => 'same-origin',
@@ -113,11 +115,13 @@ final class AccountInvitationController
             throw ValidationException::withMessages(['username' => 'Этот логин уже занят. Проверьте предложенный логин или выберите свой.'])
                 ->redirectTo(route('account-invitations.continue'));
         }
+        $systemPassword = $request->usesSystemPassword();
+        $password = $systemPassword ? bin2hex(random_bytes(16)).'Aa1!' : $data['password'];
         try {
-            $user = DB::transaction(function () use ($data, $request, $register, $manager, $invitation) {
+            $user = DB::transaction(function () use ($data, $request, $register, $manager, $invitation, $systemPassword, $password) {
                 $created = $register->handle(
                     username: $data['username'],
-                    password: $data['password'],
+                    password: $password,
                     participantRole: null,
                     profile: $request->profile(),
                     privacyConsent: new PrivacyConsentDTO(
@@ -128,6 +132,9 @@ final class AccountInvitationController
                         userAgent: $request->userAgent(),
                     ),
                 );
+                if ($systemPassword) {
+                    $created->forceFill(['is_temporary_password' => true])->save();
+                }
                 $manager->accept($invitation, $created, true);
                 return $created;
             });
@@ -144,11 +151,21 @@ final class AccountInvitationController
 
         // Reuse the normal browser login path: canonical identity resolution,
         // first-login tracking and session regeneration remain consistent.
-        $login = $authHandler->login($user->username, $data['password'], false);
+        $login = $authHandler->login($user->username, $password, false);
         abort_if($login->status === 'error', 401);
 
-        return redirect()->route('account-invitations.continue')
+        $sent = $manager->sendAcceptanceNotice($invitation, $user, $systemPassword ? $password : null);
+        $response = redirect()->route('account-invitations.continue')
             ->with('status', 'Аккаунт создан, приглашение принято. Email подтверждён.');
+        if (! $sent) {
+            $response->with('warning', $systemPassword
+                ? 'Не удалось отправить письмо с паролем. Вы уже вошли: установите свой пароль в личном кабинете или воспользуйтесь восстановлением доступа.'
+                : 'Не удалось отправить письмо с дальнейшими шагами. Продолжите подключение в личном кабинете.');
+        } elseif ($systemPassword) {
+            $response->with('warning', 'Вы вошли с системным паролем. Рекомендуем установить свой пароль в настройках аккаунта.');
+        }
+
+        return $response;
     }
 
     public function accept(Request $request, AccountInvitationManager $manager): RedirectResponse
@@ -163,13 +180,25 @@ final class AccountInvitationController
         abort_unless($user !== null, 401);
 
         try {
-            $manager->accept($manager->findByToken($token), $user);
+            $invitation = $manager->findByToken($token);
+            [$accepted, $firstAcceptance] = DB::transaction(function () use ($manager, $invitation, $user): array {
+                Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
+                $current = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+                $first = $current->accepted_user_id === null;
+                // Pass the original token revision, so rotation between reads is rejected.
+                return [$manager->accept($invitation, $user), $first];
+            });
         } catch (InvalidArgumentException $e) {
             throw ValidationException::withMessages(['accept_invitation' => $e->getMessage()])
                 ->redirectTo(route('account-invitations.continue'));
         }
 
-        return redirect()->route('account-invitations.continue')
+        $response = redirect()->route('account-invitations.continue')
             ->with('status', 'Приглашение принято. Указанный email подтверждён.');
+        if ($firstAcceptance && ! $manager->sendAcceptanceNotice($accepted, $user->canonical())) {
+            $response->with('warning', 'Не удалось отправить письмо с дальнейшими шагами. Продолжите подключение в личном кабинете.');
+        }
+
+        return $response;
     }
 }

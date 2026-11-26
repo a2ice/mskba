@@ -36,9 +36,21 @@ final class InvitationRegisterRequest extends RegisterRequest
         parent::prepareForValidation();
     }
 
+    public function usesSystemPassword(): bool
+    {
+        // Old forms without the proposal marker retain their explicit-password contract.
+        return $this->has('proposed_username') && ! $this->boolean('custom_password');
+    }
+
     public function rules(): array
     {
-        return [...parent::rules(), 'accept_invitation' => ['accepted']];
+        $rules = [...parent::rules(), 'accept_invitation' => ['accepted']];
+        if ($this->usesSystemPassword()) {
+            $rules['password'] = ['exclude'];
+            $rules['password_confirmation'] = ['exclude'];
+        }
+
+        return $rules;
     }
 
     public function messages(): array
