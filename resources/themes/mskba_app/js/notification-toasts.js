@@ -13,6 +13,33 @@ export const truncateToastMessage = (value) => {
     return characters.slice(0, MAX_TOAST_BODY_LENGTH - 3).join('') + '...';
 };
 
+// Share the idempotent PATCH between compact and expanded notifications.
+const reading = new Map();
+export async function acknowledgeNotification(notice, csrf) {
+    if (notice.is_read) return null;
+    const url = notice.read_url;
+    if (!url) throw new Error('Не удалось отметить сообщение прочитанным.');
+    if (!reading.has(url)) {
+        const request = (async () => {
+            const response = await fetch(url, {
+                method: 'PATCH', credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+            });
+            if (!response.ok) throw new Error('Не удалось отметить сообщение прочитанным.');
+            return response.json();
+        })();
+        reading.set(url, request);
+    }
+    const request = reading.get(url);
+    try {
+        const result = await request;
+        notice.is_read = true;
+        return result;
+    } finally {
+        if (reading.get(url) === request) reading.delete(url);
+    }
+}
+
 export const createNotificationToastDock = (region, onCountChange, options = {}) => {
     if (!region) return null;
 
@@ -20,26 +47,12 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
     const notifications = new Map();
     const cards = new Map();
     const pinned = new Map();
-    const storageKey = options.userId ? 'mskba:toast-dismissed:' + options.userId : null;
-    const restoreDismissed = () => {
-        if (!storageKey) return [];
-        try {
-            const items = JSON.parse(window.sessionStorage.getItem(storageKey) || '[]');
-            return Array.isArray(items) ? items.filter(id => /^\d+$/.test(String(id))).slice(-100) : [];
-        } catch { return []; }
-    };
-    const dismissed = new Set(restoreDismissed());
-    const storeDismissed = () => {
-        if (!storageKey) return;
-        try { window.sessionStorage.setItem(storageKey, JSON.stringify([...dismissed].slice(-100))); }
-        catch { /* Browser storage may be unavailable. */ }
-    };
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     const mountWaiting = () => {
         for (const [id, notification] of [...pinned, ...notifications]) {
             if (cards.size >= MAX_VISIBLE_TOASTS) break;
-            if (cards.has(id) || (dismissed.has(id) && !pinned.has(id))) continue;
+            if (cards.has(id)) continue;
             const card = create(notification);
             cards.set(id, card);
             region.append(card);
@@ -52,8 +65,6 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         const key = String(id);
         notifications.delete(key);
         pinned.delete(key);
-        dismissed.delete(key);
-        storeDismissed();
         cards.get(key)?.remove();
         cards.delete(key);
         mountWaiting();
@@ -77,8 +88,8 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         const close = document.createElement('button');
         close.type = 'button';
         close.className = 'app-message-toast__close';
-        close.setAttribute('aria-label', 'Скрыть уведомление');
-        close.title = 'Скрыть без отметки прочитанным';
+        close.setAttribute('aria-label', 'Закрыть уведомление');
+        close.title = 'Закрыть уведомление';
         close.textContent = '×';
 
         let markingAsRead = false;
@@ -87,20 +98,11 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
             markingAsRead = true;
             close.disabled = true;
             try {
-                const response = await fetch(notification.read_url, {
-                    method: 'PATCH',
-                    credentials: 'same-origin',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrf,
-                    },
-                });
-                if (!response.ok) throw new Error('Не удалось отметить сообщение прочитанным.');
-                const result = await response.json();
+                const current = pinned.get(String(notification.id)) || notification;
+                const result = await acknowledgeNotification(current, csrf);
                 remove(notification.id);
-                options.onRead?.(notification);
-                onCountChange?.(result.unread_count);
+                options.onRead?.(current);
+                if (result) onCountChange?.(result.unread_count);
                 return true;
             } catch (error) {
                 let description = card.querySelector('.app-message-toast__error');
@@ -117,15 +119,7 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
             }
         };
 
-        close.addEventListener('click', () => {
-            pinned.delete(String(notification.id));
-            options.onDismiss?.(notification);
-            dismissed.add(String(notification.id));
-            storeDismissed();
-            cards.get(String(notification.id))?.remove();
-            cards.delete(String(notification.id));
-            mountWaiting();
-        });
+        close.addEventListener('click', markRead);
         card.append(heading, close);
 
         if (notification.body) {
@@ -143,21 +137,9 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
             expand.className = 'app-message-toast__expand';
             expand.textContent = 'Развернуть';
             expand.setAttribute('aria-label', 'Развернуть уведомление');
-            expand.addEventListener('click', () => options.onExpand(notification));
+            expand.addEventListener('click', () => options.onExpand(pinned.get(String(notification.id)) || notification));
             card.append(expand);
         }
-
-        const read = document.createElement('button');
-        read.type = 'button';
-        read.className = 'app-message-toast__read';
-        read.textContent = 'Отметить прочитанным';
-        read.setAttribute('aria-label', 'Отметить уведомление прочитанным');
-        read.addEventListener('click', () => markRead());
-        // An already read conversation can remain minimized in its original
-        // toast, but there is no new "read" action to offer for that notice.
-        read.hidden = Boolean(notification.is_read);
-        read.disabled = Boolean(notification.is_read);
-        card.append(read);
 
         // Never permit external or javascript: URLs from notification metadata.
         if (notification.href) {
@@ -170,13 +152,11 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
                     link.className = 'app-message-toast__link';
                     link.href = url.href;
                     link.textContent = notification.action_text || 'Открыть';
-                    link.addEventListener('click', (event) => {
+                    link.addEventListener('click', async (event) => {
                         // Let browsers handle new tabs / modified clicks normally.
                         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                         event.preventDefault();
-                        // Navigation is not an acknowledgement. Conversation views
-                        // acknowledge when actually read according to their rules.
-                        window.location.assign(url.href);
+                        if (await markRead()) window.location.assign(url.href);
                     });
                     card.append(link);
                 }
@@ -187,21 +167,25 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         return card;
     };
 
+    const oldestUnpinned = () => [...region.children].reverse()
+        .map(card => card.dataset.messageToastId)
+        .find(id => cards.has(id) && !pinned.has(id));
+
     const add = (notification, live = false) => {
         if (!notification?.id || !notification?.read_url) return;
         const id = String(notification.id);
-        if (notifications.has(id)) return;
+        if (notifications.has(id) || pinned.get(id)?.is_read || notification.is_read) return;
         notifications.set(id, notification);
         // A freshly delivered notification must not be hidden behind three
         // older unread toasts. Make room without marking anything as read.
-        if (live && cards.size >= MAX_VISIBLE_TOASTS && ! dismissed.has(id)) {
-            const displaced = [...cards.keys()].reverse().find((other) => !pinned.has(other));
+        if (live && cards.size >= MAX_VISIBLE_TOASTS) {
+            const displaced = oldestUnpinned();
             if (displaced) {
                 cards.get(displaced)?.remove();
                 cards.delete(displaced);
             }
         }
-        if (cards.size < MAX_VISIBLE_TOASTS && ! dismissed.has(id)) {
+        if (cards.size < MAX_VISIBLE_TOASTS) {
             const card = create(notification, live);
             cards.set(id, card);
             if (live) {
@@ -221,10 +205,8 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
                 notifications.delete(id);
                 cards.get(id)?.remove();
                 cards.delete(id);
-                dismissed.delete(id);
             }
         }
-        storeDismissed();
         unread.forEach((item) => add(item));
         mountWaiting();
     };
@@ -233,26 +215,16 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         if (!notification?.id || !notification?.read_url) return;
         const id = String(notification.id);
         pinned.set(id, notification);
-        dismissed.delete(id);
-        storeDismissed();
+        if (notification.is_read) notifications.delete(id);
         // Prefer the restored original toast to other waiting unread toasts.
         if (!cards.has(id) && cards.size >= MAX_VISIBLE_TOASTS) {
-            const evict = [...cards.keys()].reverse().find(other => !pinned.has(other));
+            const evict = oldestUnpinned();
             if (evict) {
                 cards.get(evict)?.remove();
                 cards.delete(evict);
             }
         }
-        if (cards.has(id)) {
-            // The expanded window may have acknowledged this notification.
-            // Keep the original toast, but reflect its CURRENT read status.
-            const read = cards.get(id).querySelector('.app-message-toast__read');
-            if (read) {
-                read.hidden = Boolean(notification.is_read);
-                read.disabled = Boolean(notification.is_read);
-                read.textContent = 'Отметить прочитанным';
-            }
-        } else {
+        if (!cards.has(id)) {
             const card = create(notification);
             cards.set(id, card);
             region.prepend(card);
@@ -269,8 +241,20 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         mountWaiting();
     };
 
+    const acknowledge = (notice) => {
+        const id = String(notice.id);
+        notifications.delete(id);
+        if (pinned.has(id)) {
+            pinned.set(id, notice);
+            return;
+        }
+        cards.get(id)?.remove();
+        cards.delete(id);
+        mountWaiting();
+    };
+
     return {
-        add, remove, reconcile, pin, unpin,
+        add, remove, reconcile, pin, unpin, acknowledge,
         size: () => cards.size,
     };
 };
