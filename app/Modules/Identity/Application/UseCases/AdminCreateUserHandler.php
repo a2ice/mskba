@@ -103,10 +103,11 @@ final class AdminCreateUserHandler
                 $number = $isTest ? $sequence->allocate() : null;
                 $contactType = null;
                 $contactValue = null;
-                $syntheticVerified = false;
+                $contactVerified = false;
+                $verificationSource = null;
                 if ($confirm) {
                     $contactType = ContactTypeEnum::tryFrom((string) ($test['contact_type'] ?? ''));
-                    $syntheticVerified = ($test['contact_verified'] ?? false) === true;
+                    $contactVerified = ($test['contact_verified'] ?? false) === true;
                     if (! in_array($contactType, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
                         throw ValidationException::withMessages(['test_contact_type' => 'Выберите email или телефон.']);
                     }
@@ -115,8 +116,16 @@ final class AdminCreateUserHandler
                     } catch (\InvalidArgumentException $exception) {
                         throw ValidationException::withMessages(['test_contact_value' => $exception->getMessage()]);
                     }
-                    if ($syntheticVerified && ($contactType !== ContactTypeEnum::EMAIL || $contactValue !== $sequence->email($number))) {
-                        throw ValidationException::withMessages(['test_contact_value' => 'Тестовый адрес изменился или недопустим. Переоткройте форму для нового свободного адреса.']);
+                    // The generated namespace is reserved for the allocated fixture number.
+                    if ($contactType === ContactTypeEnum::EMAIL
+                        && preg_match('/^test_[0-9]+@mskba\.ru$/D', $contactValue)
+                        && $contactValue !== $sequence->email($number)) {
+                        throw ValidationException::withMessages(['test_contact_value' => 'Системный тестовый адрес изменился. Переоткройте форму для нового свободного адреса.']);
+                    }
+                    if ($contactVerified) {
+                        $verificationSource = $contactType === ContactTypeEnum::EMAIL && $contactValue === $sequence->email($number)
+                            ? 'filament_test_fixture'
+                            : 'filament_test_admin_attested';
                     }
                     $ownership = app(ContactOwnership::class);
                     $ownership->lock($contactType, $contactValue);
@@ -157,11 +166,16 @@ final class AdminCreateUserHandler
                         } catch (\InvalidArgumentException $exception) {
                             throw ValidationException::withMessages(['test_contact_value' => $exception->getMessage()]);
                         }
-                        if ($syntheticVerified) {
-                            // Only the generated fixture email in an isolated test environment.
+                        if ($contactVerified) {
+                            // Test-only verification: generated fixture or explicit administrator attestation.
                             $contact->update([
                                 'verified_at' => now(),
-                                'meta' => ['verification_source' => 'filament_test_fixture', 'actor_user_id' => $actor->id],
+                                'meta' => [
+                                    ...($contact->meta ?? []),
+                                    'verification_source' => $verificationSource,
+                                    'actor_user_id' => $actor->id,
+                                    'otp_verified' => false,
+                                ],
                             ]);
                         }
                     }
@@ -184,7 +198,9 @@ final class AdminCreateUserHandler
                         'consent_attested_by_admin' => ! $isTest && $consentAttested,
                         'test_consent_simulated' => $isTest && $consentAttested,
                         'test_confirmation_simulated' => $confirm,
-                        'test_contact_verification_simulated' => $syntheticVerified,
+                        'test_contact_verification_simulated' => $verificationSource === 'filament_test_fixture',
+                        'test_contact_verification_attested_by_admin' => $verificationSource === 'filament_test_admin_attested',
+                        'test_contact_verification_source' => $verificationSource,
                         'consent_document_version' => (string) config('legal.personal_data_consent_version'),
                         'consent_attested_at' => $consentAttested ? now()->toIso8601String() : null,
                     ],
