@@ -2,6 +2,7 @@
 
 namespace App\Filament\Backoffice\Resources\BackofficeUsers;
 
+use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use Illuminate\Validation\ValidationException;
 
@@ -10,7 +11,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class BackofficePermissionGroups
 {
-    public static function all(): array
+    public static function all(bool $includeGlobal = false): array
     {
         $groups = [
             'general' => ['label' => 'Общие', 'permissions' => []],
@@ -48,14 +49,29 @@ final class BackofficePermissionGroups
             $groups[$group]['permissions'][] = $permission;
         }
 
+        if ($includeGlobal) {
+            $global = app(GlobalOperationalPermissionManager::class);
+            $creation = $global->creationPermissions();
+            $privileged = $global->privilegedPermissions();
+            $remaining = array_values(array_filter(Permission::cases(), static fn (Permission $permission): bool =>
+                ! $permission->isBackoffice() && ! in_array($permission, [...$creation, ...$privileged], true)));
+
+            $groups = [
+                'creation' => ['label' => 'Глобальные права — создание', 'permissions' => $creation],
+                'privileged' => ['label' => 'Системные полномочия и модерация', 'permissions' => $privileged],
+                'global_other' => ['label' => 'Прочие глобальные права', 'permissions' => $remaining],
+                ...$groups,
+            ];
+        }
+
         return array_filter($groups, static fn (array $group): bool => $group['permissions'] !== []);
     }
 
     /** Preserve the existing flat snapshot contract at the domain boundary. */
-    public static function split(array $keys): array
+    public static function split(array $keys, bool $includeGlobal = false): array
     {
         $result = [];
-        foreach (self::all() as $id => $group) {
+        foreach (self::all($includeGlobal) as $id => $group) {
             $allowed = array_map(static fn (Permission $p): string => $p->value, $group['permissions']);
             $result[$id] = array_values(array_intersect($keys, $allowed));
         }
@@ -63,21 +79,22 @@ final class BackofficePermissionGroups
         return $result;
     }
 
-    public static function flatten(array $groups): array
+    public static function flatten(array $groups, bool $includeGlobal = false): array
     {
         $keys = [];
-        $catalog = self::all();
+        $catalog = self::all($includeGlobal);
+        $errorField = $includeGlobal ? 'data.permissions' : 'backoffice_permissions';
         foreach ($catalog as $id => $group) {
             $values = $groups[$id] ?? null;
             $allowed = array_map(static fn (Permission $p): string => $p->value, $group['permissions']);
             if (! is_array($values) || array_filter($values, 'is_string') !== $values
                 || array_diff($values, $allowed) !== [] || count($values) !== count(array_unique($values))) {
-                throw ValidationException::withMessages(['backoffice_permissions' => 'Некорректный или неполный набор разрешений. Обновите редактор.']);
+                throw ValidationException::withMessages([$errorField => 'Некорректный или неполный набор разрешений. Обновите редактор.']);
             }
             array_push($keys, ...array_values($values));
         }
         if (array_diff_key($groups, $catalog) !== []) {
-            throw ValidationException::withMessages(['backoffice_permissions' => 'Неизвестная группа разрешений.']);
+            throw ValidationException::withMessages([$errorField => 'Неизвестная группа разрешений.']);
         }
 
         return $keys;
