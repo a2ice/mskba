@@ -37,6 +37,9 @@
     $categoryEnableSorting = true;
     $categorySortValue = $filters['sort'];
     $categorySidebarLabel = 'Категории и фильтры товаров';
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'shop-filters-desktop', 'name' => 'q', 'value' => $filters['q'], 'placeholder' => 'Название товара или артикул', 'label' => 'Поиск товаров'];
+    $categoryVisibleCount = $products->count();
     $categoryResultTotal = $products->total();
 @endphp
 @extends('theme::layouts.category')
@@ -52,10 +55,6 @@
             <h2 class="app-shop__sidebar-label">Поиск товаров</h2>
             @include('theme::pages.shop.partials.filters', ['formId' => 'shop-filters-desktop'])
 
-@endsection
-
-@section('category-toolbar-count')
-    <span class="app-shop__toolbar-count">Показано {{ $products->count() }} из {{ $products->total() }} товаров</span>
 @endsection
 
 @section('category-before-items')
