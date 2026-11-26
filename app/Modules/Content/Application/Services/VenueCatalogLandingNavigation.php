@@ -80,6 +80,33 @@ final readonly class VenueCatalogLandingNavigation
         return route('venues.collections.show', ['landingSlug' => $landing->slug] + Arr::only($query, [...self::PRESENTATION, ...self::TRACKING]));
     }
 
+    /** @return list<array{url: string, label: string}> */
+    public function relatedLinks(VenueCatalogLanding $landing): array
+    {
+        if (! $this->enabled()) {
+            return [];
+        }
+        $ids = array_slice(array_values(array_unique(array_filter(
+            array_map('intval', $landing->related_landing_ids ?? []),
+            fn (int $id): bool => $id > 0 && $id !== (int) $landing->id,
+        ))), 0, 12);
+        if ($ids === []) {
+            return [];
+        }
+        $records = VenueCatalogLanding::query()->whereIn('id', $ids)
+            ->where('is_active', true)->get(['id', 'slug', 'h1'])->keyBy('id');
+
+        $links = [];
+        foreach ($ids as $id) {
+            $record = $records->get($id);
+            if ($record !== null && self::validSlug($record->slug)) {
+                $links[] = ['url' => $this->url($record), 'label' => $record->h1];
+            }
+        }
+
+        return $links;
+    }
+
     public function presentationQuery(Request $request, array $filters): array
     {
         return Arr::only($filters, self::PRESENTATION) + Arr::only($request->query(), self::TRACKING);
