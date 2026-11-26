@@ -34,6 +34,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -191,6 +192,9 @@ final class BackofficeUserResource extends Resource
                                                 || auth('web')->user()?->canonical()->system_role !== UserSystemRoleEnum::SUPERADMIN
                                                 || self::isOwnSuperadmin($record))
                                             ->dehydrated(),
+                                        Placeholder::make('test_account_info')->label('Тип аккаунта')
+                                            ->content(fn (?User $record): string => $record?->is_test_account
+                                                ? 'Тестовый №'.$record->test_account_number : 'Обычный'),
                                         Placeholder::make('registered_at_info')->label('Зарегистрирован')
                                             ->content(fn (?User $record): string => $record?->created_at?->format('d.m.Y H:i') ?? '—'),
                                         Placeholder::make('registration_channel_info')->label('Канал регистрации')
@@ -362,6 +366,9 @@ final class BackofficeUserResource extends Resource
         return $table->columns([
             TextColumn::make('id')->label('ID')->sortable(),
             TextColumn::make('username')->label('Пользователь')->searchable()->sortable()->weight('bold'),
+            TextColumn::make('is_test_account')->label('Тип аккаунта')->badge()
+                ->formatStateUsing(fn (User $record): string => $record->is_test_account ? 'Тестовый №'.$record->test_account_number : 'Обычный')
+                ->color(fn (User $record): string => $record->is_test_account ? 'warning' : 'gray'),
             TextColumn::make('system_role')->label('Системная роль')
                 ->badge()->formatStateUsing(fn ($record): string => $record->system_role->label()),
             TextColumn::make('staff_title')->label('Должность')->placeholder('—'),
@@ -369,6 +376,10 @@ final class BackofficeUserResource extends Resource
                 ->badge()->formatStateUsing(fn ($record): string => $record->status->label()),
             TextColumn::make('updated_at')->label('Изменён')->dateTime('d.m.Y H:i')->sortable(),
         ])
+            ->filters([
+                TernaryFilter::make('is_test_account')->label('Тип аккаунта')
+                    ->trueLabel('Тестовые')->falseLabel('Обычные')->placeholder('Все'),
+            ])
             ->defaultSort('id', 'desc')
             ->recordActions([
                 EditAction::make()->label('Редактировать')->visible(fn (User $record): bool => self::canEdit($record)),
