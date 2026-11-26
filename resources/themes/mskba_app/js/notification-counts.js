@@ -25,6 +25,7 @@ if (header) {
     let dock = null;
     const popover = createNotificationPopover(header.dataset.notificationUserId, {
         onMinimize: (notice) => dock?.pin(notice),
+        onRead: (notice) => dock?.acknowledge(notice),
         onExpand: (notice) => dock?.unpin(notice.id),
         onClose: (notice) => { if (notice) dock?.unpin(notice.id); },
     });
@@ -34,13 +35,8 @@ if (header) {
     }, {
         canExpand: () => !isMessagesPage(window.location.pathname),
         onExpand: (notification) => popover?.open(notification),
-        onDismiss: (notification) => {
-            // Dismissing a minimized original toast also closes its saved dialog.
-            if (popover?.isMinimized?.(notification.id)) popover.close();
-        },
         onRead: (notification) => {
-            // Explicit read on a minimized toast also ends its temporary
-            // persistence. It must not silently reappear on the next page.
+            // Closing a minimized toast also ends its temporary persistence.
             if (popover?.isMinimized?.(notification.id)) popover.close();
         },
         userId: header.dataset.notificationUserId,
