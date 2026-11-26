@@ -13,6 +13,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -98,23 +100,35 @@ final class AccountInvitationResource extends Resource
             ->headerActions([
                 Action::make('issue')->label('Создать аккаунт и пригласить пользователя')
                     ->icon('heroicon-o-user-plus')->modalWidth('lg')
-                    ->visible(fn (): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()))
+                    ->visible(fn (): bool => app(AccountInvitationAccess::class)->canIssueAny(auth('web')->user()))
                     ->schema([
                         Select::make('scope_type')->label('Контекст')->required()->default('venue')
                             ->options(['venue' => 'Площадка']),
                         Select::make('scope_id')->label('Площадка')->required()->searchable()
                             ->getSearchResultsUsing(fn (string $search): array =>
-                                Venue::query()->whereNull('deleted_at')
+                                app(AccountInvitationAccess::class)->issueVenues(Venue::query(), auth('web')->user())
                                     ->where('name', 'like', '%'.$search.'%')
                                     ->limit(30)->pluck('name', 'id')->all())
-                            ->getOptionLabelUsing(fn ($value): ?string => Venue::query()->find($value)?->name),
-                        Select::make('role')->label('Цель приглашения')->required()->default('owner')
-                            ->options([
-                                'owner' => 'Регистрация владельца площадки',
-                                'staff' => 'Регистрация сотрудника площадки',
-                                'manager' => 'Регистрация менеджера площадки',
-                                'booking_operator' => 'Регистрация оператора бронирований',
-                            ]),
+                            ->getOptionLabelUsing(fn ($value): ?string => app(AccountInvitationAccess::class)
+                                ->issueVenues(Venue::query(), auth('web')->user())->find($value)?->name)
+                            ->live()->afterStateUpdated(fn (Set $set) => $set('role', null)),
+                        Select::make('role')->label('Цель приглашения')->required()
+                            ->options(function (Get $get): array {
+                                $actor = auth('web')->user();
+                                $venue = Venue::query()->find($get('scope_id'));
+                                if ($actor === null || $venue === null) {
+                                    return [];
+                                }
+                                $options = [
+                                    'owner' => 'Регистрация владельца площадки',
+                                    'staff' => 'Регистрация сотрудника площадки',
+                                    'manager' => 'Регистрация менеджера площадки',
+                                    'booking_operator' => 'Регистрация оператора бронирований',
+                                ];
+
+                                return array_filter($options, fn (string $role): bool =>
+                                    app(AccountInvitationAccess::class)->canIssue($actor, $venue, $role), ARRAY_FILTER_USE_KEY);
+                            }),
                         TextInput::make('email')->label('Email получателя')->email()->required()->maxLength(255),
                         TextInput::make('title')->label('Название приглашения')->maxLength(160)
                             ->helperText('Необязательно: по умолчанию будет сформировано из роли и названия площадки.'),
@@ -124,16 +138,16 @@ final class AccountInvitationResource extends Resource
                             ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
                     ])
                     ->action(function (array $data): void {
-                        abort_unless(app(AccountInvitationAccess::class)->canMutate(auth('web')->user()), 403);
+                        abort_unless(app(AccountInvitationAccess::class)->canIssueAny(auth('web')->user()), 403);
                         try {
-                            [$invitation, $url] = app(AccountInvitationManager::class)->create(
+                            [$invitation] = app(AccountInvitationManager::class)->create(
                                 auth('web')->user(), (string) $data['email'], (string) $data['scope_type'],
                                 (int) $data['scope_id'], (string) $data['role'],
                                 (string) ($data['title'] ?? ''), $data['description'] ?? null, (int) $data['days']
                             );
                             Notification::make()->success()
                                 ->title('Приглашение #'.$invitation->id.' отправлено')
-                                ->body('Уникальная ссылка: '.$url.' · Подтверждение email произойдёт после принятия приглашения.')
+                                ->body('Ссылка отправлена получателю. Подтверждение email произойдёт после принятия приглашения.')
                                 ->persistent()->send();
                         } catch (\Illuminate\Validation\ValidationException $e) {
                             throw $e;
@@ -191,14 +205,14 @@ final class AccountInvitationResource extends Resource
     {
         return Action::make($name)->label('Продлить / обновить ссылку')
             ->icon('heroicon-o-arrow-path')
-            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()) && $record->canManageLink())
+            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canManage(auth('web')->user(), $record) && $record->canManageLink())
             ->schema([
                 Select::make('days')->label('Новый срок')->required()->default(7)
                     ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
             ])
             ->modalDescription('Предыдущая ссылка перестанет действовать. Получателю будет отправлена новая.')
             ->action(function (AccountInvitation $record, array $data): void {
-                abort_unless(self::canViewAny(), 403);
+                abort_unless(app(AccountInvitationAccess::class)->canManage(auth('web')->user(), $record), 403);
                 try {
                     app(AccountInvitationManager::class)->renew($record, auth('web')->user(), (int) $data['days']);
                     Notification::make()->success()->title('Новая ссылка отправлена')->send();
@@ -215,10 +229,10 @@ final class AccountInvitationResource extends Resource
     private static function revokeAction(string $name = 'revoke'): Action
     {
         return Action::make($name)->label('Аннулировать')->color('danger')
-            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()) && $record->canManageLink())
+            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canManage(auth('web')->user(), $record) && $record->canManageLink())
             ->requiresConfirmation()
             ->action(function (AccountInvitation $record): void {
-                abort_unless(app(AccountInvitationAccess::class)->canMutate(auth('web')->user()), 403);
+                abort_unless(app(AccountInvitationAccess::class)->canManage(auth('web')->user(), $record), 403);
                 app(AccountInvitationManager::class)->revoke($record, auth('web')->user());
                 Notification::make()->success()->title('Приглашение аннулировано')->send();
             });
@@ -227,7 +241,7 @@ final class AccountInvitationResource extends Resource
     private static function restoreAction(string $name = 'restore'): Action
     {
         return Action::make($name)->label('Восстановить')->icon('heroicon-o-arrow-path')
-            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canMutate(auth('web')->user()) && $record->canRestoreLink())
+            ->visible(fn (AccountInvitation $record): bool => app(AccountInvitationAccess::class)->canManage(auth('web')->user(), $record) && $record->canRestoreLink())
             ->modalDescription('Приглашение снова станет активным. Получателю будет отправлена новая ссылка.')
             ->schema([
                 Select::make('days')->label('Новый срок')->required()->default(7)
@@ -235,7 +249,7 @@ final class AccountInvitationResource extends Resource
                 Textarea::make('reason')->label('Причина восстановления')->required()->minLength(5)->maxLength(2000)->rows(3),
             ])
             ->action(function (AccountInvitation $record, array $data): void {
-                abort_unless(self::canViewAny(), 403);
+                abort_unless(app(AccountInvitationAccess::class)->canManage(auth('web')->user(), $record), 403);
                 try {
                     app(AccountInvitationManager::class)->restore(
                         $record, auth('web')->user(), (int) $data['days'], (string) $data['reason']
