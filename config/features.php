@@ -8,6 +8,11 @@ return [
         // Independent, default-off release gate for search indexing and sitemap inclusion.
         'indexing' => (bool) env('FEATURE_VENUE_CATALOG_LANDING_INDEXING', false),
     ],
+    // Internal consent-aware aggregates; DEV acceptance before production rollout.
+    'seo_rental_analytics' => [
+        'enabled' => (bool) env('FEATURE_SEO_RENTAL_ANALYTICS',
+            parse_url((string) env('APP_URL', ''), PHP_URL_HOST) === 'dev.mskba.ru'),
+    ],
     // Temporary manual QA entry to personal chats. Not a general messenger feature.
     // Override explicitly with FEATURE_DIRECT_MESSAGE_TEST_ENTRY in any environment.
     'direct_messages' => [
