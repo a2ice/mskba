@@ -152,7 +152,7 @@ final class AccountInvitationAccessTest extends TestCase
             $staff->operationalPermissions()->create(['permission' => $permission->value, 'is_allowed' => true]);
         }
         $manager = app(AccountInvitationManager::class);
-        foreach (['allowed', 'held'] as $scenario) {
+        foreach (['allowed', 'permission_revoked', 'contract_revoked'] as $scenario) {
             [$record] = $manager->create($staff, $scenario.'-delegate@example.test', 'venue', $venue->id, 'staff', '', null, 7);
             $target = $this->user(Role::USER, Status::UNCONFIRMED);
             $manager->accept($record, $target);
@@ -161,15 +161,22 @@ final class AccountInvitationAccessTest extends TestCase
                 'birth_date' => '1990-01-01', 'gender' => 'male',
             ]);
             $target->confirmAccount();
-            if ($scenario === 'held') {
+            if ($scenario === 'permission_revoked') {
+                $staff->operationalPermissions()->where('permission', Permission::BACKOFFICE_INVITATION_ISSUE->value)
+                    ->update(['is_allowed' => false]);
+            } elseif ($scenario === 'contract_revoked') {
                 app(ManageVenueMembershipHandler::class)->revoke($venue, $membership, $super);
             }
             $manager->advance($record->fresh(), $target);
-            $this->assertSame($scenario === 'held' ? 'awaiting_authorization' : 'completed', $record->fresh()->progress);
+            $this->assertSame($scenario === 'allowed' ? 'completed' : 'awaiting_authorization', $record->fresh()->progress);
             $exists = \App\Modules\Contract\Domain\Models\ContractMembership::query()
                 ->where('scope_type', 'venue')->where('scope_id', $venue->id)->where('user_id', $target->id)
                 ->where('access_level', 'staff')->exists();
             $this->assertSame($scenario === 'allowed', $exists);
+            if ($scenario === 'permission_revoked') {
+                $staff->operationalPermissions()->where('permission', Permission::BACKOFFICE_INVITATION_ISSUE->value)
+                    ->update(['is_allowed' => true]);
+            }
         }
     }
 
