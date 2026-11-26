@@ -93,6 +93,51 @@ final class DashboardDataTest extends TestCase
         $this->assertStringNotContainsString('Мои интересы', $html);
     }
 
+    public function test_partial_refresh_renders_only_requested_visible_sources_and_rechecks_catalogue(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user->createProfile([]);
+        $other->createProfile([]);
+        $base = AccountDashboardWidget::query()->where('kind', 'message_summary')->firstOrFail();
+        $messages = $base->replicate();
+        $messages->forceFill([
+            'kind' => 'dynamic', 'source_key' => 'unread_messages', 'title' => 'Выборочные сообщения',
+            'enabled' => true, 'can_hide' => true, 'include_user_ids' => [$user->id],
+            'exclude_user_ids' => [$other->id], 'actions' => [],
+        ])->save();
+        $wallet = $base->replicate();
+        $wallet->forceFill([
+            'kind' => 'dynamic', 'source_key' => 'wallet_summary', 'title' => 'Не выбранный кошелёк',
+            'enabled' => true, 'can_hide' => true, 'include_user_ids' => [$user->id], 'actions' => [],
+        ])->save();
+        $url = route('account.dashboard.widgets', ['sources' => ['unread_messages']]);
+        $this->getJson($url)->assertUnauthorized();
+        $response = $this->actingAs($user)->getJson($url)->assertOk()->assertJsonPath('partial', true);
+        $this->assertContains($messages->id, $response->json('visible_ids'));
+        $this->assertContains($wallet->id, $response->json('visible_ids'));
+        $this->assertStringContainsString('Выборочные сообщения', $response->json('html'));
+        $this->assertStringNotContainsString('Не выбранный кошелёк', $response->json('html'));
+        $this->assertStringNotContainsString('data-dashboard-add-widget', $response->json('html'));
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+
+        $this->getJson(route('account.dashboard.widgets', ['sources' => ['unknown']]))->assertUnprocessable();
+        $this->getJson(route('account.dashboard.widgets', ['sources' => 'unread_messages']))->assertUnprocessable();
+        $foreign = $this->actingAs($other)->getJson($url)->assertOk();
+        $this->assertNotContains($messages->id, $foreign->json('visible_ids'));
+        $this->assertStringNotContainsString('Выборочные сообщения', $foreign->json('html'));
+
+        $this->actingAs($user)->postJson(route('account.settings.dashboard.update'), ['visible_widget_ids' => [$wallet->id]])->assertOk();
+        $hidden = $this->getJson($url)->assertOk();
+        $this->assertNotContains($messages->id, $hidden->json('visible_ids'));
+        $this->assertStringNotContainsString('Выборочные сообщения', $hidden->json('html'));
+        $this->postJson(route('account.settings.dashboard.update'), ['visible_widget_ids' => [$messages->id, $wallet->id]])->assertOk();
+        $messages->update(['exclude_user_ids' => [$user->id]]);
+        $revoked = $this->getJson($url)->assertOk();
+        $this->assertNotContains($messages->id, $revoked->json('visible_ids'));
+        $this->assertStringNotContainsString('Выборочные сообщения', $revoked->json('html'));
+    }
+
     public function test_personal_invalidation_contains_no_personal_payload(): void
     {
         $user = User::factory()->create();
