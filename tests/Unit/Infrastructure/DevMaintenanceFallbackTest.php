@@ -7,10 +7,10 @@ final class DevMaintenanceFallbackTest extends TestCase
     {
         $html = file_get_contents(dirname(__DIR__, 3).'/public/maintenance.html');
         $this->assertIsString($html);
-        foreach (['<html lang="ru">', 'mailto:support@mskba.ru', 'https://t.me/mskbaofficial', 'https://vk.ru/mskba_official', 'noindex, nofollow', 'Попробовать снова'] as $value) {
+        foreach (['<html lang="ru">', 'noindex, nofollow', 'Попробовать снова'] as $value) {
             $this->assertStringContainsString($value, $html);
         }
-        foreach (['<script', '<link ', 'src="/'] as $value) {
+        foreach (['<script', '<link ', 'src="/', 'mailto:', 'tel:', 'https://t.me/', 'https://vk.ru/', 'https://vk.com/'] as $value) {
             $this->assertStringNotContainsString($value, $html);
         }
         // The logo is the exact image used in the mskba_app header, not an

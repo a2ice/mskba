@@ -40,6 +40,10 @@ final class PortalContactSettingsTest extends TestCase
         $this->assertSame('tel:+79001234567', $public['phone']['href']);
         $this->assertSame('https://t.me/test_mskba', config('services.social.telegram_url'));
         $this->assertSame('https://vk.com/test_mskba', config('services.social.vk_url'));
+        // Even a CLI/worker with old environment defaults uses persisted URLs.
+        config(['services.social.telegram_url' => 'https://t.me/old_config',
+            'services.social.vk_url' => 'https://vk.com/old_config']);
+        $this->assertSame(['https://t.me/test_mskba', 'https://vk.com/test_mskba'], $settings->publicSocialUrls());
         $this->assertSame('old-token', config('telegram.bot_token'));
         $this->assertSame('old-vk-token', config('vk.wall.community_token'));
         $this->assertSame('legal@example.test', config('legal.privacy_email'));
@@ -48,6 +52,7 @@ final class PortalContactSettingsTest extends TestCase
         $this->post(route('backoffice.portal-contacts.save'), [...$this->payload(),
             'email_public'=>'0', 'phone_public'=>'0', 'telegram_public'=>'0', 'vk_public'=>'0'])->assertRedirect();
         $this->assertSame([], $settings->publicContacts());
+        $this->assertSame([], $settings->publicSocialUrls());
         $this->assertSame('public@example.test', $settings->adminValues($admin)['email']);
         app(SocialIntegrationSettings::class)->save('telegram', ['community_url'=>'https://t.me/changed_mskba'], $admin->id);
         $this->assertSame('https://t.me/changed_mskba', $settings->adminValues($admin)['telegram_url']);

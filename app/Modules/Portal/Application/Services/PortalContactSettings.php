@@ -40,10 +40,7 @@ final class PortalContactSettings
 
         // Social URLs have ONE source of truth, shared with the integrations
         // editor. The public flags do not disable bots, publishing or login.
-        return $values + [
-            'telegram_url' => trim((string) config('services.social.telegram_url', '')),
-            'vk_url' => trim((string) config('services.social.vk_url', '')),
-        ];
+        return $values + app(SocialIntegrationSettings::class)->publicCommunityUrls();
     }
 
     public function adminValues(?User $actor): array
@@ -81,6 +78,14 @@ final class PortalContactSettings
     public function publicContacts(): array
     {
         return array_values($this->publicByChannel());
+    }
+
+    /** @return list<string> Public social profiles for schema.org sameAs. */
+    public function publicSocialUrls(): array
+    {
+        $contacts = array_intersect_key($this->publicByChannel(), array_flip(['telegram', 'vk']));
+
+        return array_values(array_column($contacts, 'href'));
     }
 
     public function publicEmail(): ?array
@@ -129,8 +134,9 @@ final class PortalContactSettings
                     'scope' => $scope, 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 $row = PortalContactSetting::query()->where('scope', $scope)->lockForUpdate()->firstOrFail();
+                $currentUrls = $social->publicCommunityUrls();
                 foreach ($urls as $channel => $url) {
-                    if ($url !== trim((string) config('services.social.'.$channel.'_url', ''))) {
+                    if ($url !== $currentUrls[$channel.'_url']) {
                         $social->save($channel, ['community_url' => $url !== '' ? $url : null], $actor->id);
                     }
                 }
