@@ -10,10 +10,6 @@ return [
     'default_image' => 'images/bg-home-welcome-screen.png',
     'organization_logo' => 'images/logo.png',
     'default_description' => 'MSKBA — баскетбольный портал Москвы: игры, тренировки, площадки, команды, турниры, секции и участники сообщества.',
-    'same_as' => [
-        'https://t.me/mskbaofficial',
-        'https://vk.ru/mskba_official',
-    ],
     'pages' => [
         'welcome' => ['title' => 'MSKBA — баскетбол в Москве', 'description' => 'Игры, тренировки, баскетбольные площадки, команды и турниры Москвы и области в одном месте.'],
         'news.index' => ['title' => 'Новости MSKBA — баскетбол и стритбол', 'description' => 'Новости баскетбола и стритбола: Москва, команды, площадки, турниры и жизнь сообщества MSKBA.'],

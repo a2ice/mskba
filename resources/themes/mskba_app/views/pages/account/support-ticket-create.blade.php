@@ -19,7 +19,9 @@
             <button class="button primary" type="submit">Отправить обращение</button>
         </div>
     </form>
-    <p class="app-messages__support-email">Вы также можете написать нам на почту <a href="mailto:{{ config('support.email') }}">{{ config('support.email') }}</a></p>
+    @if($publicEmail = app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicEmail())
+        <p class="app-messages__support-email">Вы также можете написать нам на почту <a href="{{ $publicEmail['href'] }}">{{ $publicEmail['value'] }}</a></p>
+    @endif
 </section>
 </div>
 @endsection

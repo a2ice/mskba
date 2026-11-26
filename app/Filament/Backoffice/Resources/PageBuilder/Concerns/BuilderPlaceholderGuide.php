@@ -18,6 +18,7 @@ final class BuilderPlaceholderGuide
             ->description($description)
             ->schema([
                 Text::make('<mskba-component name="hero-slider"></mskba-component> — управляемый системный Hero Slider.'),
+                Text::make('<mskba-component name="portal-contacts"></mskba-component> — опубликованные контакты MSKBA из Filament. Атрибут source="email|phone|telegram|vk" (одно значение) выводит только выбранный канал.'),
                 Text::make('<mskba-component name="hero-banner"></mskba-component>')
                     ,
                 Text::make('<mskba-component name="games-list" source="upcoming_games" limit="5"></mskba-component>')

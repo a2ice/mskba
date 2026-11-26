@@ -72,7 +72,9 @@
                     <p role="status" aria-live="polite" data-help-form-status></p>
                     <button type="submit" class="button primary">Отправить вопрос</button>
                 </form>
-                <p class="app-context-help__mail">Также можно написать на <a href="mailto:{{ config('support.email') }}">{{ config('support.email') }}</a>.</p>
+                @if($publicEmail = app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicEmail())
+                    <p class="app-context-help__mail">Также можно написать на <a href="{{ $publicEmail['href'] }}">{{ $publicEmail['value'] }}</a>.</p>
+                @endif
             </div>
         </details>
     </div>

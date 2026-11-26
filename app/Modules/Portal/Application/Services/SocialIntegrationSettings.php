@@ -62,6 +62,28 @@ final class SocialIntegrationSettings
         return array_map(fn (string $key) => config($key), $map);
     }
 
+    /** Read only community URLs directly, including CLI/queued mail without HTTP middleware. */
+    public function publicCommunityUrls(): array
+    {
+        $urls = [
+            'telegram_url' => trim((string) config('services.social.telegram_url', '')),
+            'vk_url' => trim((string) config('services.social.vk_url', '')),
+        ];
+        if (! Schema::hasTable('social_integration_settings')) {
+            return $urls;
+        }
+        $rows = DB::table('social_integration_settings')->where('scope', $this->scope())
+            ->whereIn('provider', ['telegram', 'vk'])->get(['provider', 'encrypted_settings']);
+        foreach ($rows as $row) {
+            $stored = json_decode(Crypt::decryptString($row->encrypted_settings), true, 512, JSON_THROW_ON_ERROR);
+            if (array_key_exists('community_url', $stored)) {
+                $urls[$row->provider.'_url'] = trim((string) $stored['community_url']);
+            }
+        }
+
+        return $urls;
+    }
+
     /** Never return raw secrets to a view or Livewire component. */
     public function display(string $provider): array
     {

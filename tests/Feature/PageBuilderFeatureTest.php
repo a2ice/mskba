@@ -59,6 +59,41 @@ final class PageBuilderFeatureTest extends TestCase
     }
 
 
+    public function test_portal_contacts_component_renders_live_values_and_never_hidden_contacts(): void
+    {
+        config(['support.email' => 'original@example.test']);
+        $page = $this->home();
+        $page->update(['draft_html' => '<mskba-component name="portal-contacts" source="email"></mskba-component>']);
+        app(PageBuilderPublisher::class)->publish($page);
+        $renderer = app(PageBuilderRenderer::class);
+        $this->assertStringContainsString('mailto:original@example.test', $renderer->render($page->refresh())['html']);
+        $admin = User::factory()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN, 'status' => UserStatusEnum::CONFIRMED]);
+        $settings = app(\App\Modules\Portal\Application\Services\PortalContactSettings::class);
+        $payload = ['email' => 'updated@example.test', 'phone' => null, 'telegram_url' => null, 'vk_url' => null,
+            'email_public' => true, 'phone_public' => false, 'telegram_public' => false, 'vk_public' => false];
+        $settings->save($admin, $payload);
+        $html = $renderer->render($page->refresh())['html'];
+        $this->assertStringContainsString('mailto:updated@example.test', $html);
+        $this->assertStringNotContainsString('original@example.test', $html);
+        $settings->save($admin, [...$payload, 'email_public' => false]);
+        $html = $renderer->render($page->refresh())['html'];
+        $this->assertStringNotContainsString('updated@example.test', $html);
+        $this->assertStringNotContainsString('mskba-portal-contacts', $html);
+    }
+
+    public function test_portal_contacts_rejects_unknown_channel_before_publication(): void
+    {
+        $page = $this->home();
+        $page->update(['draft_html' => '<mskba-component name="portal-contacts" source="unknown"></mskba-component>']);
+        try {
+            app(PageBuilderPublisher::class)->publish($page);
+            $this->fail('Invalid portal contact source accepted.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('draft_html', $exception->errors());
+        }
+        $this->assertNull($page->refresh()->published_at);
+    }
+
     public function test_page_builder_spacing_utilities_are_scoped_and_preserve_html_classes(): void
     {
         $css = file_get_contents(resource_path('css/page-builder-spacing.css'));
