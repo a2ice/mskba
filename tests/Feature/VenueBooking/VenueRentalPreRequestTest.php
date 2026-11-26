@@ -4,6 +4,7 @@ namespace Tests\Feature\VenueBooking;
 
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Dashboard\Application\Providers\NeedsAttentionProvider;
+use App\Modules\Dashboard\Application\Providers\VenueRentalInboxProvider;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
@@ -231,6 +232,43 @@ final class VenueRentalPreRequestTest extends TestCase
         $this->assertTrue($service->can($superadmin, $pre, 'offer'));
         [, , $otherVenue] = $this->venue();
         $this->assertFalse($service->can($agent, $this->pre($otherVenue, $actor), 'offer'));
+    }
+
+    public function test_dashboard_inbox_respects_court_grants_and_revocation(): void
+    {
+        config()->set('features.venue_rental.portal', true);
+        config()->set('features.venue_rental_rollout.mode', 'all');
+        [$owner, $representative, $venue] = $this->venue();
+        [, , $otherVenue] = $this->venue();
+        [$customer, $actor] = $this->person();
+        [$agent] = $this->person();
+        [$outsider] = $this->person();
+        $this->grant($agent, $venue, [VenuePermissionEnum::VIEW_BOOKING_REQUESTS, VenuePermissionEnum::PROPOSE_EVENT_BOOKING], court: true);
+        $pre = $this->pre($venue, $actor);
+        $this->pre($otherVenue, $actor);
+        $provider = app(VenueRentalInboxProvider::class);
+        $this->assertTrue($provider->isAvailable($agent, []));
+        $this->assertFalse($provider->isAvailable($outsider, []));
+        $this->assertFalse($provider->isAvailable($customer, []));
+        $data = $provider->getData($agent, []);
+        $this->assertSame(1, $data->total);
+        $this->assertSame($pre->public_id, $data->items[0]['id']);
+        $this->assertArrayNotHasKey('requester_user_id', $data->items[0]);
+        $this->assertArrayNotHasKey('quote_snapshot', $data->items[0]);
+        $service = app(VenueRentalPreRequests::class);
+        $offer = $service->offer($pre, $representative);
+        $this->assertSame(1, $provider->getData($agent, [])->total);
+        $service->respond($pre, $actor, $offer->id, true);
+        $data = $provider->getData($agent, []);
+        $this->assertSame(1, $data->total);
+        $this->assertSame($offer->public_id, $data->items[0]['id']);
+        $this->assertSame(0, $data->summary['pre_request_total']);
+        config()->set('features.venue_rental_rollout.mode', 'off');
+        $this->assertFalse($provider->isAvailable($agent, []));
+        config()->set('features.venue_rental_rollout.mode', 'all');
+        $grant = \App\Modules\Contract\Domain\Models\ContractMembership::query()->where('user_id', $agent->id)->firstOrFail();
+        $grant->contract->forceFill(['expires_at' => now()->subSecond()])->save();
+        $this->assertFalse($provider->isAvailable($agent->refresh(), []));
     }
 
     public function test_expired_proposal_cannot_be_accepted_and_stale_expiry_does_not_cancel_accepted_booking(): void
