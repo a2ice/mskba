@@ -4,6 +4,9 @@ namespace Tests\Feature\Dashboard;
 
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum as VenueRole;
 use App\Modules\Dashboard\Application\Providers\VenueInvitationsProvider;
+use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardWidgetsInvalidatedBroadcast;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum as Status;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum as Role;
@@ -60,6 +63,17 @@ final class DashboardVenueInvitationsTest extends TestCase
         $this->assertStringNotContainsString('Private custom title', $json);
         $this->assertStringNotContainsString('token_hash', $json);
         $this->assertCount(1, $provider->getData($staff, ['limit' => 1])->items);
+
+        Event::fake([DashboardWidgetsInvalidatedBroadcast::class]);
+        DB::transaction(function () use ($other, $own, $staff): void {
+            $other->forceFill(['interested_at' => now()])->save();
+            $own->forceFill(['interested_at' => now()])->save();
+            Event::assertNotDispatched(DashboardWidgetsInvalidatedBroadcast::class);
+        });
+        Event::assertDispatchedTimes(DashboardWidgetsInvalidatedBroadcast::class, 1);
+        Event::assertDispatched(DashboardWidgetsInvalidatedBroadcast::class, fn ($event) =>
+            $event->broadcastOn()->name === 'private-users.'.$staff->id
+            && $event->broadcastWith() === ['sources' => ['venue_invitations'], 'catalog_changed' => false]);
         $staff->operationalPermissions()->where('permission', Permission::BACKOFFICE_INVITATION_VIEW->value)
             ->update(['is_allowed' => false]);
         $this->assertFalse($provider->isAvailable($staff->fresh(), []));
@@ -67,5 +81,8 @@ final class DashboardVenueInvitationsTest extends TestCase
             ->update(['is_allowed' => true]);
         app(ManageVenueMembershipHandler::class)->revoke($first, $grant, $super);
         $this->assertFalse($provider->isAvailable($staff->fresh(), []));
+        Event::assertDispatched(DashboardWidgetsInvalidatedBroadcast::class, fn ($event) =>
+            $event->broadcastOn()->name === 'private-users.'.$staff->id
+            && $event->broadcastWith()['catalog_changed'] === true);
     }
 }

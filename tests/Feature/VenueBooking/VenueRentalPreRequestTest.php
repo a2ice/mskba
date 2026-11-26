@@ -5,6 +5,7 @@ namespace Tests\Feature\VenueBooking;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Dashboard\Application\Providers\NeedsAttentionProvider;
 use App\Modules\Dashboard\Application\Providers\VenueRentalInboxProvider;
+use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardWidgetsInvalidatedBroadcast;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
@@ -244,8 +245,14 @@ final class VenueRentalPreRequestTest extends TestCase
         [$agent] = $this->person();
         [$outsider] = $this->person();
         $this->grant($agent, $venue, [VenuePermissionEnum::VIEW_BOOKING_REQUESTS, VenuePermissionEnum::PROPOSE_EVENT_BOOKING], court: true);
+        \Illuminate\Support\Facades\Event::fake([DashboardWidgetsInvalidatedBroadcast::class]);
         $pre = $this->pre($venue, $actor);
         $this->pre($otherVenue, $actor);
+        \Illuminate\Support\Facades\Event::assertDispatched(DashboardWidgetsInvalidatedBroadcast::class, fn ($event) =>
+            $event->broadcastOn()->name === 'private-users.'.$agent->id
+            && $event->broadcastWith() === ['sources' => ['venue_rental_inbox'], 'catalog_changed' => false]);
+        \Illuminate\Support\Facades\Event::assertNotDispatched(DashboardWidgetsInvalidatedBroadcast::class, fn ($event) =>
+            $event->broadcastOn()->name === 'private-users.'.$outsider->id);
         $provider = app(VenueRentalInboxProvider::class);
         $this->assertTrue($provider->isAvailable($agent, []));
         $this->assertFalse($provider->isAvailable($outsider, []));
