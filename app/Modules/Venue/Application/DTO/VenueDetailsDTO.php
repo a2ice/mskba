@@ -13,6 +13,7 @@ final readonly class VenueDetailsDTO
      * @param  array<int, VenueReviewDTO>  $reviews
      * @param  array<int, array{date: string, label: string, weekday: string, isToday: bool, state: string, slots: array<int, array{timeLabel: string, eventTypeLabel: string, eventUrl: ?string, statusIcon: string, statusLabel: string, status: string}>}>  $occupancyDays
      * @param  array<string, mixed>|null  $rental
+     * @param  list<array{type: string, value: string, label: ?string, href: string}>  $publicContacts
      */
     public function __construct(
         public int $id,
@@ -45,6 +46,7 @@ final readonly class VenueDetailsDTO
         public bool $canEdit,
         public bool $canEditSchedule,
         public bool $canRemove,
+        public array $publicContacts = [],
     ) {}
 
     public function routeIdentifier(): string
