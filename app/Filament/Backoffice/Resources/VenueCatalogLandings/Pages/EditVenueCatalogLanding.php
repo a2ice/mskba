@@ -34,6 +34,17 @@ final class EditVenueCatalogLanding extends EditRecord
                         $body .= ' В выбранном городе по остальным условиям: '.$result['city_matching']
                             .'. Без корректной привязки к округу или району: '.$result['missing_district']
                             .'. Округов и районов в справочнике города: '.$result['district_count'].'.';
+                        $districts = collect($result['districts'])->sortByDesc('matching');
+                        $nonempty = $districts->where('matching', '>', 0);
+                        $candidates = $nonempty->where('matching', '>=', 3);
+                        $body .= ' Округов с непустой выборкой: '.$nonempty->count()
+                            .'. С 3 и более площадками: '.$candidates->count().'.';
+                        if ($nonempty->isNotEmpty()) {
+                            $body .= ' Наибольшее наполнение: '.$nonempty->take(5)
+                                ->map(fn (array $district): string => $district['name'].' — '.$district['matching'])
+                                ->implode('; ').'.';
+                        }
+                        $body .= ' Ориентир в 3 площадки не является разрешением на публикацию.';
                     }
                     $body .= ' Это количество площадок, а не свободных слотов.';
                     $readiness = app(VenueCatalogLandingIndexReadiness::class)->inspect($landing, $count);

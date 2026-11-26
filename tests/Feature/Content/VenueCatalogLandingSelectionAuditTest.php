@@ -26,7 +26,8 @@ final class VenueCatalogLandingSelectionAuditTest extends TestCase
         Gate::define('manage-content', fn (User $user): bool => true);
         $city = City::factory()->create();
         $otherCity = City::factory()->create();
-        $district = District::factory()->create(['city_id' => $city->id]);
+        $district = District::factory()->create(['city_id' => $city->id, 'name' => 'A district']);
+        $emptyDistrict = District::factory()->create(['city_id' => $city->id, 'name' => 'B district']);
         $otherDistrict = District::factory()->create(['city_id' => $otherCity->id]);
 
         $this->venue($city, $district);
@@ -42,14 +43,22 @@ final class VenueCatalogLandingSelectionAuditTest extends TestCase
 
         $audit = app(VenueCatalogLandingSelectionAudit::class);
         $this->assertSame([
-            'matching' => 1, 'city_matching' => 3, 'missing_district' => 2, 'district_count' => 1,
+            'matching' => 1, 'city_matching' => 3, 'missing_district' => 2, 'district_count' => 2,
+            'districts' => [
+                ['id' => (int) $district->id, 'name' => 'A district', 'matching' => 1],
+                ['id' => (int) $emptyDistrict->id, 'name' => 'B district', 'matching' => 0],
+            ],
         ], $audit->inspect($landing));
         $this->assertFalse($landing->fresh()->is_active);
         $this->assertSame($district->id, $landing->fresh()->district_id);
 
         $landing->update(['district_id' => null]);
         $this->assertSame([
-            'matching' => 3, 'city_matching' => 3, 'missing_district' => 2, 'district_count' => 1,
+            'matching' => 3, 'city_matching' => 3, 'missing_district' => 2, 'district_count' => 2,
+            'districts' => [
+                ['id' => (int) $district->id, 'name' => 'A district', 'matching' => 1],
+                ['id' => (int) $emptyDistrict->id, 'name' => 'B district', 'matching' => 0],
+            ],
         ], $audit->inspect($landing));
     }
 
