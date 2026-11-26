@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     MAX_VISIBLE_TOASTS,
+    acknowledgeNotification,
     createNotificationToastDock,
     truncateToastMessage,
 } from '../../resources/themes/mskba_app/js/notification-toasts.js';
@@ -212,7 +213,7 @@ test('reconciliation heals cross-tab reads and makes a waiting toast visible', (
     assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['2', '3', '4']);
 });
 
-test('expansion does not mark a notification read or navigate', async () => {
+test('dock delegates acknowledgement to successful expanded content, not click alone', async () => {
     const { region, counts, requests, visits } = setup();
     const expanded = [];
     const dock = createNotificationToastDock(region, (count) => counts.push(count), {
@@ -285,4 +286,33 @@ test('no separate read action; closing a read minimized toast does not PATCH aga
     await region.children[0].querySelector('.app-message-toast__close').trigger('click');
     assert.equal(dock.size(), 0);
     assert.equal(requests.length, 0);
+});
+
+test('concurrent compact and expanded acknowledgement shares one PATCH', async () => {
+    const { requests } = setup();
+    const notice = notification(90);
+    const copy = { ...notice };
+    await Promise.all([
+        acknowledgeNotification(notice, 'csrf-token'),
+        acknowledgeNotification(copy, 'csrf-token'),
+    ]);
+    assert.equal(requests.length, 1);
+    assert.equal(notice.is_read, true);
+    assert.equal(copy.is_read, true);
+    await acknowledgeNotification(notice, 'csrf-token');
+    assert.equal(requests.length, 1);
+});
+
+test('expanded acknowledgement clears toast but minimized read notice remains closable', async () => {
+    const { dock, region, requests } = setup();
+    const notice = notification(91);
+    dock.add(notice);
+    await acknowledgeNotification(notice, 'csrf-token');
+    dock.acknowledge(notice);
+    assert.equal(dock.size(), 0);
+    dock.pin(notice);
+    assert.equal(dock.size(), 1);
+    await region.children[0].querySelector('.app-message-toast__close').trigger('click');
+    assert.equal(dock.size(), 0);
+    assert.equal(requests.length, 1);
 });
