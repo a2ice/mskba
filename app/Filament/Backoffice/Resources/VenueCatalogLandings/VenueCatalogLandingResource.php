@@ -85,7 +85,7 @@ final class VenueCatalogLandingResource extends Resource
                 Textarea::make('meta_description')->label('Meta Description')->maxLength(320),
                 Toggle::make('allow_indexing')->label('Разрешить индексацию на production')->default(false),
                 Toggle::make('include_in_sitemap')->label('Включить в sitemap на production')->default(false),
-            ])->description('Настройки не включают индексацию dev. Внешняя публикация пока не подключена.'),
+            ])->description('Индексация возможна только на каноническом production-хосте при отдельном разрешении релиза и готовой непустой подборке. DEV всегда закрыт от индексации.'),
         ]);
     }
 
