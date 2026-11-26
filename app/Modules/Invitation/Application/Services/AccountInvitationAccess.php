@@ -116,15 +116,33 @@ final class AccountInvitationAccess
             return in_array($role, ['owner', 'staff', 'manager', 'booking_operator'], true);
         }
 
-        // No ownership or privileged role assignment through invitation
-        // delegation. Every default permission must already be held on
-        // the same venue, not merely a court.
+        // No ownership or privileged role assignment through invitation delegation.
         if (! in_array($role, ['staff', 'manager', 'booking_operator'], true)) {
             return false;
         }
 
+        return $this->canGrantPermissions($actor, $venue, $role, VenueRole::from($role)->defaultPermissions());
+    }
+
+    /** @param list<VenuePermissionEnum> $permissions */
+    public function canGrantPermissions(User $actor, Venue $venue, string $role, array $permissions): bool
+    {
+        $actor = $actor->canonical();
+        if (! $this->canViewAny($actor) || $actor->isBlocked() || $venue->trashed()
+            || ! in_array($role, ['staff', 'manager', 'booking_operator'], true)) {
+            return false;
+        }
+        foreach ($permissions as $permission) {
+            if (! in_array($permission, VenueRole::from($role)->allowedPermissions(), true)) {
+                return false;
+            }
+        }
+        if ($actor->system_role === Role::SUPERADMIN) {
+            return true;
+        }
+
         $memberships = app(VenueMembershipAccess::class);
-        foreach ([VenuePermissionEnum::MANAGE_MEMBERSHIPS, ...VenueRole::from($role)->defaultPermissions()] as $permission) {
+        foreach ([VenuePermissionEnum::MANAGE_MEMBERSHIPS, ...$permissions] as $permission) {
             if (! $memberships->allows($actor, $venue, $permission)) {
                 return false;
             }

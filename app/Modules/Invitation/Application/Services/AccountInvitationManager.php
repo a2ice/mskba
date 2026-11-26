@@ -75,6 +75,11 @@ final class AccountInvitationManager
                 'scope_type' => $scopeType,
                 'scope_id' => $scopeId,
                 'role' => $role,
+                // Owner is evidence-backed and never granted by an email invitation.
+                'proposed_permissions' => $role === 'owner' ? null : array_map(
+                    static fn (VenuePermissionEnum $permission): string => $permission->value,
+                    VenueRole::from($role)->defaultPermissions(),
+                ),
                 'title' => trim($title),
                 'description' => filled($description) ? trim($description) : null,
                 'expires_at' => now()->addDays($days),
@@ -82,6 +87,7 @@ final class AccountInvitationManager
             ]);
             $this->event($record, 'created', [
                 'issuer_id' => $issuer->id,
+                'proposed_permissions' => $record->proposed_permissions,
                 ...($venueContactId !== null ? ['venue_contact_id' => $venueContactId] : []),
             ]);
             return $record;
@@ -333,17 +339,20 @@ final class AccountInvitationManager
             }
 
             $issuer = $this->lockCanonicalUser(User::query()->find($record->created_by_user_id));
-            if ($issuer === null || $issuer->isSameIdentity($user)
-                || ! app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $record->role)) {
+            $permissions = $this->proposedPermissions($record);
+            $access = app(AccountInvitationAccess::class);
+            if ($permissions === null || $issuer === null || $issuer->isSameIdentity($user)
+                || ! $access->canIssueAny($issuer)
+                || ! $access->canGrantPermissions($issuer, $venue, $record->role, $permissions)) {
                 $this->progress($record, 'awaiting_authorization', [
                     'issuer_id' => $record->created_by_user_id,
-                    'reason' => 'issuer_no_longer_authorized',
+                    'reason' => $permissions === null ? 'invalid_permission_snapshot' : 'issuer_no_longer_authorized',
                 ]);
 
                 return $record->refresh();
             }
 
-            return $this->grantAndComplete($record, $venue, $user, $issuer);
+            return $this->grantAndComplete($record, $venue, $user, $issuer, $permissions);
         }, 3);
     }
 
@@ -369,13 +378,18 @@ final class AccountInvitationManager
                 throw ValidationException::withMessages(['reason' => 'Получатель должен выполнить условия подтверждения аккаунта и сохранить подтверждённый email приглашения.']);
             }
 
+            $permissions = $this->proposedPermissions($record);
+            if ($permissions === null || ! app(AccountInvitationAccess::class)->canGrantPermissions($reviewer, $venue, $record->role, $permissions)) {
+                throw ValidationException::withMessages(['reason' => 'Предложенные полномочия больше недоступны. Требуется отдельное согласование нового договора.']);
+            }
+
             $this->event($record, 'authorization_reviewed', [
                 'issuer_id' => $record->created_by_user_id,
                 'reviewer_id' => $reviewer->id,
                 'reason' => $reason,
             ]);
 
-            return $this->grantAndComplete($record, $venue, $user, $reviewer);
+            return $this->grantAndComplete($record, $venue, $user, $reviewer, $permissions);
         }, 3);
     }
 
@@ -407,7 +421,35 @@ final class AccountInvitationManager
             && app(VenueCommercialAccess::class)->allows($actor, $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS);
     }
 
-    private function grantAndComplete(AccountInvitation $record, Venue $venue, User $user, User $issuer): AccountInvitation
+    /** @return list<VenuePermissionEnum>|null Null means an invalid snapshot. */
+    private function proposedPermissions(AccountInvitation $record): ?array
+    {
+        $role = VenueRole::tryFrom($record->role);
+        if ($role === null || ! in_array($role, [VenueRole::STAFF, VenueRole::MANAGER, VenueRole::BOOKING_OPERATOR], true)) {
+            return null;
+        }
+        // Compatibility for invitations issued before snapshot support.
+        // Do not backfill a fabricated historical proposal in the database.
+        if ($record->proposed_permissions === null) {
+            return $role->defaultPermissions();
+        }
+        if (! is_array($record->proposed_permissions) || ! array_is_list($record->proposed_permissions)) {
+            return null;
+        }
+        $permissions = [];
+        foreach ($record->proposed_permissions as $value) {
+            $permission = is_string($value) ? VenuePermissionEnum::tryFrom($value) : null;
+            if ($permission === null || ! in_array($permission, $role->allowedPermissions(), true)) {
+                return null;
+            }
+            $permissions[$permission->value] = $permission;
+        }
+
+        return array_values($permissions);
+    }
+
+    /** @param list<VenuePermissionEnum> $permissions */
+    private function grantAndComplete(AccountInvitation $record, Venue $venue, User $user, User $issuer, array $permissions): AccountInvitation
     {
         abort_unless($record->scope_type === 'venue'
             && in_array($record->role, ['staff', 'manager', 'booking_operator'], true), 409);
@@ -416,9 +458,26 @@ final class AccountInvitationManager
             ->first(fn ($m): bool => $m->scope_type->value === 'venue'
                 && (int) $m->scope_id === (int) $venue->id
                 && $m->access_level === $role->value);
+        $reused = $active !== null;
         if ($active === null) {
-            app(ManageVenueMembershipHandler::class)->grant($venue, $user, $role, $issuer);
+            $active = app(ManageVenueMembershipHandler::class)->grant($venue, $user, $role, $issuer, $permissions);
+        } else {
+            // Existing contracts are independent: never widen or replace one
+            // merely because an invitation was accepted.
+            $existing = $active->contract->permissions->pluck('permission')->all();
+            $requested = array_map(static fn (VenuePermissionEnum $permission): string => $permission->value, $permissions);
+            if (array_diff($requested, $existing) !== []) {
+                $this->progress($record, 'awaiting_authorization', ['reason' => 'existing_contract_differs']);
+                return $record->refresh();
+            }
         }
+        $record->forceFill(['granted_membership_id' => $active->id])->save();
+        $this->event($record, 'contract_linked', [
+            'membership_id' => $active->id,
+            'contract_id' => $active->contract_id,
+            'reused' => $reused,
+            'legacy_proposal' => $record->proposed_permissions === null,
+        ]);
 
         return $this->complete($record);
     }

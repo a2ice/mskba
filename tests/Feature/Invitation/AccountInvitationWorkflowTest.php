@@ -388,6 +388,35 @@ final class AccountInvitationWorkflowTest extends TestCase
         $this->assertSame('Проверено основание назначения роли', $event->details['reason']);
     }
 
+    public function test_invitation_uses_saved_permission_snapshot_and_links_the_contract_once(): void
+    {
+        [, $venue, $invitation] = $this->invite('snapshot@example.test', 'manager');
+        $this->assertSame(array_map(
+            static fn ($permission) => $permission->value,
+            \App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum::MANAGER->defaultPermissions(),
+        ), $invitation->proposed_permissions);
+        // Model a previously agreed narrower proposal, not the current preset.
+        $invitation->forceFill(['proposed_permissions' => ['view']])->save();
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $manager = app(AccountInvitationManager::class);
+        $manager->accept($invitation, $user);
+        $user->createProfile([
+            'first_name' => 'Иван', 'last_name' => 'Сотрудник',
+            'birth_date' => '1990-01-01', 'gender' => 'male',
+        ]);
+        $user->confirmAccount();
+        $record = $manager->advance($invitation->fresh(), $user);
+        $this->assertSame('completed', $record->status);
+        $membership = $record->grantedMembership;
+        $this->assertNotNull($membership);
+        $this->assertEquals($venue->id, $membership->scope_id);
+        $this->assertSame(['view'], $membership->contract->permissions()->pluck('permission')->all());
+        $manager->advance($record, $user);
+        $this->assertSame(1, $record->events()->where('event', 'contract_linked')->count());
+        $this->assertSame(1, ContractMembership::query()->where('scope_type', 'venue')
+            ->where('scope_id', $venue->id)->where('user_id', $user->id)->count());
+    }
+
     public function test_confirmed_status_without_actual_requirements_does_not_grant_employee_role(): void
     {
         [, $venue, $invitation] = $this->invite('forced-staff@example.test', 'staff');
