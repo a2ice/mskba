@@ -375,6 +375,7 @@ X disabled, L loading, E error, OK success. Неприменимые состо�
 
 - DOM-иерархия h1–h6 семантическая, CSS роль не навязывает уровень заголовка.
 - Один видимый основной heading экрана; landmarks, skip link, настоящий label.
+  Исключение для публичной шапки `mskba_app` (согласовано 2026-11-26): ссылку «К содержимому» не выводить в общем header partial, в том числе в Telegram WebView. Сохранять семантические landmarks и видимый focus остальных элементов.
 - Focus 2 px accent + offset3, не скрывается без замены. Открытие dialog перемещает
   focus внутрь, Tab остаётся внутри, Esc закрывает, focus возвращается инициатору.
 - Error связывается через `aria-describedby`, поле `aria-invalid`; сводка ошибок
