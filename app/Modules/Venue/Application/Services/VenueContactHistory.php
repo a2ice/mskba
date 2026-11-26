@@ -18,6 +18,7 @@ final class VenueContactHistory
         'comment' => 'Внутренний комментарий',
         'is_primary' => 'Основной',
         'is_public' => 'Публичный',
+        'is_rental_contact' => 'Для заявок на аренду',
         'verified_at' => 'Подтверждён',
     ];
 

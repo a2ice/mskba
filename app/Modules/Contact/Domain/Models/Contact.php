@@ -28,13 +28,21 @@ class Contact extends Model
 {
     use Auditable, SoftDeletes;
 
-    protected $hidden = ['comment'];
+    protected $hidden = ['comment', 'is_rental_contact'];
 
     protected static function booted(): void
     {
         static::saving(function (Contact $contact): void {
             if ($contact->type === ContactTypeEnum::EMAIL || $contact->type === ContactTypeEnum::EMAIL->value) {
                 $contact->value = (new ContactValue(ContactTypeEnum::EMAIL, (string) $contact->value))->value();
+            }
+
+            // Never retain an explicit rental destination after replacing the address
+            // or invalidating its verification. Do not silently reassign it.
+            if ($contact->is_rental_contact && ($contact->verified_at === null
+                || $contact->type !== ContactTypeEnum::EMAIL
+                || ($contact->exists && $contact->isDirty(['type', 'value', 'contactable_id', 'contactable_type'])))) {
+                $contact->is_rental_contact = false;
             }
 
             // Preserve evidence of earlier verified ownership when a contact is removed.
@@ -99,6 +107,7 @@ class Contact extends Model
             'type' => ContactTypeEnum::class,
             'is_primary' => 'boolean',
             'is_public' => 'boolean',
+            'is_rental_contact' => 'boolean',
             'verified_at' => 'datetime',
             'ownership_reserved' => 'boolean',
             'meta' => 'array',

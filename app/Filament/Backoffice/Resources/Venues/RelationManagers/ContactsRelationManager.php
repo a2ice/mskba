@@ -146,6 +146,8 @@ final class ContactsRelationManager extends RelationManager
                 TextColumn::make('comment')->label('Комментарий')->limit(60)->tooltip(fn (Contact $record): ?string => $record->comment),
                 IconColumn::make('is_primary')->label('Основной')->boolean(),
                 IconColumn::make('is_public')->label('Публичный')->boolean(),
+                IconColumn::make('is_rental_contact')->label('Для аренды')->boolean()
+                    ->tooltip('Назначенный email для заявок на аренду; не включает автоматическую отправку.'),
                 TextColumn::make('verified_at')->label('Подтверждён')->dateTime('d.m.Y H:i')->placeholder('Нет'),
                 TextColumn::make('deleted_at')->label('Удалён')->dateTime('d.m.Y H:i')->placeholder('—')->toggleable(),
                 TextColumn::make('connection_status')->label('Подключение')->wrap()
@@ -222,6 +224,19 @@ final class ContactsRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->action(fn (Action $action, Contact $record) => $this->run($action,
                         fn () => $this->manager()->setPrimary($this->actor(), $this->venue(), $record->id), 'Основной контакт изменён')),
+                Action::make('setRentalContact')->label('Назначить для заявок на аренду')->icon('heroicon-o-envelope')
+                    ->visible(fn (Contact $record): bool => ! $record->trashed() && ! $record->is_rental_contact
+                        && $record->type === ContactTypeEnum::EMAIL && $record->hasBeenVerified())
+                    ->requiresConfirmation()
+                    ->modalDescription('Этот email заменит ранее назначенный контакт аренды. Автоматическая отправка не включается.')
+                    ->action(fn (Action $action, Contact $record) => $this->run($action,
+                        fn () => $this->manager()->setRentalContact($this->actor(), $this->venue(), $record->id), 'Контакт для аренды назначен')),
+                Action::make('clearRentalContact')->label('Снять назначение для аренды')->icon('heroicon-o-x-mark')
+                    ->visible(fn (Contact $record): bool => ! $record->trashed() && $record->is_rental_contact)
+                    ->requiresConfirmation()
+                    ->modalDescription('Без назначенного контакта сохраняется ручная обработка заявок.')
+                    ->action(fn (Action $action, Contact $record) => $this->run($action,
+                        fn () => $this->manager()->clearRentalContact($this->actor(), $this->venue(), $record->id), 'Назначение для аренды снято')),
                 Action::make('deleteContact')->label('Удалить')->icon('heroicon-o-trash')->color('danger')
                     ->visible(fn (Contact $record): bool => $this->editable($record))
                     ->requiresConfirmation()
