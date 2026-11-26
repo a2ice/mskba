@@ -128,6 +128,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\BackofficeVenuePhotoOriginal
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueCatalogDistanceController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueScheduleDayController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueMetroStationController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
@@ -597,6 +598,9 @@ Route::prefix('leagues')->group(function () {
 });
 
 Route::prefix('venues')->group(function () {
+    Route::post('/distance-location', VenueCatalogDistanceController::class)
+        ->middleware('throttle:30,1')
+        ->name('venues.distance-location');
     Route::get('/', [VenueController::class, 'index'])
         ->name('venues')
         ->defaults('breadcrumb', 'Площадки');

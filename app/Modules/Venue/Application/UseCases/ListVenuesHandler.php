@@ -35,7 +35,7 @@ final class ListVenuesHandler
 
     /** @param array{search?: string|null, city_id?: int|string|null, district_id?: int|string|null, type?: string|array|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
     /** @param Collection<int, PlayIntent>|null $matchingInterests */
-    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null, bool $configuredRentalOnly = false): array
+    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null, bool $configuredRentalOnly = false, ?array $distanceOrigin = null): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -117,6 +117,15 @@ final class ListVenuesHandler
             $venues = $venues->filter(fn (Venue $venue): bool =>
                 $matchingInterests->contains(fn (PlayIntent $intent): bool =>
                     $this->interestMatcher->matchesVenue($intent, $venue)));
+        }
+
+        // Apply distance to the complete eligible catalogue before any pagination.
+        // Missing coordinates remain visible, after every geocoded venue.
+        if (($filters['sort'] ?? null) === 'distance' && $distanceOrigin !== null) {
+            $venues = $venues->sortBy(fn (Venue $venue) =>
+                $this->proximity->distanceToCoordinates(
+                    $venue, $distanceOrigin['latitude'], $distanceOrigin['longitude'],
+                ) ?? INF)->values();
         }
 
         $policies = VenueBookingPolicy::query()

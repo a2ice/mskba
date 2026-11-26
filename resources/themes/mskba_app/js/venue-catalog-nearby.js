@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!selected) throw new Error('coordinates');
                 point = selected;
                 sync();
+                document.dispatchEvent(new CustomEvent('mskba:venue-geolocation', { detail: { latitude: selected[0], longitude: selected[1] } }));
             } catch {
                 open('Не удалось получить местоположение. Выберите адрес или точку на карте.');
             } finally { clearTimeout(timer); toggle.disabled = false; message(status); }

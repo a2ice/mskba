@@ -21,12 +21,13 @@
     if (isset($landing)) $categoryViewQuery = \Illuminate\Support\Arr::except($categoryViewQuery, \App\Modules\Content\Application\Services\VenueCatalogLandingCriteria::KEYS);
     $categoryResetUrl = route('venues', in_array($currentView, ['list', 'map'], true) ? ['view' => $currentView] : []);
     $categoryEnableSorting = true;
-    $categorySortValue = $filters['sort'] ?? '';
+    $categorySortValue = ($filters['sort'] ?? '') === 'distance' && !$venueDistanceAvailable ? '' : ($filters['sort'] ?? '');
     $categorySortChoices = [
         '' => 'По названию (А–Я)',
         'name_desc' => 'По названию (Я–А)',
         'new' => 'Сначала новые',
     ];
+    if (!($isLandingPreview ?? false)) $categorySortChoices['distance'] = 'По удаленности';
     $categorySidebarLabel = 'Фильтры площадок';
     $categoryResultTotal = $total;
     $venuePageQuery = array_filter(
@@ -60,7 +61,7 @@
             <h2>Поиск площадок</h2>
             <form method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters" @if(isset($landing)) data-venue-landing-filter-count="{{ count($landing->criteria()) }}" @endif>
                 @if(in_array($currentView, ['list', 'map'], true))<input type="hidden" name="view" value="{{ $currentView }}">@endif
-                @if(filled($filters['sort'] ?? null))<input type="hidden" name="sort" value="{{ $filters['sort'] }}">@endif
+                @if(filled($categorySortValue))<input type="hidden" name="sort" value="{{ $categorySortValue }}">@endif
                 <div class="app-venues-catalog__filter-fields">
                     <label><span>Поиск площадки</span>
                         <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание">
@@ -204,4 +205,7 @@
 
 @section('category-before-items')
     @include('theme::partials.venue-map-dialog', ['mapShowCurrentVenueLink' => true])
+    @unless($isLandingPreview ?? false)
+        @include('theme::pages.venues.partials.distance-sort-prompt')
+    @endunless
 @endsection
