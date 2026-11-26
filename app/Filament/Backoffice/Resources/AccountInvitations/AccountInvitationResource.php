@@ -57,6 +57,36 @@ final class AccountInvitationResource extends Resource
             ->withExists(['events as has_restoration' => fn (Builder $query) => $query->where('event', 'restored')]);
     }
 
+    public static function issueFields(callable $venueResolver, bool $lockedEmail = false): array
+    {
+        return [
+            Select::make('role')->label('Цель приглашения')->required()
+                ->options(function (Get $get) use ($venueResolver): array {
+                    $actor = auth('web')->user();
+                    $venue = $venueResolver($get);
+                    if ($actor === null || $venue === null) {
+                        return [];
+                    }
+                    $options = [
+                        'owner' => 'Регистрация владельца площадки',
+                        'staff' => 'Регистрация сотрудника площадки',
+                        'manager' => 'Регистрация менеджера площадки',
+                        'booking_operator' => 'Регистрация оператора бронирований',
+                    ];
+
+                    return array_filter($options, fn (string $role): bool =>
+                        app(AccountInvitationAccess::class)->canIssue($actor, $venue, $role), ARRAY_FILTER_USE_KEY);
+                }),
+            TextInput::make('email')->label('Email получателя')->email()->required()->maxLength(255)->readOnly($lockedEmail),
+            TextInput::make('title')->label('Название приглашения')->maxLength(160)
+                ->helperText('Необязательно: по умолчанию будет сформировано из роли и названия площадки.'),
+            Textarea::make('description')->label('Описание для получателя')
+                ->maxLength(2000)->rows(3),
+            Select::make('days')->label('Срок действия ссылки')->required()->default(7)
+                ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
+        ];
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -112,30 +142,7 @@ final class AccountInvitationResource extends Resource
                             ->getOptionLabelUsing(fn ($value): ?string => app(AccountInvitationAccess::class)
                                 ->issueVenues(Venue::query(), auth('web')->user())->find($value)?->name)
                             ->live()->afterStateUpdated(fn (Set $set) => $set('role', null)),
-                        Select::make('role')->label('Цель приглашения')->required()
-                            ->options(function (Get $get): array {
-                                $actor = auth('web')->user();
-                                $venue = Venue::query()->find($get('scope_id'));
-                                if ($actor === null || $venue === null) {
-                                    return [];
-                                }
-                                $options = [
-                                    'owner' => 'Регистрация владельца площадки',
-                                    'staff' => 'Регистрация сотрудника площадки',
-                                    'manager' => 'Регистрация менеджера площадки',
-                                    'booking_operator' => 'Регистрация оператора бронирований',
-                                ];
-
-                                return array_filter($options, fn (string $role): bool =>
-                                    app(AccountInvitationAccess::class)->canIssue($actor, $venue, $role), ARRAY_FILTER_USE_KEY);
-                            }),
-                        TextInput::make('email')->label('Email получателя')->email()->required()->maxLength(255),
-                        TextInput::make('title')->label('Название приглашения')->maxLength(160)
-                            ->helperText('Необязательно: по умолчанию будет сформировано из роли и названия площадки.'),
-                        Textarea::make('description')->label('Описание для получателя')
-                            ->maxLength(2000)->rows(3),
-                        Select::make('days')->label('Срок действия ссылки')->required()->default(7)
-                            ->options([1 => '1 день', 3 => '3 дня', 7 => '7 дней', 14 => '14 дней', 30 => '30 дней']),
+                        ...self::issueFields(fn (Get $get): ?Venue => Venue::query()->find($get('scope_id'))),
                     ])
                     ->action(function (array $data): void {
                         abort_unless(app(AccountInvitationAccess::class)->canIssueAny(auth('web')->user()), 403);

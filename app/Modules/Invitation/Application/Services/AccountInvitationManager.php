@@ -6,6 +6,7 @@ use App\Modules\Contact\Application\DTO\CreateContactDTO;
 use App\Modules\Contact\Application\Services\ContactOwnership;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Venue\Application\UseCases\AdminManageVenueContactsHandler;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\ValueObjects\ContactValue;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum as VenueRole;
@@ -37,7 +38,7 @@ final class AccountInvitationManager
 
     public function create(
         User $issuer, string $email, string $scopeType, int $scopeId,
-        string $role, string $title, ?string $description, int $days
+        string $role, string $title, ?string $description, int $days, ?int $venueContactId = null
     ): array {
         abort_unless(app(AccountInvitationAccess::class)->canIssueAny($issuer), 403);
         if ($scopeType !== 'venue' || ! in_array($role, ['owner', 'staff', 'manager', 'booking_operator'], true)) {
@@ -48,10 +49,17 @@ final class AccountInvitationManager
             throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
         }
         $token = bin2hex(random_bytes(32));
-        $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token) {
+        $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token, $venueContactId) {
             $venue = Venue::query()->whereKey($scopeId)->lockForUpdate()->firstOrFail();
             $issuer = $this->authorizeActor($issuer);
             abort_unless(app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $role), 403);
+            if ($venueContactId !== null) {
+                abort_unless(app(AdminManageVenueContactsHandler::class)->canManage($issuer, $venue), 403);
+                $contact = $venue->contacts()->whereKey($venueContactId)->lockForUpdate()->firstOrFail();
+                if ($contact->type !== ContactTypeEnum::EMAIL || ! $contact->hasBeenVerified() || $contact->value !== $email) {
+                    throw ValidationException::withMessages(['email' => 'Контакт изменился или не подтверждён. Обновите редактор площадки.']);
+                }
+            }
             $this->assertTarget($scopeType, $scopeId, $role);
             $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
             $this->assertNoActiveDuplicate($email, $scopeType, $scopeId, $role);
@@ -71,7 +79,10 @@ final class AccountInvitationManager
                 'expires_at' => now()->addDays($days),
                 'created_by_user_id' => $issuer->id,
             ]);
-            $this->event($record, 'created', ['issuer_id' => $issuer->id]);
+            $this->event($record, 'created', [
+                'issuer_id' => $issuer->id,
+                ...($venueContactId !== null ? ['venue_contact_id' => $venueContactId] : []),
+            ]);
             return $record;
         }, 3);
         $this->send($invitation, $token);
