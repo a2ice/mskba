@@ -13,7 +13,6 @@
         : 0;
 @endphp
 
-<a class="skip" href="#mskba-app">К содержимому</a>
 <header class="site-header app-site-header" data-app-header
     @auth data-notification-user-id="{{ $headerUser->canonical()->id }}"
           data-notification-sync-url="{{ route('account.notifications.new') }}" @endauth>
