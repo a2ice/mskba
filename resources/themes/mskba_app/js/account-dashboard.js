@@ -7,6 +7,8 @@ if (dashboard) {
     const header = document.querySelector('[data-app-header][data-notification-user-id]');
     let version = 0;
     let controller = null;
+    let liveTimer = null;
+    let liveDeadline = 0;
     // A revision is delayed only once, not after every Reverb / notification refresh.
     const pending = new Map();
 
@@ -157,9 +159,27 @@ if (dashboard) {
         }
     };
 
+    // Coalesce bursts from one transaction, with a bounded wait so sustained
+    // updates cannot indefinitely postpone fetching fresh data.
+    const scheduleLiveRefresh = () => {
+        if (!liveTimer) liveDeadline = Date.now() + 1500;
+        window.clearTimeout(liveTimer);
+        liveTimer = window.setTimeout(() => {
+            liveTimer = null;
+            void refresh();
+        }, Math.max(0, Math.min(250, liveDeadline - Date.now())));
+    };
+
     subscribePublic('account-dashboard', '.dashboard.changed', () => void refresh());
-    if (header) subscribePrivate('users.' + header.dataset.notificationUserId,
-        '.notification.created', () => void refresh());
+    if (header) {
+        const channel = 'users.' + header.dataset.notificationUserId;
+        subscribePrivate(channel, '.notification.created', scheduleLiveRefresh);
+        subscribePrivate(channel, '.dashboard.widgets.invalidated', event => {
+            if (event?.catalog_changed || dashboard.querySelector('[data-widget-kind="dynamic"]')) {
+                scheduleLiveRefresh();
+            }
+        });
+    }
     document.addEventListener('mskba:dashboard-refresh-requested', () => void refresh());
     window.addEventListener('mskba:realtime-state', event => {
         if (event.detail?.state === 'connected') void refresh();
@@ -174,6 +194,7 @@ if (dashboard) {
     }, 90000);
     window.addEventListener('pagehide', () => {
         window.clearInterval(timer);
+        window.clearTimeout(liveTimer);
         controller?.abort();
         for (const id of pending.keys()) clearPending(id);
     }, { once: true });
