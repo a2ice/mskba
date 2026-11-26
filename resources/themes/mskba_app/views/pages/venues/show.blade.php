@@ -504,12 +504,20 @@
                 @endif
             @endif
         </div>
-        <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
-            <strong>Хочешь здесь играть?</strong>
-            <p>Посмотри ближайшие игры и присоединяйся к участникам или создай своё мероприятие.</p>
-            <button type="button" class="button primary full" data-venue-play-open>Хочу здесь играть</button>
-            <a class="button secondary full" href="#app-venue-schedule">{{ count($bookableCourtIds) ? 'Расписание и аренда' : 'Режим работы' }}</a>
-        </aside>
+        <div class="app-venue-page__side-stack" @if(empty($venue->publicContacts)) data-venue-side-empty @endif>
+            <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
+                <strong>Хочешь здесь играть?</strong>
+                <p>Посмотри ближайшие игры и присоединяйся к участникам или создай своё мероприятие.</p>
+                <button type="button" class="button primary full" data-venue-play-open>Хочу здесь играть</button>
+                <a class="button secondary full" href="#app-venue-schedule">{{ count($bookableCourtIds) ? 'Расписание и аренда' : 'Режим работы' }}</a>
+            </aside>
+            @if(!empty($venue->publicContacts))
+                <section class="panel app-venue-block app-venue-public-contacts" aria-labelledby="venue-public-contacts-title">
+                    <header class="app-venue-block__header"><h2 id="venue-public-contacts-title">Контакты площадки</h2></header>
+                    @include('components.venue-public-contact-list', ['contacts' => $venue->publicContacts])
+                </section>
+            @endif
+        </div>
     </div>
 </section>
 @include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id, 'quickEventCourtId' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null])
