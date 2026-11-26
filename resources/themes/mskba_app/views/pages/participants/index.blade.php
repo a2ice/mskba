@@ -9,6 +9,9 @@
     $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
     $categorySidebarLabel = 'Навигация и фильтры участников';
     $categoryToolbarCount = 'Найдено участников: '.$participants->total();
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'participants-category-filter-desktop', 'name' => 'q', 'value' => $filters['q'] ?? '', 'placeholder' => 'Имя или никнейм', 'label' => 'Поиск участников', 'maxlength' => 100];
+    $categoryVisibleCount = $participants->count();
     $categoryResultTotal = $participants->total();
 @endphp
 @extends('theme::layouts.category')
