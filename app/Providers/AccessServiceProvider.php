@@ -33,9 +33,21 @@ class AccessServiceProvider extends ServiceProvider
         Gate::define('access-admin-panel', fn (User $user): bool => $user->isAdmin());
         Gate::define(
             'manage-content',
-            fn (User $user): bool => $user->isConfirmed()
-                && app(UserOperationalPermissionChecker::class)
-                    ->allows($user, UserOperationalPermissionEnum::CONTENT_MANAGE),
+            function (User $user): bool {
+                $user = $user->canonical();
+                $permissions = app(UserOperationalPermissionChecker::class);
+
+                if ($user->system_role === UserSystemRoleEnum::SYSTEM) {
+                    // System accounts do not undergo human profile confirmation.
+                    // Both grants must be explicitly assigned; blocked/deleted
+                    // accounts are rejected by the permission checker.
+                    return $permissions->allows($user, UserOperationalPermissionEnum::BACKOFFICE_ACCESS)
+                        && $permissions->allows($user, UserOperationalPermissionEnum::CONTENT_MANAGE);
+                }
+
+                return $user->isConfirmed()
+                    && $permissions->allows($user, UserOperationalPermissionEnum::CONTENT_MANAGE);
+            },
         );
         Gate::define(
             'manage-user-operational-permissions',
