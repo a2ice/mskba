@@ -58,6 +58,28 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
         $this->assertTrue(View::exists('theme::layouts.category'));
     }
 
+    public function test_compact_toolbar_search_belongs_to_the_desktop_filter_form(): void
+    {
+        foreach ([
+            ['url' => route('shop.index'), 'form' => 'shop-filters-desktop'],
+            ['url' => route('news.index'), 'form' => 'news-category-filter-desktop'],
+            ['url' => route('events.index'), 'form' => 'events-category-filter-desktop'],
+            ['url' => route('tournaments.index'), 'form' => 'tournaments-category-filter-desktop'],
+            ['url' => route('sports-sections.index'), 'form' => 'sections-category-filter-desktop'],
+            ['url' => route('leagues.index'), 'form' => 'leagues-category-filter-desktop'],
+            ['url' => route('participants.index'), 'form' => 'participants-category-filter-desktop'],
+            ['url' => route('participants.players'), 'form' => 'participants-category-filter-desktop'],
+            ['url' => route('participants.coaches'), 'form' => 'participants-category-filter-desktop'],
+            ['url' => route('teams.index'), 'form' => 'teams-category-filter-desktop'],
+        ] as $catalog) {
+            $this->get($catalog['url'])->assertOk()
+                ->assertSee('app-category-toolbar--compact', false)
+                ->assertSee('form="'.$catalog['form'].'"', false)
+                ->assertSee('id="'.$catalog['form'].'"', false)
+                ->assertSee('app-catalog-tools__reset', false);
+        }
+    }
+
     public function test_venue_infinite_scroll_and_shop_card_hooks_survive_shared_layout(): void
     {
         $this->get(route('venues'))
