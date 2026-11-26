@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'type',
     'value',
     'label',
+    'comment',
     'is_primary',
     'is_public',
     'verified_at',
