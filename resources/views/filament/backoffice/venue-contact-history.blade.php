@@ -8,7 +8,7 @@
         <h3 class="font-medium">Последние 50 попыток подтверждения</h3>
         @forelse ($attempts as $attempt)
             <div class="rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700">
-                <p class="font-medium">{{ $attempt->status->label() }}</p>
+                <p class="font-medium">{{ $attempt->effectiveStatus()->label() }}</p>
                 <p>{{ $attempt->sent_to }}</p>
                 <p>Отправлено: {{ $attempt->created_at?->format('d.m.Y H:i') ?? '—' }}</p>
                 <p>Попыток ввода: {{ $attempt->attempts_count }}</p>
