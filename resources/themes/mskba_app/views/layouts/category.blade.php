@@ -49,9 +49,17 @@
         </aside>
         <main class="{{ $categoryMainClass }}">
             <div class="{{ $categoryToolbarClass }}{{ ($categoryCompactToolbar ?? false) ? ' panel app-category-toolbar--compact' : '' }}">
+                @if(isset($categoryToolbarSearch))
+                    <input class="app-category-toolbar__search app-category-toolbar__search--desktop" type="search"
+                        form="{{ $categoryToolbarSearch['form'] }}" name="{{ $categoryToolbarSearch['name'] }}"
+                        value="{{ $categoryToolbarSearch['value'] }}" placeholder="{{ $categoryToolbarSearch['placeholder'] }}"
+                        aria-label="{{ $categoryToolbarSearch['label'] }}" @if(isset($categoryToolbarSearch['maxlength'])) maxlength="{{ $categoryToolbarSearch['maxlength'] }}" @endif>
+                @endif
                 @yield('category-toolbar-search')
                 @hasSection('category-toolbar-count')
                     @yield('category-toolbar-count')
+                @elseif(isset($categoryVisibleCount, $categoryResultTotal))
+                    <span class="app-category-toolbar__count" role="status" title="Показано / всего">{{ $categoryVisibleCount }}/{{ $categoryResultTotal }}</span>
                 @else
                     <span class="app-category__count" role="status">{{ $categoryToolbarCount }}</span>
                 @endif

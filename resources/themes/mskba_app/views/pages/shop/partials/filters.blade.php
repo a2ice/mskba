@@ -2,9 +2,14 @@
 <form id="{{ $formId ?? 'shop-filter-form' }}" method="GET" action="{{ $filterAction }}" class="app-shop__filters">
     @if($filters['view'] === 'list')<input type="hidden" name="view" value="list">@endif
     @if($filters['sort'] !== '')<input type="hidden" name="sort" value="{{ $filters['sort'] }}">@endif
+    @if(($formId ?? '') !== 'shop-filters-desktop')
     <label><span>Поиск товара</span>
         <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название товара или артикул">
     </label>
+    @endif
+    <details class="app-catalog-advanced" @if(collect(['tag', 'stock', 'color', 'size', 'min_price', 'max_price'])->contains(fn ($key) => filled($filters[$key] ?? null)) || (int) ($filters['product_type'] ?? 0) > 0) open @endif>
+        <summary>Расширенные фильтры</summary>
+        <div class="app-catalog-advanced__fields">
 
     <label><span>Тип товара</span>
         <span class="select-control"><select name="product_type">
@@ -66,9 +71,10 @@
             </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
         </label>
     @endif
-
-
+        </div>
+    </details>
     <div class="app-shop__filter-actions">
+        @include('theme::components.catalog-reset', ['resetUrl' => $categoryResetUrl])
         <button type="submit" class="button primary">Применить</button>
     </div>
 </form>

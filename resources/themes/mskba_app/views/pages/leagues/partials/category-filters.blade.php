@@ -1,8 +1,13 @@
 <form id="leagues-category-filter-{{ $scope ?? 'desktop' }}" class="app-category__filters" method="GET" action="{{ route('leagues.index') }}">
     @if(($categoryView ?? 'cards') === 'list')<input type="hidden" name="view" value="list">@endif
+    @if(($scope ?? 'desktop') === 'mobile')
     <label><span>Название или описание</span>
         <input type="search" name="q" value="{{ $filters['q'] ?? '' }}" maxlength="120" placeholder="Название лиги">
     </label>
+    @endif
+    <details class="app-catalog-advanced" @if(filled($filters['status'] ?? null) || (int) ($filters['season'] ?? 0) > 0) open @endif>
+        <summary>Расширенные фильтры</summary>
+        <div class="app-catalog-advanced__fields">
     <label><span>Статус</span>
         <span class="select-control"><select name="status">
             <option value="">Все</option>
@@ -18,7 +23,10 @@
             @endforeach
         </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
     </label>
+        </div>
+    </details>
     <div class="app-category__filter-actions">
+        @include('theme::components.catalog-reset', ['resetUrl' => $categoryResetUrl])
         <button class="button primary" type="submit">Применить</button>
     </div>
 </form>

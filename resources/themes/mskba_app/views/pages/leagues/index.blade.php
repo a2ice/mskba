@@ -13,6 +13,9 @@
     $canonicalUrl = $leagues->currentPage() > 1 ? route('leagues.index', ['page' => $leagues->currentPage()]) : route('leagues.index');
     $paginationPrevUrl = $leagues->previousPageUrl();
     $paginationNextUrl = $leagues->nextPageUrl();
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'leagues-category-filter-desktop', 'name' => 'q', 'value' => $filters['q'] ?? '', 'placeholder' => 'Название лиги', 'label' => 'Поиск лиг', 'maxlength' => 120];
+    $categoryVisibleCount = $leagues->count();
     $categoryResultTotal = $leagues->total();
 @endphp
 @extends('theme::layouts.category')

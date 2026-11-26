@@ -78,6 +78,7 @@ import '../css/player-profile-workspace.css';
 import './account-favorites.js';
 import './venue-favorites.js';
 import './venue-catalog.js';
+import './catalog-sticky-toolbar.js';
 import '../../../js/components/venue-card-tooltips.js';
 import './shop-categories.js';
 import './shop-price-range.js';

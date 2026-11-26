@@ -13,8 +13,11 @@
     $categoryView = request('view') === 'list' ? 'list' : 'cards';
     $categoryBaseUrl = route('news.index');
     $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
-    $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
+    $categoryResetUrl = route('news.index', array_filter(['type' => ($filters['type'] ?? '') === 'system_update' ? 'system_update' : null, 'view' => $categoryView === 'list' ? 'list' : null]));
     $categoryToolbarCount = 'Публикаций: '.$contentItems->total();
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'news-category-filter-desktop', 'name' => 'q', 'value' => $filters['q'] ?? '', 'placeholder' => 'Название или описание', 'label' => 'Поиск публикаций', 'maxlength' => 100];
+    $categoryVisibleCount = $contentItems->count();
     $categoryResultTotal = $contentItems->total();
 @endphp
 @extends('theme::layouts.category')
