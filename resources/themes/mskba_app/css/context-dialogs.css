@@ -67,14 +67,18 @@
 @media (max-width: 639px) { .app-context-dialog__header { padding: 14px 16px; } .app-context-dialog__content, .app-context-help__body { padding: 16px; } }
 
 
-/* Target mskba_app help entry point, independent of the appearance mode. */
-.app-context-help-launcher {
+/* Shared fixed geometry: the toast dock uses the same top edge as FAQ. */
+:root {
     --app-help-size: 50px;
+    --app-help-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    --app-help-right: max(20px, env(safe-area-inset-right, 0px));
+}
+.app-context-help-launcher {
     --app-help-expanded-width: 148px; /* JS measures the actual label width before animation. */
     position: fixed;
     z-index: 105;
-    right: max(20px, env(safe-area-inset-right, 0px));
-    bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    right: var(--app-help-right);
+    bottom: var(--app-help-bottom);
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -179,10 +183,10 @@
     cursor: pointer;
 }
 @media (max-width: 1023px) {
-    .app-context-help-launcher { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+    :root { --app-help-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 639px) {
-    .app-context-help-launcher { --app-help-size: 46px; right: 12px; }
+    :root { --app-help-size: 46px; --app-help-right: max(12px, env(safe-area-inset-right, 0px)); }
     .app-context-help-launcher__mark { font-size: 25px; }
     .app-context-help-launcher__label { font-size: 15px; padding: 0 10px 0 14px; }
     .app-context-help__tabs button { font-size: 12px; }
