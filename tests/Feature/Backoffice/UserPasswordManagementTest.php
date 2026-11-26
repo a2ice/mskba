@@ -57,7 +57,7 @@ final class UserPasswordManagementTest extends TestCase
     {
         $admin = $this->person(UserSystemRoleEnum::SUPERADMIN);
         $target = $this->person(UserSystemRoleEnum::SYSTEM);
-        $target->forceFill(['status' => UserStatusEnum::UNCONFIRMED])->save();
+        $target->forceFill(['username' => 'system-reset-fixture', 'status' => UserStatusEnum::UNCONFIRMED])->save();
         $this->actingAs($admin);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
