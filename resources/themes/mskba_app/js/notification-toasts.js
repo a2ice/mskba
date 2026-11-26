@@ -137,7 +137,7 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
             expand.className = 'app-message-toast__expand';
             expand.textContent = 'Развернуть';
             expand.setAttribute('aria-label', 'Развернуть уведомление');
-            expand.addEventListener('click', () => options.onExpand(notification));
+            expand.addEventListener('click', () => options.onExpand(pinned.get(String(notification.id)) || notification));
             card.append(expand);
         }
 
@@ -170,7 +170,7 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
     const add = (notification, live = false) => {
         if (!notification?.id || !notification?.read_url) return;
         const id = String(notification.id);
-        if (notifications.has(id)) return;
+        if (notifications.has(id) || pinned.get(id)?.is_read || notification.is_read) return;
         notifications.set(id, notification);
         // A freshly delivered notification must not be hidden behind three
         // older unread toasts. Make room without marking anything as read.
@@ -211,6 +211,7 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         if (!notification?.id || !notification?.read_url) return;
         const id = String(notification.id);
         pinned.set(id, notification);
+        if (notification.is_read) notifications.delete(id);
         // Prefer the restored original toast to other waiting unread toasts.
         if (!cards.has(id) && cards.size >= MAX_VISIBLE_TOASTS) {
             const evict = [...cards.keys()].reverse().find(other => !pinned.has(other));
