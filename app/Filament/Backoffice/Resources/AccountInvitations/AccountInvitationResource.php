@@ -60,19 +60,19 @@ final class AccountInvitationResource extends Resource
     public static function issueFields(callable $venueResolver, bool $lockedEmail = false): array
     {
         return [
-        Select::make('role')->label('Цель приглашения')->required()
-            ->options(function (Get $get) use ($venueResolver): array {
-                $actor = auth('web')->user();
-                $venue = $venueResolver($get);
-                if ($actor === null || $venue === null) {
-                    return [];
-                }
-                $options = [
-                    'owner' => 'Регистрация владельца площадки',
-                    'staff' => 'Регистрация сотрудника площадки',
-                    'manager' => 'Регистрация менеджера площадки',
-                    'booking_operator' => 'Регистрация оператора бронирований',
-                ];
+            Select::make('role')->label('Цель приглашения')->required()
+                ->options(function (Get $get) use ($venueResolver): array {
+                    $actor = auth('web')->user();
+                    $venue = $venueResolver($get);
+                    if ($actor === null || $venue === null) {
+                        return [];
+                    }
+                    $options = [
+                        'owner' => 'Регистрация владельца площадки',
+                        'staff' => 'Регистрация сотрудника площадки',
+                        'manager' => 'Регистрация менеджера площадки',
+                        'booking_operator' => 'Регистрация оператора бронирований',
+                    ];
 
                 return array_filter($options, fn (string $role): bool =>
                     app(AccountInvitationAccess::class)->canIssue($actor, $venue, $role), ARRAY_FILTER_USE_KEY);
