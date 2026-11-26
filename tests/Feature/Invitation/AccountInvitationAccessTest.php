@@ -86,6 +86,103 @@ final class AccountInvitationAccessTest extends TestCase
         }
     }
 
+    public function test_delegated_issue_and_manage_are_separate_and_scoped(): void
+    {
+        config()->set('mail.default', 'smtp');
+        config()->set('features.venue_rental.rental_flow', true);
+        Mail::fake();
+        $super = $this->user(Role::SUPERADMIN);
+        $staff = $this->user(Role::MANAGER);
+        $venue = Venue::factory()->create();
+        $otherVenue = Venue::factory()->create();
+        app(ManageVenueMembershipHandler::class)->grant(
+            $venue, $staff, VenueRole::MANAGER, $super,
+            [VenuePermissionEnum::MANAGE_MEMBERSHIPS, VenuePermissionEnum::VIEW],
+        );
+        foreach ([Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_INVITATION_VIEW,
+            Permission::BACKOFFICE_INVITATION_ISSUE] as $permission) {
+            $staff->operationalPermissions()->create(['permission' => $permission->value, 'is_allowed' => true]);
+        }
+        $access = app(AccountInvitationAccess::class);
+        $manager = app(AccountInvitationManager::class);
+        $this->assertSame([$venue->id], $access->issueVenues(Venue::query(), $staff)->pluck('id')->all());
+        $this->assertTrue($access->canIssue($staff, $venue, 'staff'));
+        foreach (['owner', 'manager', 'booking_operator'] as $role) {
+            $this->assertFalse($access->canIssue($staff, $venue, $role));
+            $this->assertForbidden(fn () => $manager->create($staff, 'denied@example.test', 'venue', $venue->id, $role, '', null, 7));
+        }
+        $this->assertForbidden(fn () => $manager->create($staff, 'denied@example.test', 'venue', $otherVenue->id, 'staff', '', null, 7));
+
+        [$record] = $manager->create($staff, 'allowed@example.test', 'venue', $venue->id, 'staff', '', null, 7);
+        [$other] = $manager->create($super, 'other@example.test', 'venue', $otherVenue->id, 'staff', '', null, 7);
+        $this->assertSame($staff->id, $record->created_by_user_id);
+        $this->assertForbidden(fn () => $manager->renew($record, $staff));
+        $staff->operationalPermissions()->create(['permission' => Permission::BACKOFFICE_INVITATION_MANAGE->value, 'is_allowed' => true]);
+        $this->assertTrue($access->canManage($staff, $record));
+        $this->assertFalse($access->canManage($staff, $other));
+        $this->assertForbidden(fn () => $manager->revoke($other, $staff));
+        $manager->renew($record, $staff);
+        $manager->revoke($record->fresh(), $staff);
+        $manager->restore($record->fresh(), $staff, 7, 'Повторное приглашение сотрудника');
+        $this->assertSame('pending', $record->fresh()->status);
+        $this->assertSame($staff->id, $record->events()->where('event', 'restored')->sole()->details['issuer_id']);
+
+        $staff->operationalPermissions()->where('permission', Permission::BACKOFFICE_INVITATION_ISSUE->value)
+            ->update(['is_allowed' => false]);
+        $this->assertFalse($access->canIssue($staff, $venue, 'staff'));
+        $this->assertTrue($access->canManage($staff, $record));
+        $this->assertForbidden(fn () => $manager->create($staff, 'denied@example.test', 'venue', $venue->id, 'staff', '', null, 7));
+        $this->assertDatabaseCount('account_invitations', 2);
+    }
+
+    public function test_delegated_completion_rechecks_issue_permission_and_venue_contract(): void
+    {
+        config()->set('mail.default', 'smtp');
+        config()->set('features.venue_rental.rental_flow', true);
+        Mail::fake();
+        $super = $this->user(Role::SUPERADMIN);
+        $staff = $this->user(Role::MANAGER);
+        $venue = Venue::factory()->create();
+        $membership = app(ManageVenueMembershipHandler::class)->grant(
+            $venue, $staff, VenueRole::MANAGER, $super,
+            [VenuePermissionEnum::MANAGE_MEMBERSHIPS, VenuePermissionEnum::VIEW],
+        );
+        foreach ([Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_INVITATION_VIEW,
+            Permission::BACKOFFICE_INVITATION_ISSUE] as $permission) {
+            $staff->operationalPermissions()->create(['permission' => $permission->value, 'is_allowed' => true]);
+        }
+        $manager = app(AccountInvitationManager::class);
+        foreach (['allowed', 'held'] as $scenario) {
+            [$record] = $manager->create($staff, $scenario.'-delegate@example.test', 'venue', $venue->id, 'staff', '', null, 7);
+            $target = $this->user(Role::USER, Status::UNCONFIRMED);
+            $manager->accept($record, $target);
+            $target->createProfile([
+                'first_name' => 'Иван', 'last_name' => 'Сотрудник',
+                'birth_date' => '1990-01-01', 'gender' => 'male',
+            ]);
+            $target->confirmAccount();
+            if ($scenario === 'held') {
+                app(ManageVenueMembershipHandler::class)->revoke($venue, $membership, $super);
+            }
+            $manager->advance($record->fresh(), $target);
+            $this->assertSame($scenario === 'held' ? 'awaiting_authorization' : 'completed', $record->fresh()->progress);
+            $exists = \App\Modules\Contract\Domain\Models\ContractMembership::query()
+                ->where('scope_type', 'venue')->where('scope_id', $venue->id)->where('user_id', $target->id)
+                ->where('access_level', 'staff')->exists();
+            $this->assertSame($scenario === 'allowed', $exists);
+        }
+    }
+
+    private function assertForbidden(callable $operation): void
+    {
+        try {
+            $operation();
+            $this->fail('Expected a forbidden invitation operation.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+    }
+
     private function user(Role $role, Status $status = Status::CONFIRMED): User
     {
         return User::factory()->create(['system_role' => $role, 'status' => $status]);
