@@ -1,6 +1,7 @@
 @php
-    $telegramCommunityUrl = trim((string) config('services.social.telegram_url'));
-    $vkCommunityUrl = trim((string) config('services.social.vk_url'));
+    $portalContacts = app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicByChannel();
+    $telegramCommunityUrl = $portalContacts['telegram']['href'] ?? '';
+    $vkCommunityUrl = $portalContacts['vk']['href'] ?? '';
 @endphp
 
 <div class="site-footer__inner partial-wrapper partial-footer">
@@ -59,7 +60,11 @@
                 <a href="{{ route('homepage.original') }}#partners">Партнёрам</a>
                 <a href="{{ route('privacy.policy') }}">Персональные данные</a>
                 @include('partials.privacy.cookie-settings-link')
-                <a href="mailto:{{ config('legal.privacy_email') }}">Связаться с нами</a>
+                @foreach(['email', 'phone'] as $channel)
+                    @if(isset($portalContacts[$channel]))
+                        <a href="{{ $portalContacts[$channel]['href'] }}">{{ $portalContacts[$channel]['value'] }}</a>
+                    @endif
+                @endforeach
             </nav>
         </div>
 

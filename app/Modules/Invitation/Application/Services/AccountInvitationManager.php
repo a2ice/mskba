@@ -485,13 +485,7 @@ final class AccountInvitationManager
     /** Public contacts only; no access to transport credentials or private venue contacts. */
     public function publicPortalContacts(): array
     {
-        $contacts = [];
-        $email = trim((string) config('support.email', ''));
-        if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
-            $contacts[] = ['value' => $email, 'href' => 'mailto:'.$email];
-        }
-
-        return $contacts;
+        return app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicContacts();
     }
 
     /**

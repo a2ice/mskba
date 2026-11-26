@@ -1577,6 +1577,9 @@ Route::post('/invites/continue/accept', [\App\Modules\Invitation\Presentation\Ht
     ->middleware(['auth', 'throttle:10,1'])->name('account-invitations.accept');
 
 
+Route::post('/backoffice/portal-contacts/save', \App\Http\Controllers\Backoffice\PortalContactSettingsController::class)
+    ->middleware(['auth:web', 'throttle:10,1'])->name('backoffice.portal-contacts.save');
+
 Route::post('/backoffice/social-integrations/{provider}/save', [\App\Http\Controllers\Backoffice\SocialIntegrationSettingsController::class, 'save'])
     ->whereIn('provider', ['telegram', 'vk'])->middleware(['auth:web', 'throttle:10,1'])
     ->name('backoffice.social-integrations.save');
