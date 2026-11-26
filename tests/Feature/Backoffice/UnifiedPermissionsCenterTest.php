@@ -47,9 +47,9 @@ final class UnifiedPermissionsCenterTest extends TestCase
                     Permission::CREATE_TOURNAMENT->value,
                 ],
                 'privileged_permissions' => [Permission::HANDLE_SUPPORT_TICKETS->value],
-                'backoffice_permissions' => [
+                'backoffice_permissions' => \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups::split([
                     Permission::BACKOFFICE_WIDGET_VIEW->value,
-                ],
+                ]),
             ])
             ->call('save')->assertHasNoFormErrors();
 
@@ -82,7 +82,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
                 'change_reason' => 'Проверка управления правами пользователя',
                 'creation_permissions' => [Permission::CREATE_EVENT->value],
                 'privileged_permissions' => [],
-                'backoffice_permissions' => [],
+                'backoffice_permissions' => \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups::split([]),
             ])
             ->call('save')->assertHasNoFormErrors();
 

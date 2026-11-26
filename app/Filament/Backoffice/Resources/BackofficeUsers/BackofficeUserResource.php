@@ -166,6 +166,31 @@ final class BackofficeUserResource extends Resource
         return $options;
     }
 
+    private static function backofficePermissionSections(): array
+    {
+        $sections = [];
+        foreach (BackofficePermissionGroups::all() as $id => $group) {
+            $permissions = $group['permissions'];
+            $sections[] = Section::make($group['label'])
+                ->collapsible()
+                ->schema([
+                    CheckboxList::make('backoffice_permissions.'.$id)
+                        ->label('Индивидуальные назначения')
+                        ->disabled(fn (?User $record): bool => self::isOwnSuperadmin($record))
+                        ->options(fn (?User $record): array => self::selectablePermissions($permissions, $record, false))
+                        ->columns(2),
+                    CheckboxList::make('locked_backoffice_permissions.'.$id)
+                        ->label('Недопустимые по роли или делегированию (просмотр)')
+                        ->hidden(fn (?User $record): bool => self::isOwnSuperadmin($record)
+                            || self::selectablePermissions($permissions, $record, true) === [])
+                        ->options(fn (?User $record): array => self::selectablePermissions($permissions, $record, true))
+                        ->disabled()->dehydrated(false)->columns(2),
+                ]);
+        }
+
+        return $sections;
+    }
+
     public static function form(Schema $schema): Schema
     {
         $global = app(GlobalOperationalPermissionManager::class);
@@ -324,16 +349,8 @@ final class BackofficeUserResource extends Resource
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
                                                 Section::make('Разрешения Filament')
-                                                    ->schema([
-                                                        CheckboxList::make('backoffice_permissions')->label('Индивидуальные назначения')
-                                                            ->disabled(fn (?User $record): bool => self::isOwnSuperadmin($record))
-                                                            ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
-                                                            ->columns(2),
-                                                        CheckboxList::make('locked_backoffice_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
-                                                            ->hidden(fn (?User $record): bool => self::isOwnSuperadmin($record))
-                                                            ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
-                                                            ->disabled()->dehydrated(false)->columns(2),
-                                                    ]),
+                                                    ->description('Разрешения сгруппированы по разделам. Все изменения сохраняются одной операцией.')
+                                                    ->schema(self::backofficePermissionSections()),
                                                 Placeholder::make('superadmin_permission_notice')
                                                     ->label('Права суперадминистратора')
                                                     ->content('Все права предоставлены системной ролью, включены по умолчанию и недоступны для отключения.')
