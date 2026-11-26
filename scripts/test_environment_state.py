@@ -52,6 +52,26 @@ class EnvironmentStateTests(unittest.TestCase):
         self.assertTrue(result["all_tracked_equal"])
         self.assertTrue(result["functional_equal"])
 
+    def test_sync_plan_accepts_only_exact_verified_identical_ancestor(self):
+        self.git("commit", "--allow-empty", "-qm", "production merge history")
+        main = self.git("rev-parse", "HEAD")
+        self.assertEqual("fast-forward", state.sync_plan(main, main, self.baseline)["action"])
+        self.assertEqual("equal", state.sync_plan(main, main, main)["action"])
+        self.assertEqual("skip", state.sync_plan(self.baseline, main, self.baseline)["action"])
+
+    def test_sync_plan_rejects_even_workflow_only_difference(self):
+        self.write(".github/workflows/ci.yml", "different")
+        self.commit("main workflow")
+        main = self.git("rev-parse", "HEAD")
+        self.assertEqual("skip", state.sync_plan(main, main, self.baseline)["action"])
+
+    def test_sync_plan_preserves_independent_dev_even_when_trees_equal(self):
+        self.git("commit", "--allow-empty", "-qm", "production")
+        main = self.git("rev-parse", "HEAD")
+        self.git("checkout", "--detach", self.baseline)
+        self.git("commit", "--allow-empty", "-qm", "independent development")
+        self.assertEqual("skip", state.sync_plan(main, main, "HEAD")["action"])
+
     def test_service_changes_separate_from_functional(self):
         self.write(".github/workflows/ci.yml", "other workflow")
         self.write("docs/readme.md", "updated")
