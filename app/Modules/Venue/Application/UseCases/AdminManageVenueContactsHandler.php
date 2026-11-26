@@ -55,6 +55,7 @@ final class AdminManageVenueContactsHandler
         return DB::transaction(function () use ($actor, $venue, $contactId, $data): Contact {
             $venue = $this->authorize($actor, $venue);
             $contact = $venue->contacts()->whereKey($contactId)->lockForUpdate()->firstOrFail();
+            $this->assertEditable($contact);
             $attributes = $this->attributes($data);
             $changed = $contact->type !== $attributes['type'] || $contact->value !== $attributes['value'];
             if ($changed) {
@@ -97,6 +98,7 @@ final class AdminManageVenueContactsHandler
         DB::transaction(function () use ($actor, $venue, $contactId): void {
             $venue = $this->authorize($actor, $venue);
             $contact = $venue->contacts()->whereKey($contactId)->lockForUpdate()->firstOrFail();
+            $this->assertEditable($contact);
             $primary = $contact->is_primary;
             $this->cancelCodes($contact);
             $contact->update(['is_primary' => false, 'is_public' => false, 'verified_at' => null]);
@@ -160,6 +162,13 @@ final class AdminManageVenueContactsHandler
         }
 
         return $contact;
+    }
+
+    private function assertEditable(Contact $contact): void
+    {
+        if (! in_array($contact->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
+            throw ValidationException::withMessages(['contact' => 'Изменение этого типа контакта здесь недоступно.']);
+        }
     }
 
     private function attributes(array $data): array
