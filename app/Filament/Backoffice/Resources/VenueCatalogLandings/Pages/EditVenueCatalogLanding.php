@@ -4,6 +4,8 @@ namespace App\Filament\Backoffice\Resources\VenueCatalogLandings\Pages;
 
 use App\Filament\Backoffice\Resources\VenueCatalogLandings\VenueCatalogLandingResource;
 use App\Modules\Content\Application\Services\VenueCatalogLandingEditor;
+use App\Modules\Content\Application\Services\VenueCatalogLandingSelectionAudit;
+use Filament\Notifications\Notification;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Content\Domain\Models\PageSeoSetting;
 use Filament\Resources\Pages\EditRecord;
@@ -17,6 +19,30 @@ final class EditVenueCatalogLanding extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('inspectSelection')->label('Проверить выборку')
+                ->tooltip('Проверяет сохранённые фильтры без изменения записи')
+                ->action(function (): void {
+                    $result = app(VenueCatalogLandingSelectionAudit::class)->inspect($this->record->fresh());
+                    $count = $result['matching'];
+                    $body = 'По сохранённым фильтрам найдено площадок: '.$count.'. ';
+                    $body .= $count === 0
+                        ? 'Не рекомендуется активировать пустую подборку.'
+                        : ($count < 3 ? 'Мало площадок: проверьте наполнение перед публикацией.' : 'Базовый ориентир по наполнению достигнут; требуется редакционная проверка.');
+                    if ($result['city_matching'] !== null) {
+                        $body .= ' В выбранном городе по остальным условиям: '.$result['city_matching']
+                            .'. Без корректной привязки к округу или району: '.$result['missing_district']
+                            .'. Округов и районов в справочнике города: '.$result['district_count'].'.';
+                    }
+                    $body .= ' Это количество площадок, а не свободных слотов.';
+
+                    $notification = Notification::make()->title('Проверка сохранённой подборки')->body($body)->persistent();
+                    if ($count < 3 || ($result['missing_district'] ?? 0) > 0) {
+                        $notification->warning();
+                    } else {
+                        $notification->success();
+                    }
+                    $notification->send();
+                }),
             Action::make('preview')->label('Предпросмотр')
                 ->url(fn (): string => route('admin.content.catalog-landings.preview', ['landingId' => $this->record->getKey()]))
                 ->openUrlInNewTab(),
