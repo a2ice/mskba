@@ -72,6 +72,39 @@ final readonly class VenueRentalInboxProvider implements DashboardDataProvider
         return $this->hasScope($scopes['bookings']) || $this->hasScope($scopes['pre_requests']);
     }
 
+    /** Same authorization boundary as the read model, independent of status
+     * so that removing a formerly visible item also invalidates the inbox.
+     */
+    public function canInvalidateFor(User $user, VenueBooking|VenueRentalPreRequest $record): bool
+    {
+        $user = $user->canonical();
+        if (! $this->rental->isAvailable($user, []) || in_array((int) $record->requester_user_id, $user->identityIds(), true)) {
+            return false;
+        }
+        $scopes = $this->scopes($user);
+        $scope = $scopes[$record instanceof VenueBooking ? 'bookings' : 'pre_requests'];
+        $venueId = (int) $record->venue_id;
+        $courtId = (int) $record->venue_court_id;
+        if (! Venue::query()->whereKey($venueId)->exists()) {
+            return false;
+        }
+        if (! in_array($venueId, $scope['venues'], true)
+            && (! in_array($courtId, $scope['courts'], true)
+                || ! VenueCourt::query()->whereKey($courtId)->where('venue_id', $venueId)->exists())) {
+            return false;
+        }
+
+        if ($record instanceof VenueRentalPreRequest) {
+            return $this->preRequests->can($user, $record);
+        }
+        if ($record->flow !== 'rental') {
+            return false;
+        }
+
+        return $record->pre_request_id === null
+            || ($record->preRequest !== null && $this->preRequests->can($user, $record->preRequest));
+    }
+
     private function constrain(Builder $query, array $scope, string $table): Builder
     {
         return $query->whereIn('venue_id', Venue::query()->select('id'))

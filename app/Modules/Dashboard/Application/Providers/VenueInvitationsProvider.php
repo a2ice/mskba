@@ -36,6 +36,12 @@ final readonly class VenueInvitationsProvider implements DashboardDataProvider
         return $this->venueIds($user->canonical()) !== [];
     }
 
+    public function canInvalidateFor(User $user, AccountInvitation $record): bool
+    {
+        return $record->scope_type === 'venue'
+            && in_array((int) $record->scope_id, $this->venueIds($user->canonical()), true);
+    }
+
     public function getData(User $user, array $settings): DashboardWidgetData
     {
         $user = $user->canonical();
