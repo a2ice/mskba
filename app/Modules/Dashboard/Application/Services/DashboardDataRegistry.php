@@ -10,6 +10,7 @@ use App\Modules\Dashboard\Application\Providers\WalletSummaryProvider;
 use App\Modules\Dashboard\Application\Providers\UpcomingEventsProvider;
 use App\Modules\Dashboard\Application\Providers\MyRentalRequestsProvider;
 use App\Modules\Dashboard\Application\Providers\NeedsAttentionProvider;
+use App\Modules\Dashboard\Application\Providers\VenueRentalInboxProvider;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Identity\Domain\Models\User;
 
@@ -23,6 +24,7 @@ final class DashboardDataRegistry
         'upcoming_events' => ['provider' => UpcomingEventsProvider::class, 'label' => 'Моё расписание', 'limit' => true],
         'my_rental_requests' => ['provider' => MyRentalRequestsProvider::class, 'label' => 'Мои заявки на аренду', 'limit' => true],
         'needs_attention' => ['provider' => NeedsAttentionProvider::class, 'label' => 'Требует моего внимания', 'limit' => true],
+        'venue_rental_inbox' => ['provider' => VenueRentalInboxProvider::class, 'label' => 'Входящие заявки площадок', 'limit' => true],
     ];
 
     /** @return array<string, string> */

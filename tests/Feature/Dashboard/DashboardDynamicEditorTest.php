@@ -51,7 +51,7 @@ final class DashboardDynamicEditorTest extends TestCase
     public function test_server_validates_source_and_normalizes_settings(): void
     {
         $this->actingAs($this->admin());
-        $this->assertSame(['unread_messages', 'my_interests', 'wallet_summary', 'upcoming_events', 'my_rental_requests', 'needs_attention'], array_keys(DashboardDataRegistry::options()));
+        $this->assertSame(['unread_messages', 'my_interests', 'wallet_summary', 'upcoming_events', 'my_rental_requests', 'needs_attention', 'venue_rental_inbox'], array_keys(DashboardDataRegistry::options()));
 
         foreach ([
             ['source_key' => 'unknown', 'source_settings' => ['limit' => 5]],

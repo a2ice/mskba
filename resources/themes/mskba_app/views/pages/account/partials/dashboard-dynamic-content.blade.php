@@ -21,6 +21,7 @@
         'my_interests' => [['/account/subscriptions', 'Мои подписки']],
         'upcoming_events' => [['/account/my-games?scope=playing', 'Мои игры']],
         'my_rental_requests' => [['/account/venue-bookings', 'Мои заявки'], ['/account/venue-pre-requests', 'Предзаявки']],
+        'venue_rental_inbox' => array_merge(! empty($data['summary']['bookings_url']) ? [[$data['summary']['bookings_url'], 'Входящие заявки']] : [], ! empty($data['summary']['pre_requests_url']) ? [[$data['summary']['pre_requests_url'], 'Предзаявки']] : []),
         'wallet_summary' => [['/account/wallet', 'Кошелёк']],
         'unread_messages' => [['/account/notifications', 'Сообщения']],
         default => [],
@@ -37,6 +38,7 @@
             'my_interests' => 'Пока нет предстоящих мероприятий по твоим интересам.',
             'upcoming_events' => 'В расписании пока нет предстоящих мероприятий.',
             'my_rental_requests' => 'Активных заявок и предзаявок пока нет.',
+            'venue_rental_inbox' => 'Входящих заявок и предзаявок пока нет.',
             'wallet_summary' => 'Операций пока нет.',
             'needs_attention' => 'Сейчас нет действий, требующих твоего внимания.',
             default => 'Новых сообщений нет.',
@@ -61,6 +63,7 @@
             @case('needs_attention')
                 <p>Требуют внимания: <strong>{{ $total }}</strong></p>
                 @break
+            @case('venue_rental_inbox')
             @case('my_rental_requests')
                 <p>Заявок: <strong>{{ (int) ($summary['booking_total'] ?? 0) }}</strong> · Предзаявок: <strong>{{ (int) ($summary['pre_request_total'] ?? 0) }}</strong></p>
                 @break
@@ -69,12 +72,12 @@
             <ul>
                 @foreach ($items as $item)
                     @php
-                        $title = $source === 'my_rental_requests' ? ($item['venue_name'] ?? 'Площадка') : ($item['title'] ?? 'Мероприятие');
+                        $title = in_array($source, ['my_rental_requests', 'venue_rental_inbox'], true) ? ($item['venue_name'] ?? 'Площадка') : ($item['title'] ?? 'Мероприятие');
                         $url = $item['url'] ?? null;
                         $detail = match ($source) {
                             'my_interests' => ($item['venue_name'] ?? '').' · '.(($item['reason'] ?? '') === 'criteria_match' ? 'По условиям' : 'По площадке'),
                             'upcoming_events' => ($item['venue_name'] ?? '').' · '.(($item['role'] ?? '') === 'organizer' ? 'Организатор' : 'Участвую'),
-                            'my_rental_requests' => (($item['kind'] ?? '') === 'pre_request' ? 'Предзаявка' : 'Заявка').' · '.($item['status_label'] ?? ''),
+                            'my_rental_requests', 'venue_rental_inbox' => (($item['kind'] ?? '') === 'pre_request' ? 'Предзаявка' : 'Заявка').' · '.($item['status_label'] ?? ''),
                             'wallet_summary' => $date($item['completed_at'] ?? null),
                             'needs_attention' => ($item['description'] ?? '').(isset($item['deadline_at']) ? ' · Ответить до '.$date($item['deadline_at']) : ''),
                             default => '',
