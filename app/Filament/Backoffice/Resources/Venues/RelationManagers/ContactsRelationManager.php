@@ -12,6 +12,7 @@ use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\UseCases\AdminManageVenueContactsHandler;
+use App\Modules\Venue\Application\Services\VenueContactConnectionStatus;
 use App\Modules\Venue\Domain\Models\Venue;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -110,6 +111,25 @@ final class ContactsRelationManager extends RelationManager
         return false;
     }
 
+    private function connectionStatus(Contact $record): string
+    {
+        $status = app(VenueContactConnectionStatus::class)->resolve(auth('web')->user(), $this->venue(), $record);
+        $parts = [];
+        if ($status['user'] !== null) {
+            $parts[] = 'Аккаунт: '.$status['user']['username']
+                .($status['user']['confirmed'] ? '' : ' (не подтверждён)');
+        }
+        foreach ($status['contracts'] as $contract) {
+            $parts[] = 'Активный контракт #'.$contract['id'].' — '.$contract['role'];
+        }
+        if ($status['invitation'] !== null) {
+            $invitation = $status['invitation'];
+            $parts[] = 'Приглашение #'.$invitation['id'].' — '.$invitation['status'].' / '.$invitation['progress'];
+        }
+
+        return $parts === [] ? '—' : implode(' · ', $parts);
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -121,6 +141,9 @@ final class ContactsRelationManager extends RelationManager
                 IconColumn::make('is_primary')->label('Основной')->boolean(),
                 IconColumn::make('is_public')->label('Публичный')->boolean(),
                 TextColumn::make('verified_at')->label('Подтверждён')->dateTime('d.m.Y H:i')->placeholder('Нет'),
+                TextColumn::make('connection_status')->label('Подключение')->wrap()
+                    ->visible(fn (): bool => app(VenueContactConnectionStatus::class)->canView(auth('web')->user(), $this->venue()))
+                    ->state(fn (Contact $record): string => $this->connectionStatus($record)),
             ])
             ->defaultSort('id')
             ->headerActions([
@@ -130,6 +153,17 @@ final class ContactsRelationManager extends RelationManager
                         fn () => $this->manager()->add($this->actor(), $this->venue(), $data), 'Контакт добавлен')),
             ])
             ->recordActions([
+                Action::make('contactHistory')->label('История')->icon('heroicon-o-clock')
+                    ->modalHeading('История контакта')
+                    ->modalSubmitAction(false)
+                    ->modalContent(function (Contact $record) {
+                        abort_unless($this->manager()->canManage($this->actor(), $this->venue()), 403);
+                        $contact = $this->venue()->contacts()->findOrFail($record->id);
+                        $attempts = $contact->verifications()->latest('id')->limit(50)
+                            ->get(['id', 'sent_to', 'status', 'attempts_count', 'created_at', 'verified_at', 'expires_at']);
+
+                        return view('filament.backoffice.venue-contact-history', ['contact' => $contact, 'attempts' => $attempts]);
+                    }),
                 Action::make('editContact')->label('Редактировать')->icon('heroicon-o-pencil-square')
                     ->visible(fn (Contact $record): bool => $this->editable($record))
                     ->fillForm(fn (Contact $record): array => [
