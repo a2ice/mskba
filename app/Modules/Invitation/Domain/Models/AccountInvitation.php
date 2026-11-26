@@ -121,6 +121,7 @@ class AccountInvitation extends Model
             'registered' => 'Аккаунт создан',
             'contact_verified' => 'Контакт подтверждён',
             'awaiting_account' => 'Ожидается подтверждение аккаунта',
+            'awaiting_authorization' => 'Ожидается согласование полномочий',
             'awaiting_ownership' => 'Ожидается проверка владения',
             'completed' => 'Процедура завершена',
             default => '—',
