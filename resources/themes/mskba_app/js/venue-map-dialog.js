@@ -26,6 +26,7 @@ if (dialog) {
     let request = null;
     let contextRequest = null;
     let activeVenueId = null;
+    let referenceVenueId = null;
     let generation = 0;
     const initialContext = { data: {...canvas.dataset}, title: title.textContent, address: address.textContent, nearby: apply.dataset.nearbyUrl, currentLink: dialog.dataset.currentVenueLink };
 
@@ -42,6 +43,8 @@ if (dialog) {
     );
     const ownCoords = () => validCoords(canvas.dataset.lat, canvas.dataset.lon)
         ? [Number(canvas.dataset.lat), Number(canvas.dataset.lon)] : null;
+    const referenceCoords = () => referenceVenueId !== null && validCoords(initialContext.data.lat, initialContext.data.lon)
+        ? [Number(initialContext.data.lat), Number(initialContext.data.lon)] : null;
     const metroStations = () => {
         let stations;
         try { stations = JSON.parse(canvas.dataset.metroStations || '[]'); }
@@ -76,17 +79,45 @@ if (dialog) {
         loading = null;
         canvas.replaceChildren();
     };
-    const fitMap = () => {
+    const fitMap = (includeNearby = false) => {
         if (!map) return;
-        // The station collection stays in geoObjects when nearby pins are hidden,
-        // so the bounds always include the venue and all linked metro stations.
+        const own = ownCoords();
+        const reference = referenceCoords();
+        // In the two-venue view the clicked venue is the visual anchor.
+        // Work in projected pixels, not geographic degrees: the limiting
+        // edge depends on both the direction and the actual viewport size.
+        if (own && reference && !includeNearby) {
+            const [width, height] = map.container.getSize();
+            // 20px free space plus the existing pin's ~30px outer extent.
+            const halfWidth = width / 2 - 50;
+            const halfHeight = height / 2 - 50;
+            if (halfWidth > 0 && halfHeight > 0) {
+                const projection = map.options.get('projection');
+                const baseZoom = 16;
+                const center = projection.toGlobalPixels(own, baseZoom);
+                const point = projection.toGlobalPixels(reference, baseZoom);
+                const dx = Math.abs(point[0] - center[0]);
+                const dy = Math.abs(point[1] - center[1]);
+                const factor = Math.min(dx ? halfWidth / dx : Infinity, dy ? halfHeight / dy : Infinity);
+                const zoom = Math.max(0, Math.min(20, baseZoom + Math.log2(factor)));
+                if (Number.isFinite(zoom)) {
+                    map.options.set('avoidFractionalZoom', false);
+                    Promise.resolve(map.setCenter(own, zoom, { useMapMargin: false })).catch(() => {});
+                    return;
+                }
+            }
+        }
+        // Additional nearby results and ordinary maps keep the original
+        // all-visible-objects framing, including linked metro stations.
+        map.options.set('avoidFractionalZoom', true);
         const bounds = map.geoObjects.getBounds();
         if (bounds) {
-            Promise.resolve(map.setBounds(bounds, {
+            const fittingMap = map;
+            Promise.resolve(fittingMap.setBounds(bounds, {
                 checkZoomRange: true,
                 zoomMargin: [48, 48, 48, 48],
             })).then(() => {
-                if (map && map.getZoom() > 16) map.setZoom(16);
+                if (map === fittingMap && fittingMap.getZoom() > 16) fittingMap.setZoom(16);
             }).catch(() => {});
         } else if (ownCoords()) {
             map.setCenter(ownCoords(), 15);
@@ -113,6 +144,14 @@ if (dialog) {
                 balloonContentHeader: safeHtml(canvas.dataset.name || 'Площадка'),
                 balloonContentBody: venueMapBalloonAction(canvas.dataset.venueUrl, dialog.dataset.currentVenueLink === 'true'),
             }));
+            const reference = referenceCoords();
+            if (reference) {
+                const name = initialContext.data.name || 'Площадка';
+                map.geoObjects.add(venuePlacemark(reference, {
+                    hintContent: name,
+                    balloonContentHeader: safeHtml(name),
+                }, 'reference'));
+            }
             metroCollection = new window.ymaps.GeoObjectCollection();
             metroStations().forEach(station => {
                 const name = String(station.name || 'Метро');
@@ -147,14 +186,15 @@ if (dialog) {
         if (!dialog.open) dialog.showModal();
         void initialize();
     }
-    function setContext(venue, details) {
+    function setContext(venue, details, referenceId) {
         generation++;
         destroyMap();
         resetNearby();
         activeVenueId = Number(venue.id);
+        referenceVenueId = referenceId;
         dialog.dataset.currentVenueLink = 'true';
         const name = String(venue.name || 'Площадка');
-        title.textContent = name + ' — на карте';
+        title.textContent = name;
         address.textContent = String(venue.address || '');
         canvas.dataset.name = name;
         canvas.dataset.venueUrl=String(venue.venue_url || venue.url || '');
@@ -183,6 +223,7 @@ if (dialog) {
                 apply.dataset.nearbyUrl = initialContext.nearby;
                 dialog.dataset.currentVenueLink = initialContext.currentLink;
                 activeVenueId = null;
+                referenceVenueId = null;
             }
             show();
             return;
@@ -190,16 +231,20 @@ if (dialog) {
 
         const id = Number(item.dataset.venueId);
         if (!Number.isSafeInteger(id) || id <= 0) return;
-        if (activeVenueId === id && ownCoords()) { show(); return; }
+        const referenceId = Number(item.closest('[data-venue-map-reference-id]')?.dataset.venueMapReferenceId);
+        const nextReferenceId = Number.isSafeInteger(referenceId) && referenceId > 0 && referenceId !== id
+            ? referenceId : null;
+        if (activeVenueId === id && referenceVenueId === nextReferenceId && ownCoords()) { show(); return; }
 
         contextRequest?.abort();
         activeVenueId = null;
+        referenceVenueId = null;
         const controller = new AbortController();
         contextRequest = controller;
         generation++;
         destroyMap();
         resetNearby();
-        title.textContent = 'Площадка — на карте';
+        title.textContent = 'Площадка';
         address.textContent = '';
         canvas.textContent = 'Загружаем площадку…';
         if (!dialog.open) dialog.showModal();
@@ -213,7 +258,7 @@ if (dialog) {
             const payload = await response.json();
             if (controller.signal.aborted || !dialog.open) return;
             if (!payload.data || !payload.map) throw new Error('Карта площадки недоступна.');
-            setContext(payload.data, payload.map);
+            setContext(payload.data, payload.map, nextReferenceId);
             void initialize();
         } catch (error) {
             if (error.name !== 'AbortError' && dialog.open) {
@@ -267,6 +312,7 @@ if (dialog) {
             nearbyCollection.removeAll();
             const venues = Array.isArray(payload.venues) ? payload.venues : [];
             venues.forEach(venue => {
+                if (referenceVenueId !== null && Number(venue.id) === referenceVenueId) return;
                 if (!validCoords(venue.latitude, venue.longitude)) return;
                 const action=venueMapBalloonAction(venue.url);
                 if(!action)return;
@@ -280,7 +326,7 @@ if (dialog) {
                 ));
             });
             setStatus(venues.length ? 'Найдено площадок: ' + venues.length : 'Рядом нет подходящих площадок.');
-            fitMap();
+            fitMap(true);
         } catch (error) {
             if (error.name !== 'AbortError') setStatus(error.message);
         } finally {

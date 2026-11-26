@@ -1,5 +1,6 @@
 import './venue-catalog-nearby.js';
 import './venue-catalog-geography.js';
+import './venue-catalog-types.js';
 import { loadYandexMaps } from '../../mskba_dark/js/core/yandex-maps.js';
 import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
 
@@ -237,9 +238,6 @@ document.querySelectorAll('[data-venue-interest-filter]').forEach(root => {
     const bodyFor = point => {
         const sections = [];
         if (point.address) sections.push('<div>' + escapeHtml(point.address) + '</div>');
-        if (point.matched_court) {
-            sections.push('<div>Подходящий зал: ' + escapeHtml(point.matched_court) + '</div>');
-        }
         const court = point.matched_court_details;
         if (court) {
             if (court.type_label) sections.push('<div>' + escapeHtml(court.type_label) + '</div>');

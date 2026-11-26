@@ -16,6 +16,7 @@ use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
+use App\Modules\Venue\Application\Services\VenueTypeFilter;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -32,9 +33,9 @@ final class ListVenuesHandler
         private readonly RecommendVenuesForIntent $interestMatcher,
     ) {}
 
-    /** @param array{search?: string|null, city_id?: int|string|null, district_id?: int|string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
+    /** @param array{search?: string|null, city_id?: int|string|null, district_id?: int|string|null, type?: string|array|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
     /** @param Collection<int, PlayIntent>|null $matchingInterests */
-    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null): array
+    public function handle(?User $user, ?Actor $actor = null, array $filters = [], ?Collection $matchingInterests = null, ?array $onlyVenueIds = null, bool $configuredRentalOnly = false): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -42,7 +43,8 @@ final class ListVenuesHandler
         $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
         $actorOwnedVenueIds = $this->accessResolver->actorOwnedVenueIdsFor($actor);
 
-        $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters, $onlyVenueIds): void {
+        $types = VenueTypeFilter::values($filters['type'] ?? null);
+        $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters, $onlyVenueIds, $types): void {
             // Hidden venues are managed through Filament/account rather than
             // published in cards, map pins or search, even for their owners.
             $query->when($onlyVenueIds !== null, fn ($subset) => $subset->whereIn('id', $onlyVenueIds))
@@ -71,7 +73,13 @@ final class ListVenuesHandler
                             ->when(isset($filters['district_id']), fn ($query) => $query->where('district_id', (int) $filters['district_id']));
                     });
                 })
-                ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->whereDiscoveryType($type))
+                ->when($types !== [], function ($filtered) use ($types): void {
+                    $filtered->where(function ($any) use ($types): void {
+                        foreach ($types as $type) {
+                            $any->orWhere(fn ($branch) => $branch->whereDiscoveryType($type));
+                        }
+                    });
+                })
                 ->when((bool) ($filters['has_upcoming_events'] ?? false), function ($filtered) use ($filters): void {
                     $now = now();
                     $until = $now->copy()->addDays((int) ($filters['event_days'] ?? 7));
@@ -119,26 +127,52 @@ final class ListVenuesHandler
             ->keyBy('venue_id');
 
         $accessFilter = $filters['access'] ?? null;
-        $environment = VenueTypeEnum::tryFrom((string) ($filters['type'] ?? ''))?->discoveryEnvironment();
+        $environments = [];
+        $passportTypes = [];
+        foreach ($types as $type) {
+            $environment = VenueTypeEnum::from($type)->discoveryEnvironment();
+            if ($environment !== null) {
+                $environments[] = $environment->value;
+            } else {
+                $passportTypes[] = $type;
+            }
+        }
         $statusFilter = $filters['operational_status'] ?? null;
-        $zoneMode = $environment !== null || filled($accessFilter);
 
         return $venues
-            ->map(function (Venue $venue) use ($policies, $accessFilter, $environment, $statusFilter, $zoneMode): array {
-                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id), includeClosed: true);
-                $matched = VenueCourtDiscoveryAccess::select(
-                    $access,
-                    $environment?->value,
-                    VenueCourtDiscoveryAccess::paymentFilter($accessFilter),
-                    $accessFilter === 'approval' ? true : null,
-                    $statusFilter,
-                );
+            ->map(function (Venue $venue) use ($policies, $accessFilter, $environments, $passportTypes, $statusFilter, $configuredRentalOnly): array {
+                $access = $this->courtDiscovery->classify($venue, $policies->get($venue->id), includeClosed: true, configuredRentalOnly: $configuredRentalOnly);
+                $passportMatch = in_array($venue->type->value, $passportTypes, true);
+                $requiresCourt = $configuredRentalOnly || filled($accessFilter);
+                // A selected passport type is an OR branch; access and rental
+                // still have to match a real court of that same venue.
+                $candidates = $environments === [] || ($passportMatch && $requiresCourt) ? [null] : $environments;
+                $matches = [];
+                foreach ($candidates as $environment) {
+                    $match = VenueCourtDiscoveryAccess::select(
+                        $access,
+                        $environment,
+                        VenueCourtDiscoveryAccess::paymentFilter($accessFilter),
+                        $accessFilter === 'approval' ? true : null,
+                        $statusFilter,
+                        allowUnconstrained: $configuredRentalOnly,
+                    );
+                    if ($match !== null) {
+                        $matches[] = $match;
+                    }
+                }
+                usort($matches, fn (array $a, array $b): int =>
+                    ($b['is_open'] <=> $a['is_open'])
+                    ?: ($a['sort_order'] <=> $b['sort_order'])
+                    ?: ($a['court_id'] <=> $b['court_id']));
+                $matched = $matches[0] ?? null;
+                $eligible = $matched !== null || (! $requiresCourt
+                    && ($environments === [] || $passportMatch)
+                    && ($statusFilter === null || $venue->operational_status->value === $statusFilter));
 
-                return ['venue' => $venue, 'access' => $access, 'matched' => $matched];
+                return ['venue' => $venue, 'access' => $access, 'matched' => $matched, 'eligible' => $eligible];
             })
-            ->filter(fn (array $row): bool => $zoneMode
-                ? $row['matched'] !== null
-                : ($statusFilter === null || $row['venue']->operational_status->value === $statusFilter))
+            ->filter(fn (array $row): bool => $row['eligible'])
             ->map(function (array $row) use (
                 $contractViewableVenueIds, $contractEditableVenueIds,
                 $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds,

@@ -15,6 +15,7 @@ final class AccountDashboardService
         'account_status' => 'Статус аккаунта',
         'getting_started' => 'Возможности портала',
         'message_summary' => 'Сообщения',
+        'dynamic' => 'Динамический виджет',
         'information' => 'Информационная карточка',
         'advertisement' => 'Рекламная карточка',
         'custom_html' => 'HTML / CSS / JS (песочница)',
@@ -33,6 +34,8 @@ final class AccountDashboardService
             ->orderBy('sort_order')->orderBy('id')->get()
             ->filter(function (AccountDashboardWidget $widget) use ($user, $roles, $hasVerifiedContact, $identityIds): bool {
                 if (array_intersect($identityIds, $widget->exclude_user_ids ?? []) !== []) return false;
+                // An explicit audience override never bypasses provider authorization.
+                if ($widget->kind === 'dynamic' && ! app(DashboardDataRegistry::class)->isAvailable($widget, $user)) return false;
                 if (array_intersect($identityIds, $widget->include_user_ids ?? []) !== []) return true;
                 if (($widget->account_statuses ?? []) !== []
                     && ! in_array($user->status->value, $widget->account_statuses, true)) return false;

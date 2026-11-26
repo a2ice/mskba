@@ -34,6 +34,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -165,6 +166,31 @@ final class BackofficeUserResource extends Resource
         return $options;
     }
 
+    private static function backofficePermissionSections(): array
+    {
+        $sections = [];
+        foreach (BackofficePermissionGroups::all() as $id => $group) {
+            $permissions = $group['permissions'];
+            $sections[] = Section::make($group['label'])
+                ->collapsible()
+                ->schema([
+                    CheckboxList::make('backoffice_permissions.'.$id)
+                        ->label('Индивидуальные назначения')
+                        ->disabled(fn (?User $record): bool => self::isOwnSuperadmin($record))
+                        ->options(fn (?User $record): array => self::selectablePermissions($permissions, $record, false))
+                        ->columns(2),
+                    CheckboxList::make('locked_backoffice_permissions.'.$id)
+                        ->label('Недопустимые по роли или делегированию (просмотр)')
+                        ->hidden(fn (?User $record): bool => self::isOwnSuperadmin($record)
+                            || self::selectablePermissions($permissions, $record, true) === [])
+                        ->options(fn (?User $record): array => self::selectablePermissions($permissions, $record, true))
+                        ->disabled()->dehydrated(false)->columns(2),
+                ]);
+        }
+
+        return $sections;
+    }
+
     public static function form(Schema $schema): Schema
     {
         $global = app(GlobalOperationalPermissionManager::class);
@@ -191,6 +217,9 @@ final class BackofficeUserResource extends Resource
                                                 || auth('web')->user()?->canonical()->system_role !== UserSystemRoleEnum::SUPERADMIN
                                                 || self::isOwnSuperadmin($record))
                                             ->dehydrated(),
+                                        Placeholder::make('test_account_info')->label('Тип аккаунта')
+                                            ->content(fn (?User $record): string => $record?->is_test_account
+                                                ? 'Тестовый №'.$record->test_account_number : 'Обычный'),
                                         Placeholder::make('registered_at_info')->label('Зарегистрирован')
                                             ->content(fn (?User $record): string => $record?->created_at?->format('d.m.Y H:i') ?? '—'),
                                         Placeholder::make('registration_channel_info')->label('Канал регистрации')
@@ -210,7 +239,8 @@ final class BackofficeUserResource extends Resource
                                         Placeholder::make('vk_info')->label('VK')
                                             ->content(fn (?User $record): string => $record?->vkAccount ? 'Подключён' : 'Не подключён'),
                                     ])->columns(2),
-                                View::make('filament.backoffice.user-save-general'),
+                                View::make('filament.backoffice.user-save-general')
+                                     ->viewData(['editedUser' => $record]),
                             ]),
                         Tab::make('Контакты')
                             ->icon('heroicon-o-identification')
@@ -319,16 +349,8 @@ final class BackofficeUserResource extends Resource
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
                                                 Section::make('Разрешения Filament')
-                                                    ->schema([
-                                                        CheckboxList::make('backoffice_permissions')->label('Индивидуальные назначения')
-                                                            ->disabled(fn (?User $record): bool => self::isOwnSuperadmin($record))
-                                                            ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
-                                                            ->columns(2),
-                                                        CheckboxList::make('locked_backoffice_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
-                                                            ->hidden(fn (?User $record): bool => self::isOwnSuperadmin($record))
-                                                            ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
-                                                            ->disabled()->dehydrated(false)->columns(2),
-                                                    ]),
+                                                    ->description('Разрешения сгруппированы по разделам. Все изменения сохраняются одной операцией.')
+                                                    ->schema(self::backofficePermissionSections()),
                                                 Placeholder::make('superadmin_permission_notice')
                                                     ->label('Права суперадминистратора')
                                                     ->content('Все права предоставлены системной ролью, включены по умолчанию и недоступны для отключения.')
@@ -361,6 +383,9 @@ final class BackofficeUserResource extends Resource
         return $table->columns([
             TextColumn::make('id')->label('ID')->sortable(),
             TextColumn::make('username')->label('Пользователь')->searchable()->sortable()->weight('bold'),
+            TextColumn::make('is_test_account')->label('Тип аккаунта')->badge()
+                ->formatStateUsing(fn (User $record): string => $record->is_test_account ? 'Тестовый №'.$record->test_account_number : 'Обычный')
+                ->color(fn (User $record): string => $record->is_test_account ? 'warning' : 'gray'),
             TextColumn::make('system_role')->label('Системная роль')
                 ->badge()->formatStateUsing(fn ($record): string => $record->system_role->label()),
             TextColumn::make('staff_title')->label('Должность')->placeholder('—'),
@@ -368,6 +393,10 @@ final class BackofficeUserResource extends Resource
                 ->badge()->formatStateUsing(fn ($record): string => $record->status->label()),
             TextColumn::make('updated_at')->label('Изменён')->dateTime('d.m.Y H:i')->sortable(),
         ])
+            ->filters([
+                TernaryFilter::make('is_test_account')->label('Тип аккаунта')
+                    ->trueLabel('Тестовые')->falseLabel('Обычные')->placeholder('Все'),
+            ])
             ->defaultSort('id', 'desc')
             ->recordActions([
                 EditAction::make()->label('Редактировать')->visible(fn (User $record): bool => self::canEdit($record)),

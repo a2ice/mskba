@@ -30,6 +30,14 @@
 
             <header class="default-category__header">
                 <h1>{{ $title }}</h1>
+                @if($isLandingPreview ?? false)<p>Предпросмотр сохранённой посадочной. Не опубликована этим действием.</p>@endif
+                @if($categoryId === 'venues')
+                    @include('partials.venues.catalog-landing-editorial', [
+                        'editorialPosition' => 'intro',
+                        'editorialClass' => 'venue-catalog-editorial venue-catalog-editorial--intro',
+                        'editorialPage' => $filters['page'] ?? 1,
+                    ])
+                @endif
             </header>
 
             <div class="default-category__grid">
@@ -193,6 +201,13 @@
                     @yield('category-pagination')
                 </main>
             </div>
+            @if($categoryId === 'venues')
+                @include('partials.venues.catalog-landing-editorial', [
+                    'editorialPosition' => 'body',
+                    'editorialClass' => 'venue-catalog-editorial venue-show-section__description',
+                    'editorialPage' => $filters['page'] ?? 1,
+                ])
+            @endif
         </div>
     </section>
 

@@ -1,4 +1,5 @@
 import { subscribePublic, subscribePrivate } from '../../../js/realtime.js';
+import { affectedDashboardSources, mergeDashboardRefresh, sameDashboardIds } from './dashboard-refresh-sources.js';
 
 const dashboard = document.querySelector('[data-account-dashboard]');
 
@@ -7,6 +8,13 @@ if (dashboard) {
     const header = document.querySelector('[data-app-header][data-notification-user-id]');
     let version = 0;
     let controller = null;
+    let liveTimer = null;
+    let liveDeadline = 0;
+    let liveSources = [];
+    let queuedSources = [];
+    let running = false;
+    let activePartial = false;
+    let disposed = false;
     // A revision is delayed only once, not after every Reverb / notification refresh.
     const pending = new Map();
 
@@ -92,7 +100,8 @@ if (dashboard) {
                 continue;
             }
             const delay = Math.max(0, Math.min(60, Number(incoming.dataset.widgetRefreshDelay) || 0));
-            if (delay === 0) {
+            // Personal data must not be kept on screen for the admin-edit countdown.
+            if (delay === 0 || incoming.dataset.widgetKind === 'dynamic' || current.dataset.widgetKind === 'dynamic') {
                 clearPending(id);
                 nextChildren.push(incoming);
                 continue;
@@ -106,7 +115,7 @@ if (dashboard) {
         dashboard.replaceChildren(...nextChildren);
     };
 
-    const refresh = async () => {
+    const refreshFull = async () => {
         const serial = ++version;
         controller?.abort();
         controller = new AbortController();
@@ -133,7 +142,25 @@ if (dashboard) {
                 const oldIds = ids(dashboard.children);
                 const newIds = ids(snapshot.content.children);
                 if (oldIds.length === newIds.length
-                    && oldIds.every((id, index) => id === newIds[index])) return;
+                    && oldIds.every((id, index) => id === newIds[index])) {
+                    // Preserve drag order but reconcile private data even during a drag.
+                    const incomingById = new Map(Array.from(snapshot.content.children)
+                        .filter(node => node.hasAttribute('data-dashboard-widget'))
+                        .map(node => [node.dataset.dashboardWidget, node]));
+                    for (const current of dashboard.querySelectorAll('[data-dashboard-widget]')) {
+                        const incoming = incomingById.get(current.dataset.dashboardWidget);
+                        if (current.dataset.widgetKind !== 'dynamic' && incoming?.dataset.widgetKind !== 'dynamic') continue;
+                        const content = current.querySelector('.app-dashboard-widget__content');
+                        const replacement = incoming?.querySelector('.app-dashboard-widget__content');
+                        if (incoming && current.hidden !== incoming.hidden) {
+                            document.dispatchEvent(new Event('mskba:dashboard-edit-cancel'));
+                            reconcile(data.html);
+                            return;
+                        }
+                        if (content && replacement && content.outerHTML !== replacement.outerHTML) content.replaceWith(replacement);
+                    }
+                    return;
+                }
 
                 document.dispatchEvent(new Event('mskba:dashboard-edit-cancel'));
             }
@@ -143,9 +170,121 @@ if (dashboard) {
         }
     };
 
+    const refreshPartial = async (keys) => {
+        const serial = ++version;
+        controller?.abort();
+        controller = new AbortController();
+        const url = new URL(source, window.location.href);
+        for (const key of keys) url.searchParams.append('sources[]', key);
+        try {
+            const response = await fetch(url, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store',
+                signal: controller.signal,
+            });
+            if (serial !== version || controller.signal.aborted || disposed) return true;
+            if (!response.ok) return false;
+            const data = await response.json();
+            if (serial !== version || controller.signal.aborted || disposed) return true;
+            if (data.partial !== true || typeof data.html !== 'string') return false;
+
+            const current = Array.from(dashboard.querySelectorAll('[data-dashboard-widget]'));
+            if (!sameDashboardIds(current.map(node => node.dataset.dashboardWidget), data.visible_ids)) return false;
+            const affected = current.filter(node => node.dataset.widgetKind === 'dynamic' && node.dataset.widgetLive !== '0' && keys.includes(node.dataset.widgetSource));
+            const template = document.createElement('template');
+            template.innerHTML = data.html;
+            const replacements = Array.from(template.content.children);
+            if (!sameDashboardIds(affected.map(node => node.dataset.dashboardWidget), replacements.map(node => node.dataset.dashboardWidget))) return false;
+            const byId = new Map(replacements.map(node => [node.dataset.dashboardWidget, node]));
+
+            // Validate every replacement before touching the DOM. Changes of
+            // configuration, visibility or ACL require a full reconciliation.
+            const patches = [];
+            for (const node of affected) {
+                const incoming = byId.get(node.dataset.dashboardWidget);
+                if (!incoming || incoming.dataset.widgetVersion !== node.dataset.widgetVersion
+                    || incoming.dataset.widgetSource !== node.dataset.widgetSource || incoming.dataset.widgetKind !== 'dynamic') return false;
+                const oldContent = node.querySelector('.app-dashboard-widget__content');
+                const newContent = incoming.querySelector('.app-dashboard-widget__content');
+                if (!oldContent || !newContent) return false;
+                patches.push([node, incoming.hidden, oldContent, newContent]);
+            }
+            if (dashboard.dataset.dashboardOrdering === '1' && patches.some(([node, hidden]) => node.hidden !== hidden)) {
+                document.dispatchEvent(new Event('mskba:dashboard-edit-cancel'));
+            }
+            for (const [node, hidden, oldContent, newContent] of patches) {
+                if (oldContent.outerHTML !== newContent.outerHTML) oldContent.replaceWith(newContent);
+                node.hidden = hidden;
+            }
+            return true;
+        } catch (_error) {
+            // Abort by a queued full refresh is intentional; the full snapshot
+            // supersedes all prior partials. Other failures trigger one full retry.
+            return controller.signal.aborted || disposed;
+        }
+    };
+
+    const drainRefresh = async () => {
+        if (running || disposed) return;
+        running = true;
+        try {
+            while (!disposed && (queuedSources === null || queuedSources.length)) {
+                const keys = queuedSources;
+                queuedSources = [];
+                activePartial = keys !== null;
+                if (activePartial) {
+                    if (!await refreshPartial(keys) && !disposed) queuedSources = null;
+                } else {
+                    await refreshFull();
+                }
+                activePartial = false;
+            }
+        } finally {
+            running = false;
+            activePartial = false;
+        }
+    };
+
+    const refresh = (keys = null) => {
+        if (disposed || (Array.isArray(keys) && keys.length === 0)) return;
+        queuedSources = mergeDashboardRefresh(queuedSources, keys);
+        // Access/catalogue changes take precedence over a slow partial fetch.
+        if (queuedSources === null && activePartial) controller?.abort();
+        void drainRefresh();
+    };
+
+    // Coalesce bursts from one transaction, with a bounded wait so sustained
+    // updates cannot indefinitely postpone fetching fresh data.
+    const scheduleLiveRefresh = (keys = null) => {
+        if (Array.isArray(keys) && keys.length === 0) return;
+        liveSources = mergeDashboardRefresh(liveSources, keys);
+        if (!liveTimer) liveDeadline = Date.now() + 1500;
+        window.clearTimeout(liveTimer);
+        liveTimer = window.setTimeout(() => {
+            liveTimer = null;
+            const next = liveSources;
+            liveSources = [];
+            refresh(next);
+        }, Math.max(0, Math.min(250, liveDeadline - Date.now())));
+    };
+
     subscribePublic('account-dashboard', '.dashboard.changed', () => void refresh());
-    if (header) subscribePrivate('users.' + header.dataset.notificationUserId,
-        '.notification.created', () => void refresh());
+    if (header) {
+        const channel = 'users.' + header.dataset.notificationUserId;
+        // Legacy notifications also feed static message widgets and other
+        // existing portal flows, so retain their full reconciliation.
+        subscribePrivate(channel, '.notification.created', () => scheduleLiveRefresh());
+        subscribePrivate(channel, '.dashboard.widgets.invalidated', event => {
+            const nodes = Array.from(dashboard.querySelectorAll('[data-widget-kind="dynamic"]'));
+            const sources = nodes.filter(node => node.dataset.widgetLive !== '0').map(node => node.dataset.widgetSource);
+            if (event?.catalog_changed || sources.some(key => !key)) {
+                refresh();
+                return;
+            }
+            scheduleLiveRefresh(affectedDashboardSources(event, sources));
+        });
+    }
     document.addEventListener('mskba:dashboard-refresh-requested', () => void refresh());
     window.addEventListener('mskba:realtime-state', event => {
         if (event.detail?.state === 'connected') void refresh();
@@ -159,7 +298,10 @@ if (dashboard) {
         if (!document.hidden) void refresh();
     }, 90000);
     window.addEventListener('pagehide', () => {
+        disposed = true;
+        queuedSources = [];
         window.clearInterval(timer);
+        window.clearTimeout(liveTimer);
         controller?.abort();
         for (const id of pending.keys()) clearPending(id);
     }, { once: true });

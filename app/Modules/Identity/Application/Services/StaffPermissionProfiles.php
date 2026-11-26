@@ -95,6 +95,9 @@ final class StaffPermissionProfiles
         if ($role === Role::SYSTEM) {
             return $this->allowedForRole(Role::ADMIN, $permission);
         }
+        if (in_array($permission, [Permission::BACKOFFICE_INVITATION_VIEW, Permission::BACKOFFICE_INVITATION_ISSUE, Permission::BACKOFFICE_INVITATION_MANAGE], true)) {
+            return in_array($role, [Role::SUPERADMIN, Role::ADMIN, Role::MANAGER], true);
+        }
         if ($permission === Permission::WALLET_USER_BALANCE_CREDIT) {
             return in_array($role, [Role::SUPERADMIN, Role::ADMIN], true);
         }

@@ -14,13 +14,24 @@
     .app-venues-catalog__create span{display:none}
 }
 .app-venues-catalog__layout{display:grid;grid-template-columns:minmax(240px,280px) minmax(0,1fr);gap:24px;align-items:start}
-.app-venues-catalog__sidebar{position:sticky;top:calc(var(--app-sticky-offset,136px) + 15px);max-height:calc(100dvh - var(--app-sticky-offset,136px) - 30px);overflow:auto;padding:22px;scrollbar-width:thin}
+.app-venues-catalog__sidebar{position:sticky;top:calc(var(--app-sticky-offset,136px) + 15px);max-height:calc(100dvh - var(--app-sticky-offset,136px) - 56px);display:flex;flex-direction:column;overflow:hidden;padding:22px;min-width:0}
+.app-venues-catalog__sidebar>h2{flex:none}
+.app-venues-catalog__sidebar>.app-venues-catalog__filters{display:flex;flex-direction:column;min-height:0;min-width:0;gap:0}
+.app-venues-catalog__filter-fields{display:grid;gap:16px;min-width:0}
+.app-venues-catalog__sidebar .app-venues-catalog__filter-fields{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin;align-content:start;padding:4px 12px 8px 4px;margin:-4px -12px 0 -4px}
+.app-venues-catalog__sidebar .app-venues-catalog__filter-actions{flex:0 0 auto;border-top:1px solid var(--line);padding-top:12px;margin-top:8px}
+.app-venues-catalog__sidebar .app-venues-catalog__filter-actions>.button{width:100%;min-width:0}
+
 .app-venues-catalog__sidebar h2{margin-bottom:19px;font-size:21px;font-weight:800}
 .app-venues-catalog__filters{display:grid;gap:16px}
 .app-venues-catalog__filters label{display:grid;gap:7px;min-width:0}
 .app-venues-catalog__filters label>span{font-size:13px;font-weight:700}
 .app-venues-catalog__filters :is(input:not([type="checkbox"]):not([type="range"]),select){width:100%;min-width:0;min-height:45px;border:1px solid var(--control-line);border-radius:11px;padding:8px 11px;background:var(--field);color:var(--text);font-size:14px}
 .app-venues-catalog__filters .check-label{display:flex;align-items:center;gap:8px}
+.app-venues-catalog__filters .venue-catalog-type-field{display:grid;gap:7px;min-width:0}
+.app-venues-catalog__filters .venue-catalog-type-field>span{font-size:13px;font-weight:700}
+.app-venues-catalog__filters .venue-catalog-type-field summary{min-height:45px;box-sizing:border-box;border:1px solid var(--control-line);border-radius:11px;padding:11px;background:var(--field);color:var(--text);font-size:14px;cursor:pointer;overflow-wrap:anywhere}
+.app-venues-catalog__filters .venue-catalog-type-options{padding:6px 0 0}
 .app-venues-catalog__checkbox-group{display:grid;gap:6px;min-width:0}
 .app-venues-catalog__checkbox-group .check-label{margin:0;min-height:28px;padding-block:0}
 .app-venues-catalog__filters [data-venue-geography-district-field][hidden]{display:none!important}
@@ -57,7 +68,7 @@
 .app-venues-catalog__loader[hidden],.app-venues-catalog__error[hidden]{display:none}
 .app-venues-catalog__sentinel{height:1px}
 @media(max-width:1000px){.app-venues-catalog__layout{grid-template-columns:220px minmax(0,1fr);gap:16px}.app-venues-catalog__sidebar{padding:16px}}
-@media(max-width:850px){.app-venues-catalog__layout{grid-template-columns:1fr}.app-venues-catalog__sidebar{position:static;max-height:none}}
+@media(max-width:850px){.app-venues-catalog__layout{grid-template-columns:1fr}.app-venues-catalog__sidebar{position:static;max-height:none;overflow:visible}.app-venues-catalog__sidebar .app-venues-catalog__filter-fields{overflow:visible;margin:0;padding:0}}
 @media(max-width:570px){.app-venues-catalog{padding-top:24px}.app-venues-catalog__header{flex-wrap:wrap}.app-venues-catalog__items{grid-template-columns:1fr}.app-venues-catalog__items--list .app-venues-catalog__photo{flex-basis:35%}.app-venues-catalog__toolbar{flex-wrap:wrap}.app-venues-catalog__view-switch{margin-left:auto}}
 
 /* Map mode follows the same light-theme container and design tokens as cards. */

@@ -31,9 +31,17 @@
     <header class="{{ $categoryHeaderClass }}">
         <div>
             <h1 id="{{ $categoryHeadingId }}">{{ $categoryTitle }}</h1>
-            @if($categoryDescription !== '')<p class="muted">{{ $categoryDescription }}</p>@endif
+            @if($isLandingPreview ?? false)<p class="muted">Предпросмотр сохранённой посадочной. Не опубликована этим действием.</p>@endif
+            @if($categoryDescription !== '' && !($categoryRootId === 'venues-catalog' && isset($landing) && (($isLandingPreview ?? false) || ($landing->is_active && config('features.venue_catalog_landings.enabled', false))) && (int) ($page ?? 1) === 1 && filled($landing->intro_text)))<p class="muted">{{ $categoryDescription }}</p>@endif
         </div>
         @yield('category-heading-action')
+        @if($categoryRootId === 'venues-catalog')
+            @include('partials.venues.catalog-landing-editorial', [
+                'editorialPosition' => 'intro',
+                'editorialClass' => 'venue-catalog-editorial venue-catalog-editorial--intro muted',
+                'editorialPage' => $page ?? 1,
+            ])
+        @endif
     </header>
     <div class="{{ $categoryLayoutClass }}">
         <aside class="{{ $categorySidebarClass }} panel" aria-label="{{ $categorySidebarLabel }}">
@@ -71,5 +79,12 @@
             @endif
         </main>
     </div>
+    @if($categoryRootId === 'venues-catalog')
+        @include('partials.venues.catalog-landing-editorial', [
+            'editorialPosition' => 'body',
+            'editorialClass' => 'venue-catalog-editorial app-venue-description',
+            'editorialPage' => $page ?? 1,
+        ])
+    @endif
 </section>
 @endsection

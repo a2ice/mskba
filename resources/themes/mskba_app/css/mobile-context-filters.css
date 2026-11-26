@@ -167,7 +167,7 @@
     /* The fixed quick-search is the sole search field, even when expanded. */
     .app-mobile-primary__filter-scroll .app-category__filters > label:has(input[type="search"]),
     .app-mobile-primary__filter-scroll .app-shop__filters > label:has(input[type="search"]),
-    .app-mobile-primary__filter-scroll .app-venues-catalog__filters > label:has(input[type="search"]),
+    .app-mobile-primary__filter-scroll .app-venues-catalog__filter-fields > label:has(input[type="search"]),
     .app-mobile-primary__filter-scroll .app-team-filters > label:has(input[type="search"]),
     .app-mobile-primary__filter-scroll [data-context-global-search] > label:first-child,
     .app-mobile-primary__filter-scroll [data-context-global-search] > input[type="search"] {

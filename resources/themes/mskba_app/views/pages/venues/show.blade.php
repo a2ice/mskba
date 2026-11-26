@@ -160,7 +160,7 @@
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-venue-play-open>Хочу здесь играть</button>
-                <button type="button" class="button secondary large" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false">В избранное ({{ $favoritesCount }})</button>
+                <button type="button" class="button secondary large" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false"><svg class="venue-favorite-follow__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span data-venue-favorite-main-label>В избранное@if($favoritesCount > 0) ({{ $favoritesCount }})@endif</span></button>
             </div>
         </div>
     </div>
@@ -169,7 +169,7 @@
         @if($activityDays->isNotEmpty() || $plannedVenueEvents->isNotEmpty())
             <a href="#app-venue-activities">Игры</a>
         @endif
-        <a href="#app-venue-interest">Интересы игроков</a>
+        <a href="#app-venue-interest" @if($activeVenueInterestCount === 0) hidden @endif>Интересы игроков</a>
         <a href="#app-venue-schedule">Расписание</a>
         <a href="#app-venue-about">О площадке</a>
         @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
@@ -257,11 +257,8 @@
                 <a href="{{ route('events.index') }}" class="button secondary app-venue-activities__all">Смотреть мероприятия <svg aria-hidden="true"><use href="#arrow"/></svg></a>
             </section>
             @endif
-            <section class="panel app-venue-block" id="app-venue-interest">
-                <header class="app-venue-block__header"><h2>{{ $activeVenueInterestCount > 0 ? "Площадкой интересуются" : "Играй здесь" }}</h2></header>
-                @if($activeVenueInterestCount === 0)
-                    @include('components.venue-favorite-follow', ['buttonClass' => 'button primary', 'eventUrl' => $createEventUrl])
-                @else
+            <section class="panel app-venue-block" id="app-venue-interest" @if($activeVenueInterestCount === 0) hidden @endif>
+                <header class="app-venue-block__header"><h2>Площадкой интересуются</h2></header>
                 <div class="app-venue-interest-summary" data-play-venue-interest-summary>
                     <div class="app-venue-interest-summary__profiles">
                         <div class="app-venue-interest-summary__avatars" aria-label="Игроки с подписками на площадку">
@@ -281,7 +278,6 @@
                         <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
                     </div>
                 </div>
-                @endif
             </section>
             @php
                 $bookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
@@ -440,7 +436,7 @@
                     $nearbyCards = collect(app(\App\Modules\Venue\Application\UseCases\ListVenuesHandler::class)
                         ->handle(null, null, [], null, array_column($nearby, 'id')))->keyBy('id');
                 @endphp
-                <section class="panel app-venue-block" id="app-venue-nearby">
+                <section class="panel app-venue-block" id="app-venue-nearby" data-venue-map-reference-id="{{ $venue->id }}">
                     <header class="app-venue-block__header"><h2>Площадки рядом</h2></header>
                     <div class="app-venue-nearby__toolbar" aria-label="Режим подбора площадок">
                         <a class="button {{ ! $similarMode ? 'primary' : 'secondary' }}"
@@ -464,6 +460,7 @@
                                         'venue' => $nearbyCards->get($item['id']),
                                         'cardUrl' => $item['url'],
                                         'distanceMeters' => $item['distance_meters'],
+                                        'distanceOriginName' => $venue->name,
                                         'cardCourtName' => $item['court_name'] ?? null,
                                     ])
                                 @endif

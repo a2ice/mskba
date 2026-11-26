@@ -25,6 +25,9 @@ function harness({authenticated=false,status='none',count=3,fetchImpl=null,event
         return {root,message,label,action,dialog};
     }
     const audience=follow(),games=follow();
+    const footerLabel={textContent:''};
+    const footer={disabled:true,querySelector(){return footerLabel;},closest(){return games.dialog;},
+        setAttribute(key,value){this[key]=value;},addEventListener(_,handler){this.click=()=>handler({currentTarget:this});}};
     if(eventUrl) audience.root.dataset.createEventUrl=eventUrl;
     const controls={
         '[data-venue-favorite-title]':{textContent:''},
@@ -43,7 +46,8 @@ function harness({authenticated=false,status='none',count=3,fetchImpl=null,event
             if(selector==='[data-venue-play-dialog]')return {dataset:{authenticated:authMeta.content}};
             return null;},
         querySelectorAll(selector){if(selector==='[data-venue-favorite-main]')return [hero];
-            if(selector==='[data-venue-favorite-follow]')return [audience.root,games.root];return [];}
+            if(selector==='[data-venue-favorite-follow]')return [audience.root,games.root];
+            if(selector==='[data-venue-favorite-footer]')return [footer];return [];}
     };
     const window={location:{assign(url){calls.push({navigated:url});}},
         addEventListener(key,handler){if(!listeners.has(key))listeners.set(key,[]);
@@ -55,7 +59,7 @@ function harness({authenticated=false,status='none',count=3,fetchImpl=null,event
     runInNewContext(source,{document,window,fetch,addFavorite,URL,location:{href:'https://mskba.ru/venues/8'},CustomEvent});
     const emit=(state,total)=>window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',
         {detail:{venueId:8,state,count:total}}));
-    return {hero,audience,games,authMeta,calls,window,emit};
+    return {hero,audience,games,footer,footerLabel,authMeta,calls,window,emit};
 }
 
 test('guest can save venue directly from interested players without opening games popup',async()=>{
@@ -140,7 +144,10 @@ test('both popups use shared favorite prompt; event creation remains an independ
     assert.match(venue,/@include\('components\.venue-favorite-follow'/);
     assert.match(games,/@include\('components\.venue-favorite-follow'/);
     assert.match(games,/data-quick-event-open/);
-    assert.match(games,/data-venue-availability-open/);
+    assert.doesNotMatch(games,/data-venue-availability-open/);
+    assert.match(games,/data-venue-favorite-footer/);
+    assert.match(venue,/id="app-venue-interest" @if\(\$activeVenueInterestCount === 0\) hidden @endif/);
+    assert.doesNotMatch(venue,/Играй здесь/);
     assert.match(games,/\$upcomingVenueEvents->isEmpty\(\) \? \$secondaryButton : \$primaryButton/);
     assert.match(prompt,/data-venue-favorite-follow-action/);
     assert.match(prompt,/venue-favorite-follow__icon/);
@@ -161,4 +168,23 @@ test('favorites status changes do not replace favorite buttons via play-interest
     const summary=readFileSync(new URL('../../resources/themes/mskba_app/js/venue-interest-summary.js',import.meta.url),'utf8');
     assert.doesNotMatch(summary,/addEventListener\('mskba:venue-favorite:updated'/);
     assert.match(summary,/addEventListener\('mskba:play-intent:saved'/);
+});
+
+test('empty games footer saves through shared flow and reflects changes without removing',async()=>{
+    const h=harness({authenticated:true,status:'none',count:0});await tick();
+    assert.equal(h.footerLabel.textContent,'Добавить в избранное');
+    assert.equal(h.footer['aria-pressed'],'false');
+    h.games.dialog.open=true;
+    await h.footer.click();
+    assert.deepEqual(h.calls,[{type:'venue',id:8,sourceOpen:false}]);
+    h.emit('active',1);
+    assert.equal(h.footerLabel.textContent,'Уже в избранном');
+    assert.equal(h.footer['aria-pressed'],'true');
+    assert.equal(h.footer.disabled,true);
+    await h.footer.click();
+    assert.equal(h.calls.length,1);
+    h.emit('trashed',0);
+    assert.equal(h.footer.disabled,false);
+    assert.equal(h.footerLabel.textContent,'Добавить в избранное');
+    assert.equal(h.hero.textContent,'В избранное');
 });

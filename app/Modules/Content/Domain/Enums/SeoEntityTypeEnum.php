@@ -5,6 +5,7 @@ namespace App\Modules\Content\Domain\Enums;
 enum SeoEntityTypeEnum: string
 {
     case VENUE = 'venue';
+    case VENUE_CATALOG_LANDING = 'venue_catalog_landing';
     case EVENT = 'event';
     case TEAM = 'team';
     case TOURNAMENT = 'tournament';
@@ -14,6 +15,7 @@ enum SeoEntityTypeEnum: string
     {
         return match ($this) {
             self::VENUE => 'Площадки',
+            self::VENUE_CATALOG_LANDING => 'SEO-посадочные площадок',
             self::EVENT => 'Мероприятия',
             self::TEAM => 'Команды',
             self::TOURNAMENT => 'Турниры',

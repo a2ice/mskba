@@ -54,17 +54,26 @@ if (dock) {
     let expanded = false;
 
     const selectedScope = () => {
+        const landingCount = original?.getAttribute('data-venue-landing-filter-count');
+        if (landingCount !== null && landingCount !== undefined) return Number(landingCount);
         const url = new URL(window.location.href);
         const keys = new Set(['q', 'search', 'type', 'status', 'period', 'date_from', 'date_to',
             'outcome', 'venue_id', 'has_mini_games', 'query', 'season', 'training_mode',
             'game_format', 'pricing_type', 'team_id', 'accepts_requests', 'recruiting',
             'tag', 'product_type', 'stock', 'color', 'size', 'min_price', 'max_price',
             'sport_type', 'member_count', 'hiring', 'access', 'operational_status',
-            'has_upcoming_events', 'my_interests', 'interest_id', 'latitude', 'longitude', 'radius_km', 'scope', 'role']);
+            'has_upcoming_events', 'my_interests', 'interest_id', 'rental_configured', 'latitude', 'longitude', 'radius_km', 'scope', 'role']);
         const defaults = { period: ['upcoming', 'all'], status: ['not_cancelled'] };
         let count = 0;
-        for (const [key, val] of url.searchParams) {
+        let venueTypeCounted = false;
+        for (const [rawKey, val] of url.searchParams) {
+            const key = /^type\[(?:\d*)\]$/.test(rawKey) && /^\/venues(?:\/|$)/.test(url.pathname) ? 'type' : rawKey;
+            if (key === 'type' && /^\/venues(?:\/|$)/.test(url.pathname) && val) {
+                if (venueTypeCounted) continue;
+                venueTypeCounted = true;
+            }
             if (!keys.has(key) || !val || defaults[key]?.includes(val)) continue;
+            if (key === 'rental_configured' && val !== '1') continue;
             if (key === 'role' && /\/(players|coaches)$/.test(url.pathname)) continue;
             if (['longitude', 'radius_km'].includes(key) && url.searchParams.has('latitude')) continue;
             count++;

@@ -4,6 +4,8 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
+use App\Modules\Content\Application\Services\VenueCatalogLandingIndexPolicy;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -12,6 +14,7 @@ use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
+use App\Modules\Venue\Application\Services\VenueTypeFilter;
 use App\Modules\Venue\Application\Services\AccountVenueEditorAccess;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
@@ -74,15 +77,22 @@ class VenueController extends Controller
         ]);
     }
 
-    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse
+    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse|RedirectResponse
     {
+        $navigation = app(VenueCatalogLandingNavigation::class);
+        $originalQueryKeys = array_keys($request->query());
+        $isLandingPreview = $request->routeIs('admin.content.catalog-landings.preview');
+        $requestedLanding = $isLandingPreview
+            ? $navigation->preparePreview($request)
+            : $navigation->prepare($request, $request->route('landingSlug'));
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'city_id' => ['nullable', 'integer', 'min:1', 'exists:cities,id'],
             'district_id' => ['nullable', 'integer', 'min:1', 'exists:districts,id'],
-            'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
+            ...VenueTypeFilter::rules($request->query('type')),
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
+            'rental_configured' => ['nullable', 'boolean'],
             'has_upcoming_events' => ['nullable', 'boolean'],
             'my_interests' => ['nullable', 'boolean'],
             'interest_id' => ['nullable', 'integer', 'min:1'],
@@ -95,6 +105,20 @@ class VenueController extends Controller
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'fragment' => ['nullable', Rule::in(['items'])],
         ]);
+        if (array_key_exists('type', $filters)) {
+            $filters['type'] = VenueTypeFilter::canonical($filters['type']);
+        }
+        $landing = $isLandingPreview ? $requestedLanding : $navigation->match($request, $filters);
+        $isFragment = ($filters['fragment'] ?? null) === 'items';
+        if (! $isLandingPreview && ! $isFragment && ! $request->expectsJson()) {
+            if ($landing !== null && ! $landing->is($requestedLanding)) {
+                return redirect()->to($navigation->url($landing, $navigation->presentationQuery($request, $filters)));
+            }
+            if ($requestedLanding !== null && $landing === null) {
+                return redirect()->route('venues', $request->query());
+            }
+        }
+
         // A selected interest is strictly owned by the current canonical user.
         // An empty selection filters against ANY active, non-expired interest.
         $viewer = $request->user()?->canonical();
@@ -116,9 +140,46 @@ class VenueController extends Controller
         $matchingInterests = $request->boolean('my_interests')
             ? ($chosenInterest !== null ? $myInterests->where('id', $chosenInterest)->values() : $myInterests)
             : null;
-        $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request), $filters, $matchingInterests);
+        $venues = $useCase->handle(
+            $landing === null ? $request->user() : null,
+            $landing === null ? $actors->resolveForRequest($request) : null,
+            $filters, $matchingInterests,
+            configuredRentalOnly: $request->boolean('rental_configured'),
+        );
+        $landingData = [];
+        if ($landing !== null) {
+            $pageNumber = (int) ($filters['page'] ?? 1);
+            $canonical = $navigation->url($landing, $pageNumber > 1 ? ['page' => $pageNumber] : []);
+            $landingData = app(PageSeoResolver::class)->resolve(
+                SeoEntityTypeEnum::VENUE_CATALOG_LANDING,
+                $landing->id,
+                $landing->h1.' | MSKBA',
+                $landing->intro_text,
+                $canonical,
+            ) + [
+                'landing' => $landing,
+                'landingUrl' => $isLandingPreview ? $navigation->previewUrl($landing) : $navigation->url($landing),
+                'isLandingPreview' => $isLandingPreview,
+                'landingRelatedLinks' => $pageNumber === 1 && ! $isFragment ? $navigation->relatedLinks($landing) : [],
+                'metaRobots' => app(VenueCatalogLandingIndexPolicy::class)->robots(
+                    $request, $landing, count($venues),
+                    ! $isLandingPreview && ! $isFragment && ! $request->expectsJson()
+                        && $request->routeIs('venues.collections.show'),
+                    $originalQueryKeys === [],
+                ),
+            ];
+        }
+
+        // Arbitrary catalogue facets must not become indexable alternatives
+        // to an editorial landing. Preserve the original clean catalogue and
+        // its page-only pagination, and leave the old behaviour when gate off.
+        if ($landing === null && array_diff($originalQueryKeys, ['page']) !== []
+            && app(VenueCatalogLandingIndexPolicy::class)->enabled($request)) {
+            $landingData['metaRobots'] = 'noindex, follow';
+        }
+
         if (app(ThemeResolver::class)->active() !== 'mskba_app') {
-            return ThemeResolver::page('venues.index', [
+            $response = ThemeResolver::page('venues.index', $landingData + [
                 'venues' => $venues,
                 'filters' => $filters,
                 'types' => VenueTypeEnum::cases(),
@@ -126,6 +187,8 @@ class VenueController extends Controller
                 'myInterests' => $myInterests,
                 'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
             ]);
+
+            return $isLandingPreview ? $this->privateLandingPreview($response) : $response;
         }
 
         $total = count($venues);
@@ -163,15 +226,18 @@ class VenueController extends Controller
         $hasMore = $page * $perPage < $total;
 
         if (($filters['fragment'] ?? null) === 'items') {
-            return response()->json([
+            $response = response()->json([
                 'html' => view('theme::pages.venues.partials.index-items', compact('venues', 'page'))->render(),
                 'has_more' => $hasMore,
                 'next_page' => $hasMore ? $page + 1 : null,
                 'total' => $total,
             ])->header('Cache-Control', 'private, no-store');
+
+            return $landing !== null || isset($landingData['metaRobots'])
+                ? $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive') : $response;
         }
 
-        return ThemeResolver::page('venues.index', compact(
+        $response = ThemeResolver::page('venues.index', $landingData + compact(
             'venues', 'filters', 'total', 'page', 'hasMore', 'currentView', 'mapPoints',
         ) + [
             'types' => VenueTypeEnum::cases(),
@@ -179,6 +245,14 @@ class VenueController extends Controller
             'myInterests' => $myInterests,
             'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
         ]);
+
+        return $isLandingPreview ? $this->privateLandingPreview($response) : $response;
+    }
+
+    private function privateLandingPreview(Response $response): Response
+    {
+        return $response->header('Cache-Control', 'private, no-store')
+            ->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     public function search(

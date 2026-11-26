@@ -7,6 +7,7 @@ use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountD
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\ListAccountDashboardWidgets;
 use App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule;
 use App\Modules\Dashboard\Application\Services\AccountDashboardService;
+use App\Modules\Dashboard\Application\Services\DashboardDataRegistry;
 use App\Modules\Dashboard\Application\Services\DashboardWidgetActions;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
@@ -101,6 +102,27 @@ final class AccountDashboardWidgetResource extends Resource
                             ->required()->live()->native(false)
                             ->helperText('Функциональные карточки подключены к данным портала. Реклама и информация управляются контентом.'),
                         TextInput::make('title')->label('Название')->required()->maxLength(150),
+                        Select::make('source_key')->label('Источник данных')
+                            ->options(DashboardDataRegistry::options())
+                            ->required(fn (Get $get): bool => $get('kind') === 'dynamic')
+                            ->visible(fn (Get $get): bool => $get('kind') === 'dynamic')
+                            ->live()->native(false)
+                            ->helperText('Доступ к данным определяется самим источником, независимо от аудитории виджета.'),
+                        TextInput::make('source_settings.limit')->label('Количество записей')
+                            ->integer()->minValue(1)->maxValue(10)->default(5)
+                            ->required(fn (Get $get): bool => $get('kind') === 'dynamic' && DashboardDataRegistry::supportsLimit($get('source_key')))
+                            ->visible(fn (Get $get): bool => $get('kind') === 'dynamic' && DashboardDataRegistry::supportsLimit($get('source_key'))),
+                        Toggle::make('source_settings.hide_when_empty')->label('Скрывать при отсутствии данных')
+                            ->default(false)
+                            ->visible(fn (Get $get): bool => $get('kind') === 'dynamic' && DashboardDataRegistry::supportsHideWhenEmpty($get('source_key')))
+                            ->helperText('Карточка автоматически вернётся при появлении данных. Пользовательские настройки не меняются.'),
+                        Toggle::make('source_settings.live_enabled')->label('Мгновенное обновление по событиям источника')
+                            ->default(true)->visible(fn (Get $get): bool => $get('kind') === 'dynamic')
+                            ->helperText('При выключении сохраняются полная сверка, уведомления, восстановление соединения и проверка прав.'),
+                        TextInput::make('source_settings.horizon_days')->label('Горизонт поиска мероприятий (дней)')
+                            ->integer()->minValue(7)->maxValue(90)->default(30)
+                            ->visible(fn (Get $get): bool => $get('kind') === 'dynamic' && $get('source_key') === 'my_interests')
+                            ->required(fn (Get $get): bool => $get('kind') === 'dynamic' && $get('source_key') === 'my_interests'),
                         CodeEditor::make('body')->label('HTML-содержимое')->language(Language::Html)
                             ->columnSpanFull()
                             ->helperText('Текст с безопасной HTML-разметкой: <p>, <strong>, <ul>, <li>. Для счётчика сообщений: {{ unread_count }}. Кнопки настраиваются во вкладке «Действия». Пустое поле — стандартный текст.')
@@ -173,7 +195,7 @@ final class AccountDashboardWidgetResource extends Resource
                         CheckboxList::make('participation_roles')->label('Роли участия')
                             ->options(self::options(UserParticipationRoleEnum::cases()))->columns(2)->columnSpanFull(),
                     ]),
-                    Section::make('Точечный показ')->description('Исключение имеет высший приоритет. Явное включение обходит фильтры выше.')->columns(2)->schema([
+                    Section::make('Точечный показ')->description('Исключение имеет высший приоритет. Явное включение обходит фильтры выше, но не права доступа к данным.')->columns(2)->schema([
                         TextInput::make('include_user_ids')->label('Показать этим пользователям')
                             ->placeholder('12, 15, 42')->helperText('ID через запятую, не более 200')
                             ->regex('/^\d+(?:[\s,]+\d+)*$/')
@@ -272,6 +294,53 @@ final class AccountDashboardWidgetResource extends Resource
         abort_if($previous?->kind === 'custom_html' && ! self::isSuperadmin(), 403);
 
         $kind = (string) ($data['kind'] ?? $previous?->kind ?? '');
+        if (! array_key_exists($kind, AccountDashboardService::KINDS)) {
+            throw ValidationException::withMessages(['data.kind' => 'Неизвестный тип виджета.']);
+        }
+        if ($kind === 'dynamic') {
+            $source = $data['source_key'] ?? null;
+            if (! is_string($source) || ! array_key_exists($source, DashboardDataRegistry::options())) {
+                throw ValidationException::withMessages(['data.source_key' => 'Выбери зарегистрированный источник данных.']);
+            }
+
+            $settings = $data['source_settings'] ?? [];
+            if (! is_array($settings)) {
+                throw ValidationException::withMessages(['data.source_settings' => 'Некорректные настройки источника.']);
+            }
+            $data['source_settings'] = [];
+            if (DashboardDataRegistry::supportsLimit($source)) {
+                $limit = filter_var($settings['limit'] ?? 5, FILTER_VALIDATE_INT);
+                if ($limit === false || $limit < 1 || $limit > 10) {
+                    throw ValidationException::withMessages(['data.source_settings.limit' => 'Допустимо от 1 до 10 записей.']);
+                }
+                $data['source_settings'] = ['limit' => $limit];
+            }
+            foreach (['hide_when_empty' => false, 'live_enabled' => true] as $key => $default) {
+                if ($key === 'hide_when_empty' && ! DashboardDataRegistry::supportsHideWhenEmpty($source)) {
+                    continue;
+                }
+                $value = $settings[$key] ?? $default;
+                if (! is_bool($value) && ! in_array($value, [0, 1, '0', '1'], true)) {
+                    throw ValidationException::withMessages(['data.source_settings.'.$key => 'Некорректное значение переключателя.']);
+                }
+                if ((bool) $value !== $default) {
+                    $data['source_settings'][$key] = (bool) $value;
+                }
+            }
+            if ($source === 'my_interests') {
+                $days = filter_var($settings['horizon_days'] ?? 30, FILTER_VALIDATE_INT);
+                if ($days === false || $days < 7 || $days > 90) {
+                    throw ValidationException::withMessages(['data.source_settings.horizon_days' => 'Допустимо от 7 до 90 дней.']);
+                }
+                if ($days !== 30) {
+                    $data['source_settings']['horizon_days'] = $days;
+                }
+            }
+
+        } else {
+            $data['source_key'] = null;
+            $data['source_settings'] = null;
+        }
         $actionsService = app(DashboardWidgetActions::class);
         $actions = $data['actions'] ?? [];
         if ($kind === 'custom_html') {
@@ -354,6 +423,9 @@ final class AccountDashboardWidgetResource extends Resource
                 TextColumn::make('title')->label('Виджет')->searchable()->weight('bold')->limit(60),
                 TextColumn::make('kind')->label('Тип')->badge()
                     ->formatStateUsing(fn (string $state): string => AccountDashboardService::KINDS[$state] ?? $state),
+                TextColumn::make('source_key')->label('Источник')
+                    ->formatStateUsing(fn (string $state): string => DashboardDataRegistry::options()[$state] ?? $state)
+                    ->toggleable(),
                 IconColumn::make('enabled')->label('Активен')->boolean(),
                 IconColumn::make('can_hide')->label('Можно скрыть')->boolean(),
                 TextColumn::make('updated_at')->label('Обновлён')->dateTime('d.m.Y H:i')->sortable(),

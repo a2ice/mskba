@@ -4,6 +4,7 @@
     use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 
     $allowed = $editedUser !== null && BackofficeUserResource::canEdit($editedUser);
+    $canManageContacts = $allowed && app(\App\Modules\Contact\Application\UseCases\AdminManageUserContactsHandler::class)->canManage(auth('web')->user(), $editedUser);
     $contacts = $allowed ? $editedUser->identityContactsQuery()
         ->withTrashed()
         ->with(['verifications' => fn ($query) => $query
@@ -21,6 +22,11 @@
 
 @if($allowed)
     <x-filament::section heading="Контактные данные">
+        @if($canManageContacts)
+            <div class="mb-4 flex justify-end">
+                <x-filament::button type="button" icon="heroicon-o-plus" wire:click="mountAction('addUserContact')">Добавить контакт</x-filament::button>
+            </div>
+        @endif
         <div class="space-y-4">
             @foreach([$activeContacts, $deletedContacts] as $groupIndex => $group)
                 @if($groupIndex === 1)
@@ -79,6 +85,28 @@
                                 <div><dt class="text-sm text-gray-500">Связанный аккаунт</dt><dd>#{{ $contact->contactable_id }}</dd></div>
                             @endif
                         </dl>
+                        @if($canManageContacts && !$contact->trashed())
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                @if($contact->type === ContactTypeEnum::EMAIL && !$contact->hasBeenVerified())
+                                    <x-filament::button size="sm" type="button" color="gray" wire:click="mountAction('sendUserContactCode', { contact_id: {{ $contact->id }} })">Отправить код</x-filament::button>
+                                    <x-filament::button size="sm" type="button" wire:click="mountAction('confirmUserContactCode', { contact_id: {{ $contact->id }} })">Подтвердить кодом</x-filament::button>
+                                @elseif($contact->type === ContactTypeEnum::PHONE && !$contact->hasBeenVerified())
+                                    <span class="text-sm text-gray-500">SMS-подтверждение пока недоступно</span>
+                                @endif
+                                @if(in_array($contact->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true))
+                                    <x-filament::button size="sm" type="button" color="gray" wire:click="mountAction('editUserContactLabel', { contact_id: {{ $contact->id }} })">Изменить название</x-filament::button>
+                                    @if(!$contact->hasBeenVerified())
+                                        <x-filament::button size="sm" type="button" color="gray" wire:click="mountAction('replaceUserContact', { contact_id: {{ $contact->id }} })">Изменить контакт</x-filament::button>
+                                    @endif
+                                    @if(!$contact->is_primary || !$contact->hasBeenVerified())
+                                        <x-filament::button size="sm" type="button" color="danger" wire:click="mountAction('deleteUserContact', { contact_id: {{ $contact->id }} })">Удалить</x-filament::button>
+                                    @endif
+                                @endif
+                                @if($contact->hasBeenVerified() && !$contact->is_primary)
+                                    <x-filament::button size="sm" type="button" color="gray" wire:click="mountAction('setUserPrimaryContact', { contact_id: {{ $contact->id }} })">Сделать основным</x-filament::button>
+                                @endif
+                            </div>
+                        @endif
                         @if($contact->verifications->isNotEmpty())
                             <details class="mt-4">
                                 <summary class="cursor-pointer text-primary-600">История подтверждений ({{ $contact->verifications->count() }})</summary>

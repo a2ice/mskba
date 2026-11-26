@@ -58,14 +58,7 @@ final class AccountMyGamesController extends Controller
         } elseif ($scope === 'playing') {
             $query->where('ends_at', '>', $now)
                 ->whereNotIn('status', [EventStatusEnum::CANCELLED->value, EventStatusEnum::COMPLETED->value])
-                ->where(function (Builder $q) use ($identities): void {
-                    $q->whereHas('participants', fn (Builder $p) => $p
-                        ->whereIn('user_id', $identities)->where('status', EventParticipantStatusEnum::CONFIRMED->value)
-                        ->whereColumn('confirmation_version', 'events.participation_confirmation_version'))
-                        ->orWhereHas('primaryGame.admissions', fn (Builder $a) => $a
-                            ->whereIn('user_id', $identities)->where('status', GameAdmissionStatusEnum::ACCEPTED->value))
-                        ->orWhereHas('organizerActor', fn (Builder $o) => $o->whereIn('user_id', $identities));
-                });
+                ->forActiveParticipation($identities);
         } elseif ($scope === 'history') {
             $query->where(function (Builder $q) use ($now, $identities): void {
                 $q->where('ends_at', '<=', $now)

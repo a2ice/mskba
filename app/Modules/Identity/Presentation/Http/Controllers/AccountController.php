@@ -109,7 +109,7 @@ class AccountController extends Controller
             $data['dashboardUnread'] = app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)->handle($canonical);
         }
 
-        return ThemeResolver::page('account.index', $data);
+        return ThemeResolver::page('account.index', $data)->header('Cache-Control', 'private, no-store');
     }
 
     public function confirmation(AccountConfirmationWizardService $wizard): Response

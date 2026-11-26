@@ -21,6 +21,7 @@ use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyle
 use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
 use App\Filament\Backoffice\Resources\Events\EventResource;
 use App\Filament\Backoffice\Resources\FaqSections\FaqSectionResource;
+use App\Filament\Backoffice\Resources\VenueCatalogLandings\VenueCatalogLandingResource;
 use App\Filament\Backoffice\Resources\Geography\CityResource;
 use App\Filament\Backoffice\Resources\Geography\DistrictResource;
 use App\Filament\Backoffice\Resources\Geography\MetroLineResource;
@@ -181,6 +182,7 @@ final class BackofficePanelProvider extends PanelProvider
                 VenueRentalInterestResource::class,
                 EventResource::class,
                 FaqSectionResource::class,
+                VenueCatalogLandingResource::class,
                 TeamResource::class,
                 LeagueResource::class,
                 SeasonResource::class,

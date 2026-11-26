@@ -176,10 +176,10 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         ]);
 
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
-            ->fillForm(['backoffice_permissions' => [
+            ->fillForm(['backoffice_permissions' => \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups::split([
                 Permission::BACKOFFICE_ACCESS->value,
                 Permission::BACKOFFICE_BUILDER_VIEW->value,
-            ]])
+            ])])
             ->callAction('savePermissionsInline', data: ['reason' => 'Доступ только к конструктору страниц'])
             ->assertHasNoFormErrors();
 
@@ -221,10 +221,10 @@ final class UserInlineEditorAcceptanceTest extends TestCase
                     Permission::REVIEW_PROFILE_CHANGES->value,
                     Permission::WALLET_USER_BALANCE_CREDIT->value,
                 ],
-                'backoffice_permissions' => [
+                'backoffice_permissions' => \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups::split([
                     Permission::BACKOFFICE_ACCESS->value,
                     Permission::BACKOFFICE_VENUE_MANAGE->value,
-                ],
+                ]),
             ])
             ->callAction('savePermissionsInline', data: ['reason' => 'Назначение прав системному пользователю'])
             ->assertHasNoFormErrors();
@@ -301,6 +301,40 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
         app(\App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler::class)
             ->handle($admin, $target->id, UserSystemRoleEnum::SYSTEM);
+    }
+
+    public function test_ordinary_confirmation_uses_saved_requirements_and_audits_actor(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $target->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $target->profile()->update([
+            'first_name' => 'Иван', 'last_name' => 'Иванов',
+            'birth_date' => '1990-01-01', 'gender' => 'male',
+        ]);
+        $target->contacts()->create([
+            'type' => \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL,
+            'value' => 'confirmed-fixture@example.test',
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+        $this->assertSame([], $target->fresh()->missingAccountConfirmationRequirements());
+
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->assertSee('Условия подтверждения аккаунта')
+            ->fillForm(['account_status' => UserStatusEnum::CONFIRMED->value])
+            ->callAction('saveGeneralInline', data: ['reason' => 'Все обязательные условия выполнены'])
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(UserStatusEnum::CONFIRMED, $target->fresh()->status);
+        $log = \App\Modules\Audit\Domain\Models\AuditLog::query()
+            ->where('auditable_type', User::class)->where('auditable_id', $target->id)
+            ->where('event', 'admin_user_status_changed')->sole();
+        $this->assertSame($super->id, $log->actor->user_id);
+        $this->assertSame(['status' => 'unconfirmed'], $log->old_values);
+        $this->assertSame(['status' => 'confirmed'], $log->new_values);
     }
 
     public function test_confirmation_rejection_explains_missing_verified_primary_contact(): void

@@ -34,6 +34,7 @@ use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationControlle
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
 use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardRefreshController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardWidgetDataController;
 use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardPreferencesController;
 use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardController;
 use App\Modules\Event\Presentation\Http\Controllers\AccountMyGamesController;
@@ -374,6 +375,9 @@ Route::prefix('backoffice/content')
         Route::get('/create', [AdminContentController::class, 'create'])
             ->name('admin.content.create')
             ->defaults('breadcrumb', 'Новый материал');
+        Route::get('/catalog-landings/{landingId}/preview', [VenueController::class, 'index'])
+            ->whereNumber('landingId')
+            ->name('admin.content.catalog-landings.preview');
         Route::get('/seo', [AdminPageSeoController::class, 'index'])
             ->name('admin.content.seo')
             ->defaults('breadcrumb', 'SEO страниц');
@@ -644,6 +648,10 @@ Route::prefix('venues')->group(function () {
         ->name('venues.preview');
     Route::get('/{venue}/interest-group', VenueInterestGroupController::class)
         ->whereNumber('venue')->name('venues.interest-group');
+    Route::get('/collections/{landingSlug}', [VenueController::class, 'index'])
+        ->where('landingSlug', \App\Modules\Content\Application\Services\VenueCatalogLandingNavigation::SLUG_PATTERN)
+        ->name('venues.collections.show')
+        ->defaults('breadcrumb', 'Подборки площадок');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 
@@ -1038,6 +1046,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 
         Route::get('/dashboard/widgets', AccountDashboardRefreshController::class)
             ->middleware('throttle:30,1')->name('account.dashboard.widgets');
+        Route::get('/dashboard/widgets/{widget}/data', AccountDashboardWidgetDataController::class)
+            ->whereNumber('widget')->middleware('throttle:60,1')->name('account.dashboard.widgets.data');
         Route::patch('/dashboard/widgets/order', [AccountDashboardPreferencesController::class, 'reorder'])
             ->middleware('throttle:20,1')->name('account.dashboard.widgets.order');
         Route::get('/settings/dashboard', [AccountDashboardPreferencesController::class, 'index'])
@@ -1555,6 +1565,8 @@ Route::get('/invites/continue', [\App\Modules\Invitation\Presentation\Http\Contr
 Route::get('/invites/{token}', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'entry'])
     ->middleware('throttle:60,1')->where('token', '[a-f0-9]{64}')
     ->name('account-invitations.show');
+Route::post('/invites/continue/interest', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'interest'])
+    ->middleware('throttle:10,1')->name('account-invitations.interest');
 Route::post('/invites/continue/register', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'register'])
     ->middleware('throttle:5,1')->name('account-invitations.register');
 Route::post('/invites/continue/accept', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'accept'])

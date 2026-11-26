@@ -1,0 +1,96 @@
+/* Editorial copy belongs to the catalogue, not the venue-detail panel.
+   Keep theme typography and semantic colours; isolate all rules to landings. */
+.app-venues-catalog__header:has(> .venue-catalog-editorial--intro) {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:start;
+    column-gap:var(--s6,24px);
+    row-gap:0;
+    margin-bottom:var(--s7,32px);
+}
+.app-venues-catalog__header:has(> .venue-catalog-editorial--intro) > .app-venues-catalog__create {
+    align-self:start;
+}
+.app-venues-catalog__header > .venue-catalog-editorial--intro {
+    grid-column:1/-1;
+}
+.venue-catalog-editorial[data-venue-landing-editorial="intro"] {
+    font:inherit;
+    color:var(--muted);
+    min-width:0;
+    overflow-wrap:anywhere;
+}
+.venue-catalog-editorial[data-venue-landing-editorial="intro"] :is(p,ul,ol,blockquote) {
+    margin:0 0 var(--s3,12px);
+}
+.venue-catalog-editorial[data-venue-landing-editorial="intro"] > :last-child {
+    margin-bottom:0;
+}
+.venues-catalog .default-category__header > .venue-catalog-editorial--intro {
+    margin-top:var(--s3,12px);
+}
+.venues-catalog .default-category__header:has(> .venue-catalog-editorial--intro) {
+    margin-bottom:var(--s7,32px);
+}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] {
+    display:flow-root;
+    width:100%;
+    min-width:0;
+    max-width:100ch;
+    margin-top:var(--s9,48px);
+    font-size:1rem;
+    line-height:1.65;
+    color:var(--muted);
+    overflow-wrap:anywhere;
+}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] :is(h2,h3,h4) {
+    color:var(--text);
+    line-height:1.3;
+    margin:0 0 var(--s3,12px);
+}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] h2:not(:first-child) {
+    margin-top:var(--s7,32px);
+}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] :is(h3,h4):not(:first-child) {
+    margin-top:var(--s6,24px);
+}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] h2 + :is(h3,h4),
+.venue-catalog-editorial[data-venue-landing-editorial="body"] h3 + h4 {
+    margin-top:var(--s4,16px);
+}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] :is(p,ul,ol,blockquote,pre,figure,table) {
+    margin:0 0 var(--s4,16px);
+}
+.venue-catalog-editorial :is(ul,ol) {
+    padding-inline-start:1.5em;
+}
+.venue-catalog-editorial ul {list-style:disc}
+.venue-catalog-editorial ol {list-style:decimal}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] li + li {
+    margin-top:var(--s2,8px);
+}
+.venue-catalog-editorial a {
+    color:var(--accent);
+    text-decoration:underline;
+    text-underline-offset:2px;
+}
+.venue-catalog-editorial img {max-width:100%;height:auto}
+.venue-catalog-editorial[data-venue-landing-editorial="body"] > :last-child {margin-bottom:0}
+@media(max-width:590px) {
+    .app-venues-catalog__header:has(> .venue-catalog-editorial--intro) {
+        display:block;
+        margin-bottom:var(--s6,24px);
+    }
+    .venues-catalog .default-category__header:has(> .venue-catalog-editorial--intro) {
+        margin-bottom:var(--s6,24px);
+    }
+    .venue-catalog-editorial[data-venue-landing-editorial="body"] {
+        margin-top:var(--s7,32px);
+    }
+    .venue-catalog-editorial[data-venue-landing-editorial="body"] h2:not(:first-child) {
+        margin-top:var(--s6,24px);
+    }
+    .venue-catalog-editorial[data-venue-landing-editorial="body"] :is(h3,h4):not(:first-child) {
+        margin-top:var(--s5,20px);
+    }
+}

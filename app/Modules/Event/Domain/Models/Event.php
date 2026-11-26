@@ -5,6 +5,8 @@ namespace App\Modules\Event\Domain\Models;
 use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Event\Application\Services\EventContractResponsibilityService;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Infrastructure\Database\Factories\EventFactory;
@@ -138,6 +140,19 @@ class Event extends Model
         }
 
         return $query->where('alias', $identifier);
+    }
+
+    /** @param Builder<Event> $query @param list<int> $identities */
+    public function scopeForActiveParticipation(Builder $query, array $identities): Builder
+    {
+        return $query->where(function (Builder $q) use ($identities): void {
+            $q->whereHas('participants', fn (Builder $p) => $p
+                ->whereIn('user_id', $identities)->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+                ->whereColumn('confirmation_version', 'events.participation_confirmation_version'))
+                ->orWhereHas('primaryGame.admissions', fn (Builder $a) => $a
+                    ->whereIn('user_id', $identities)->where('status', GameAdmissionStatusEnum::ACCEPTED->value))
+                ->orWhereHas('organizerActor', fn (Builder $o) => $o->whereIn('user_id', $identities));
+        });
     }
 
     public function venue(): BelongsTo

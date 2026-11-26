@@ -23,6 +23,11 @@ final class AccountDashboardWidget extends Model
         self::deleted($broadcast);
     }
 
+    public function usesLiveRefresh(): bool
+    {
+        return $this->kind === 'dynamic' && ($this->source_settings['live_enabled'] ?? true) !== false;
+    }
+
     protected function casts(): array
     {
         return [
@@ -30,6 +35,7 @@ final class AccountDashboardWidget extends Model
             'sort_order' => 'integer', 'iframe_height' => 'integer',
             'image_gap_px' => 'integer', 'image_width_percent' => 'integer',
             'refresh_delay_seconds' => 'integer', 'last_edit_at' => 'datetime',
+            'source_settings' => 'array',
             'account_statuses' => 'array', 'system_roles' => 'array',
             'participation_roles' => 'array', 'include_user_ids' => 'array',
             'exclude_user_ids' => 'array', 'actions' => 'array',

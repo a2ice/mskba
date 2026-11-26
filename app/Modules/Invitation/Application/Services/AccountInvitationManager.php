@@ -13,6 +13,8 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Invitation\Domain\Models\AccountInvitation;
 use App\Modules\Venue\Application\Services\VenueMembershipAccess;
+use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Application\UseCases\ManageVenueMembershipHandler;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
@@ -25,11 +27,10 @@ use Illuminate\Validation\ValidationException;
 
 final class AccountInvitationManager
 {
-    public function authorizeIssuer(?User $issuer): User
+    private function authorizeActor(?User $actor): User
     {
-        $user = $issuer?->canonical();
-        abort_unless($user !== null && $user->isConfirmed()
-            && $user->system_role === UserSystemRoleEnum::SUPERADMIN, 403);
+        $user = $this->lockCanonicalUser($actor);
+        abort_unless($user !== null && app(AccountInvitationAccess::class)->canViewAny($user), 403);
 
         return $user;
     }
@@ -38,22 +39,22 @@ final class AccountInvitationManager
         User $issuer, string $email, string $scopeType, int $scopeId,
         string $role, string $title, ?string $description, int $days
     ): array {
-        $issuer = $this->authorizeIssuer($issuer);
+        abort_unless(app(AccountInvitationAccess::class)->canIssueAny($issuer), 403);
+        if ($scopeType !== 'venue' || ! in_array($role, ['owner', 'staff', 'manager', 'booking_operator'], true)) {
+            throw ValidationException::withMessages(['role' => 'Этот контекст или тип приглашения пока не поддерживается.']);
+        }
         $email = (new ContactValue(ContactTypeEnum::EMAIL, $email))->value();
-        $this->assertTarget($scopeType, $scopeId, $role);
-        $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
         if ($days < 1 || $days > 30) {
             throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
         }
-        if (AccountInvitation::query()->where('contact_value', $email)
-            ->where('scope_type', $scopeType)->where('scope_id', $scopeId)
-            ->where('role', $role)->where('status', 'pending')
-            ->where('expires_at', '>', now())->exists()) {
-            throw ValidationException::withMessages(['email' => 'Для этого контакта и роли уже есть активное приглашение.']);
-        }
-
         $token = bin2hex(random_bytes(32));
         $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token) {
+            $venue = Venue::query()->whereKey($scopeId)->lockForUpdate()->firstOrFail();
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $role), 403);
+            $this->assertTarget($scopeType, $scopeId, $role);
+            $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
+            $this->assertNoActiveDuplicate($email, $scopeType, $scopeId, $role);
             $record = AccountInvitation::query()->create([
                 'status' => 'pending',
                 'progress' => 'created',
@@ -72,39 +73,98 @@ final class AccountInvitationManager
             ]);
             $this->event($record, 'created', ['issuer_id' => $issuer->id]);
             return $record;
-        });
+        }, 3);
         $this->send($invitation, $token);
         return [$invitation->refresh(), route('account-invitations.show', $token)];
     }
 
     public function renew(AccountInvitation $invitation, User $issuer, int $days = 7): string
     {
-        $this->authorizeIssuer($issuer);
-        if ($days < 1 || $days > 30 || $invitation->status !== 'pending') {
+        if ($days < 1 || $days > 30 || ! $invitation->canManageLink()) {
             throw ValidationException::withMessages(['days' => 'Это приглашение нельзя продлить.']);
         }
         $token = bin2hex(random_bytes(32));
-        DB::transaction(function () use ($invitation, $days, $token): void {
+        DB::transaction(function () use ($invitation, $days, $token, $issuer): void {
+            Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
-            abort_unless($record->status === 'pending', 409);
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canManage($issuer, $record), 403);
+            abort_unless($record->canManageLink(), 409);
+            $this->assertTarget($record->scope_type, $record->scope_id, $record->role);
+            $this->assertNoActiveDuplicate($record->contact_value, $record->scope_type, $record->scope_id, $record->role, $record->id);
+            $previousExpiry = $record->expires_at;
             $record->forceFill([
                 'token_hash' => hash('sha256', $token),
                 'expires_at' => now()->addDays($days),
             ])->save();
-            $this->event($record, 'link_renewed');
-        });
+            $this->event($record, 'link_renewed', [
+                'issuer_id' => $issuer->id,
+                'previous_expires_at' => $previousExpiry->toIso8601String(),
+                'expires_at' => $record->expires_at->toIso8601String(),
+            ]);
+        }, 3);
         $this->send($invitation->refresh(), $token);
         return route('account-invitations.show', $token);
     }
 
+    public function restore(AccountInvitation $invitation, User $issuer, int $days, string $reason): string
+    {
+        $reason = trim($reason);
+        if ($days < 1 || $days > 30) {
+            throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
+        }
+        if (mb_strlen($reason) < 5 || mb_strlen($reason) > 2000) {
+            throw ValidationException::withMessages(['reason' => 'Укажите причину восстановления (от 5 до 2000 символов).']);
+        }
+        $token = bin2hex(random_bytes(32));
+        DB::transaction(function () use ($invitation, $issuer, $days, $reason, $token): void {
+            Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
+            $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canManage($issuer, $record), 403);
+            abort_unless($record->status === 'revoked' && $record->accepted_user_id === null, 409);
+            $this->assertTarget($record->scope_type, $record->scope_id, $record->role);
+            $this->assertNoActiveDuplicate($record->contact_value, $record->scope_type, $record->scope_id, $record->role, $record->id);
+            $previousExpiry = $record->expires_at;
+            $previousRevocation = $record->revoked_at;
+            $record->forceFill([
+                'status' => 'pending',
+                'revoked_at' => null,
+                'token_hash' => hash('sha256', $token),
+                'expires_at' => now()->addDays($days),
+            ])->save();
+            $this->event($record, 'restored', [
+                'issuer_id' => $issuer->id,
+                'reason' => $reason,
+                'previous_revoked_at' => $previousRevocation?->toIso8601String(),
+                'previous_expires_at' => $previousExpiry->toIso8601String(),
+                'expires_at' => $record->expires_at->toIso8601String(),
+            ]);
+        }, 3);
+        $this->send($invitation->refresh(), $token);
+        return route('account-invitations.show', $token);
+    }
+
+    private function assertNoActiveDuplicate(string $email, string $scopeType, int $scopeId, string $role, ?int $exceptId = null): void
+    {
+        if (AccountInvitation::query()->where('contact_value', $email)
+            ->where('scope_type', $scopeType)->where('scope_id', $scopeId)
+            ->where('role', $role)->where('status', 'pending')
+            ->when($exceptId !== null, fn ($query) => $query->where('id', '!=', $exceptId))
+            ->where(fn ($query) => $query->whereNotNull('accepted_user_id')
+                ->orWhere('expires_at', '>', now()))->exists()) {
+            throw ValidationException::withMessages(['email' => 'Для этого контакта и роли уже есть активное приглашение.']);
+        }
+    }
+
     public function revoke(AccountInvitation $invitation, User $issuer): void
     {
-        $this->authorizeIssuer($issuer);
         DB::transaction(function () use ($invitation, $issuer): void {
+            Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
-            if ($record->status !== 'pending') {
-                return;
-            }
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canManage($issuer, $record), 403);
+            abort_unless($record->canManageLink(), 409);
             $record->forceFill(['status' => 'revoked', 'revoked_at' => now()])->save();
             $this->event($record, 'revoked', ['issuer_id' => $issuer->id]);
         });
@@ -123,7 +183,8 @@ final class AccountInvitationManager
         }
         DB::transaction(function () use ($invitation): void {
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
-            if ($record->status !== 'pending' || $record->isExpired()) {
+            if ($record->status !== 'pending' || $record->isExpired()
+                || ! hash_equals($record->token_hash, $invitation->token_hash)) {
                 return;
             }
             $record->increment('views_count');
@@ -138,16 +199,49 @@ final class AccountInvitationManager
         });
     }
 
+    /**
+     * Explicit interaction with a valid invitation, not identity verification
+     * or acceptance. Repeated clicks preserve the first timestamp and event.
+     */
+    public function markInterested(AccountInvitation $invitation): bool
+    {
+        return DB::transaction(function () use ($invitation): bool {
+            $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            if (! $record->canManageLink() || $record->isExpired()
+                || ! hash_equals($record->token_hash, $invitation->token_hash)) {
+                return false;
+            }
+
+            if ($record->interested_at === null) {
+                $fields = ['interested_at' => now()];
+                if (in_array($record->progress, ['created', 'sent', 'viewed'], true)) {
+                    $fields['progress'] = 'interested';
+                }
+                $record->forceFill($fields)->save();
+                $this->event($record, 'interested');
+            }
+
+            return true;
+        }, 3);
+    }
+
     public function accept(AccountInvitation $invitation, User $user, bool $registered = false): AccountInvitation
     {
         return DB::transaction(function () use ($invitation, $user, $registered): AccountInvitation {
+            // Match the venue → invitation order used by renewal and ownership review.
+            Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
             abort_unless($record->status === 'pending'
+                && hash_equals($record->token_hash, $invitation->token_hash)
                 && (! $record->isExpired() || $record->accepted_user_id !== null), 410);
             $user = $user->canonical();
             abort_if($user->isBlocked() || $user->trashed(), 403);
-            if ($record->accepted_user_id !== null && ! $user->isSameIdentity((int) $record->accepted_user_id)) {
-                abort(403);
+            if ($record->accepted_user_id !== null) {
+                abort_unless($user->isSameIdentity((int) $record->accepted_user_id), 403);
+
+                // A previously consumed link is not new evidence of control
+                // over an email removed from the accepting identity.
+                return $this->advance($record, $user);
             }
 
             $ownership = app(ContactOwnership::class);
@@ -176,8 +270,8 @@ final class AccountInvitationManager
                 }
                 $record->contact_verified_at = now();
                 $this->event($record, 'contact_verified', ['user_id' => $user->id]);
+                $record->progress = 'contact_verified';
             }
-            $record->progress = 'contact_verified';
             $record->save();
 
             $this->advance($record, $user);
@@ -187,38 +281,134 @@ final class AccountInvitationManager
 
     public function advance(AccountInvitation $invitation, User $user): AccountInvitation
     {
-        $user = $user->canonical();
-        if ($invitation->status !== 'pending' || ! $user->isSameIdentity((int) $invitation->accepted_user_id)) {
+        if ($invitation->status !== 'pending' || $invitation->accepted_user_id === null) {
             return $invitation;
         }
-        $venue = Venue::query()->findOrFail($invitation->scope_id);
-        if ($invitation->role === 'owner') {
-            $owner = VenueOwnership::query()->where('venue_id', $venue->id)
-                ->whereIn('owner_user_id', $user->identityIds())
-                ->where('status', 'active')->where('active_marker', true)->exists();
-            if ($owner) {
-                return $this->complete($invitation);
+
+        return DB::transaction(function () use ($invitation, $user): AccountInvitation {
+            $venue = Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
+            $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            $user = $this->lockCanonicalUser($user);
+
+            if ($user === null || $user->trashed() || $user->isBlocked()
+                || $record->status !== 'pending' || $record->accepted_user_id === null
+                || ! $user->isSameIdentity((int) $record->accepted_user_id)) {
+                return $record;
             }
-            $this->progress($invitation, 'awaiting_ownership');
-            return $invitation->refresh();
+
+            if ($record->role === 'owner') {
+                $owner = VenueOwnership::query()->where('venue_id', $venue->id)
+                    ->whereIn('owner_user_id', $user->identityIds())
+                    ->where('status', 'active')->where('active_marker', true)->exists();
+                if ($owner) {
+                    return $this->complete($record);
+                }
+                $this->progress($record, 'awaiting_ownership');
+
+                return $record->refresh();
+            }
+
+            // A recorded hold requires an explicit review, even if the
+            // original issuer regains their privileges later.
+            if ($record->progress === 'awaiting_authorization') {
+                return $record;
+            }
+
+            if (! $this->recipientReady($record, $user)) {
+                $this->progress($record, 'awaiting_account');
+
+                return $record->refresh();
+            }
+
+            $issuer = $this->lockCanonicalUser(User::query()->find($record->created_by_user_id));
+            if ($issuer === null || $issuer->isSameIdentity($user)
+                || ! app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $record->role)) {
+                $this->progress($record, 'awaiting_authorization', [
+                    'issuer_id' => $record->created_by_user_id,
+                    'reason' => 'issuer_no_longer_authorized',
+                ]);
+
+                return $record->refresh();
+            }
+
+            return $this->grantAndComplete($record, $venue, $user, $issuer);
+        }, 3);
+    }
+
+    public function approveCompletion(AccountInvitation $invitation, User $reviewer, string $reason): AccountInvitation
+    {
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 10 || mb_strlen($reason) > 500) {
+            throw ValidationException::withMessages(['reason' => 'Укажите основание согласования (10–500 символов).']);
         }
-        if (! $user->isConfirmed()) {
-            $this->progress($invitation, 'awaiting_account');
-            return $invitation->refresh();
+
+        return DB::transaction(function () use ($invitation, $reviewer, $reason): AccountInvitation {
+            $venue = Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
+            $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            $reviewer = $this->lockCanonicalUser($reviewer);
+            abort_unless($reviewer?->system_role === UserSystemRoleEnum::SUPERADMIN
+                && $this->canAuthorizeMembership($reviewer, $venue), 403);
+            abort_unless($record->status === 'pending' && $record->progress === 'awaiting_authorization'
+                && $record->scope_type === 'venue' && in_array($record->role, ['staff', 'manager', 'booking_operator'], true), 409);
+
+            $user = $this->lockCanonicalUser(User::query()->find($record->accepted_user_id));
+            abort_unless($user !== null && ! $reviewer->isSameIdentity($user), 403);
+            if (! $this->recipientReady($record, $user)) {
+                throw ValidationException::withMessages(['reason' => 'Получатель должен выполнить условия подтверждения аккаунта и сохранить подтверждённый email приглашения.']);
+            }
+
+            $this->event($record, 'authorization_reviewed', [
+                'issuer_id' => $record->created_by_user_id,
+                'reviewer_id' => $reviewer->id,
+                'reason' => $reason,
+            ]);
+
+            return $this->grantAndComplete($record, $venue, $user, $reviewer);
+        }, 3);
+    }
+
+    private function lockCanonicalUser(?User $user): ?User
+    {
+        if ($user === null) {
+            return null;
         }
-        // A commercial membership can only be issued by the existing domain
-        // handler. The invitee explicitly accepted the invitation first.
-        $role = VenueRole::from($invitation->role);
+
+        $canonical = User::query()->whereKey($user->canonical()->id)->lockForUpdate()->first();
+
+        return $canonical !== null && $canonical->canonical_user_id === null ? $canonical : null;
+    }
+
+    private function recipientReady(AccountInvitation $record, User $user): bool
+    {
+        return $user->isConfirmed() && ! $user->isBlocked() && ! $user->trashed()
+            && $user->missingAccountConfirmationRequirements() === []
+            && $record->contact_verified_at !== null
+            && $user->identityContactsQuery()
+                ->where('type', ContactTypeEnum::EMAIL->value)
+                ->where('value', $record->contact_value)
+                ->whereNotNull('verified_at')->exists();
+    }
+
+    private function canAuthorizeMembership(?User $actor, Venue $venue): bool
+    {
+        return app(AccountInvitationAccess::class)->canMutate($actor)
+            && app(VenueCommercialAccess::class)->allows($actor, $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS);
+    }
+
+    private function grantAndComplete(AccountInvitation $record, Venue $venue, User $user, User $issuer): AccountInvitation
+    {
+        abort_unless($record->scope_type === 'venue'
+            && in_array($record->role, ['staff', 'manager', 'booking_operator'], true), 409);
+        $role = VenueRole::from($record->role);
         $active = app(VenueMembershipAccess::class)->activeVenueMembershipsFor($user)
             ->first(fn ($m): bool => $m->scope_type->value === 'venue'
                 && (int) $m->scope_id === (int) $venue->id
                 && $m->access_level === $role->value);
         if ($active === null) {
-            app(ManageVenueMembershipHandler::class)->grant(
-                $venue, $user, $role, $invitation->issuer
-            );
+            app(ManageVenueMembershipHandler::class)->grant($venue, $user, $role, $issuer);
         }
-        return $this->complete($invitation);
+
+        return $this->complete($record);
     }
 
     /**
@@ -247,11 +437,11 @@ final class AccountInvitationManager
         return $invitation->refresh();
     }
 
-    private function progress(AccountInvitation $invitation, string $stage): void
+    private function progress(AccountInvitation $invitation, string $stage, array $details = []): void
     {
         if ($invitation->progress !== $stage) {
             $invitation->forceFill(['progress' => $stage])->save();
-            $this->event($invitation, $stage);
+            $this->event($invitation, $stage, $details);
         }
     }
 

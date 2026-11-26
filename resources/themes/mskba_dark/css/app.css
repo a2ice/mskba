@@ -22,6 +22,7 @@
 @import './pages/account';
 @import './pages/section-sidebar';
 @import './pages/venue';
+@import '../../../css/venue-catalog-editorial.css';
 @import './pages/venue-nearby.css';
 @import './pages/admin';
 @import './pages/integrations';

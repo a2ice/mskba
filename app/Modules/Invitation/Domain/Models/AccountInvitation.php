@@ -18,6 +18,7 @@ class AccountInvitation extends Model
             'expires_at' => 'datetime',
             'sent_at' => 'datetime',
             'viewed_at' => 'datetime',
+            'interested_at' => 'datetime',
             'registered_at' => 'datetime',
             'contact_verified_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -60,6 +61,45 @@ class AccountInvitation extends Model
             ? 'expired' : $this->status;
     }
 
+    public function canManageLink(): bool
+    {
+        return $this->status === 'pending' && $this->accepted_user_id === null;
+    }
+
+    public function canRestoreLink(): bool
+    {
+        return $this->status === 'revoked' && $this->accepted_user_id === null;
+    }
+
+    public function systemStatusLabel(): string
+    {
+        if ($this->status === 'revoked') {
+            return 'Аннулировано';
+        }
+
+        $restored = $this->getAttribute('has_restoration');
+        if ($restored === null) {
+            $restored = $this->relationLoaded('events')
+                ? $this->events->contains('event', 'restored')
+                : $this->events()->where('event', 'restored')->exists();
+        }
+
+        return $restored ? 'Восстановлено' : 'Активно';
+    }
+
+    public function invitationStatusLabel(): string
+    {
+        return match (true) {
+            $this->accepted_user_id !== null => 'Принято',
+            $this->status === 'revoked' => 'Аннулировано',
+            $this->isExpired() => 'Просрочено',
+            $this->interested_at !== null => 'Заинтересован',
+            $this->viewed_at !== null => 'Просмотрено',
+            $this->sent_at !== null => 'Отправлено',
+            default => 'Создано',
+        };
+    }
+
     public function statusLabel(): string
     {
         return match ($this->effectiveStatus()) {
@@ -77,9 +117,11 @@ class AccountInvitation extends Model
             'created' => 'Создано',
             'sent' => 'Отправлено',
             'viewed' => 'Просмотрено',
+            'interested' => 'Заинтересован',
             'registered' => 'Аккаунт создан',
             'contact_verified' => 'Контакт подтверждён',
             'awaiting_account' => 'Ожидается подтверждение аккаунта',
+            'awaiting_authorization' => 'Ожидается согласование полномочий',
             'awaiting_ownership' => 'Ожидается проверка владения',
             'completed' => 'Процедура завершена',
             default => '—',

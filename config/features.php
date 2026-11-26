@@ -1,6 +1,13 @@
 <?php
 
 return [
+    // Enabled in all environments by default; publication is per active landing.
+    // An explicit false remains an emergency kill switch; this does not authorize indexing.
+    'venue_catalog_landings' => [
+        'enabled' => (bool) env('FEATURE_VENUE_CATALOG_LANDINGS', true),
+        // Independent, default-off release gate for search indexing and sitemap inclusion.
+        'indexing' => (bool) env('FEATURE_VENUE_CATALOG_LANDING_INDEXING', false),
+    ],
     // Temporary manual QA entry to personal chats. Not a general messenger feature.
     // Override explicitly with FEATURE_DIRECT_MESSAGE_TEST_ENTRY in any environment.
     'direct_messages' => [

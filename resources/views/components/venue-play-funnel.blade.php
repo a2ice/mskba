@@ -44,14 +44,16 @@
                     <small data-venue-play-card-count>{{ $upcoming->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)->count() }} пойдут · Подробнее</small>
                 </button>
             @empty
-                <p class="venue-play-dialog__empty">Пока нет предстоящих игр. Вы можете организовать свою или посмотреть, когда площадка свободна.</p>
+                <p class="venue-play-dialog__empty">Пока нет предстоящих игр. Вы можете организовать свою или добавить площадку в избранное, чтобы следить за новыми играми.</p>
             @endforelse
         </div>
-        @include('components.venue-favorite-follow', ['buttonClass' => $primaryButton])
+        @if($upcomingVenueEvents->isNotEmpty())
+            @include('components.venue-favorite-follow', ['buttonClass' => $primaryButton])
+        @endif
     </div>
     <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer @if($isAppTheme && $upcomingVenueEvents->isEmpty()) data-venue-play-empty-footer @endif>
-        @if($isAppTheme && $upcomingVenueEvents->isEmpty())
-            <button type="button" class="{{ $secondaryButton }}" data-venue-availability-open>Посмотреть занятость</button>
+        @if($upcomingVenueEvents->isEmpty())
+            <button type="button" class="{{ $secondaryButton }}" data-venue-favorite-footer aria-pressed="false" disabled><svg class="venue-favorite-follow__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span data-venue-favorite-footer-label>Проверяем избранное…</span></button>
         @endif
         <button type="button" class="{{ $upcomingVenueEvents->isEmpty() ? $secondaryButton : $primaryButton }}" data-quick-event-open
             data-quick-event-venue-id="{{ $venue->id }}" data-venue-play-create>Создать мероприятие</button>

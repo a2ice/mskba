@@ -102,3 +102,6 @@
 .app-dashboard-widget__actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;width:100%;margin-top:auto}
 .app-dashboard-widget__actions .button{margin-top:0}
 @media(max-width:639px){.app-dashboard-widget__actions{align-items:stretch}.app-dashboard-widget__actions .button{justify-content:center}}
+
+/* Auto-empty cards remain in the logical order, but occupy no grid slot. */
+.app-dashboard-widget[hidden]{display:none!important}

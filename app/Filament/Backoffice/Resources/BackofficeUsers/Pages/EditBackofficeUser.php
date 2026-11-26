@@ -3,6 +3,7 @@
 namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages;
 
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
+use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Finance\Application\Services\BackofficeUserWalletFunding;
@@ -31,6 +32,7 @@ use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotH
 use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminAssignParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
+use App\Modules\Identity\Application\UseCases\AdminForceConfirmUserHandler;
 use App\Modules\Identity\Application\UseCases\SetUserPasswordHandler;
 use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
@@ -65,6 +67,8 @@ use Illuminate\Support\Str;
 
 final class EditBackofficeUser extends EditRecord
 {
+    use Concerns\ManagesUserContacts;
+
     protected static string $resource = BackofficeUserResource::class;
 
     public ?int $selectedParticipationRoleId = null;
@@ -99,6 +103,7 @@ final class EditBackofficeUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ...$this->contactManagementActions(),
             Action::make('setUserPassword')
                 ->label('Установить пароль')
                 ->icon('heroicon-o-key')
@@ -277,6 +282,26 @@ final class EditBackofficeUser extends EditRecord
                             ->send();
                     }
                 }),
+            Action::make('forceConfirmAccount')
+                ->label('Принудительно подтвердить аккаунт')
+                ->color('danger')
+                ->icon('heroicon-o-exclamation-triangle')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && app(AdminForceConfirmUserHandler::class)->canConfirm(auth('web')->user(), $this->getRecord()))
+                ->modalHeading('Принудительное подтверждение аккаунта')
+                ->modalDescription('Исключительное действие: аккаунт получит статус «Подтверждён» даже при невыполненных условиях. Контакты не будут подтверждены, персональные данные не изменятся. Статус может влиять на доступ к функциям портала. Основание и невыполненные условия сохраняются в истории.')
+                ->modalSubmitActionLabel('Подтвердить принудительно')
+                ->schema([Textarea::make('reason')->label('Основание исключения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null && BackofficeUserResource::canEdit($this->getRecord()), 403);
+                    $user = app(AdminForceConfirmUserHandler::class)->handle(
+                        $actor, $this->getRecord(), (string) $data['reason'],
+                    );
+                    $this->getRecord()->refresh();
+                    $this->data['account_status'] = $user->status->value;
+                    Notification::make()->success()->title('Аккаунт подтверждён принудительно')->send();
+                }),
             Action::make('saveGeneralInline')
                 ->label('Сохранить общие данные')
                 ->extraAttributes(['style' => 'display:none'])
@@ -289,7 +314,8 @@ final class EditBackofficeUser extends EditRecord
                 ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
                 ->action(function (array $data): void {
                     $actor = auth('web')->user()?->canonical();
-                    abort_unless($actor?->system_role === UserSystemRoleEnum::SUPERADMIN, 403);
+                    abort_unless($actor?->system_role === UserSystemRoleEnum::SUPERADMIN
+                        && BackofficeUserResource::canEdit($this->getRecord()), 403);
                     $status = UserStatusEnum::tryFrom((string) ($this->form->getState()['account_status'] ?? ''));
                     if ($status === null) {
                         throw ValidationException::withMessages(['account_status' => 'Неизвестный статус пользователя.']);
@@ -300,15 +326,15 @@ final class EditBackofficeUser extends EditRecord
                     }
                     try {
                         DB::transaction(function () use ($actor, $status, $before, $data): void {
-                            app(AdminUpdateUserStatusHandler::class)->handle($actor, $this->getRecord()->id, $status);
+                            $updated = app(AdminUpdateUserStatusHandler::class)->handle($actor, $this->getRecord()->id, $status);
                             AuditLog::query()->create([
-                                'actor_id' => $actor->id,
+                                'actor_id' => app(CurrentActorResolver::class)->resolve($actor, null)?->id,
                                 'auditable_type' => User::class,
-                                'auditable_id' => $this->getRecord()->id,
+                                'auditable_id' => $updated->id,
                                 'event' => 'admin_user_status_changed',
                                 'old_values' => ['status' => $before->value],
                                 'new_values' => ['status' => $status->value],
-                                'metadata' => ['reason' => (string) $data['reason']],
+                                'metadata' => ['reason' => (string) $data['reason'], 'actor_user_id' => $actor->id],
                             ]);
                         });
                     } catch (UserCannotBeChangedException $exception) {
@@ -321,6 +347,7 @@ final class EditBackofficeUser extends EditRecord
                         return;
                     }
                     $this->getRecord()->refresh();
+                    Notification::make()->success()->title('Статус аккаунта изменён')->send();
                 }),
             Action::make('savePersonalInline')
                 ->label('Сохранить профиль')
@@ -415,7 +442,7 @@ final class EditBackofficeUser extends EditRecord
                         $actor, $this->getRecord(),
                         (array) ($state['creation_permissions'] ?? []),
                         (array) ($state['privileged_permissions'] ?? []),
-                        (array) ($state['backoffice_permissions'] ?? []),
+                        BackofficePermissionGroups::flatten((array) ($state['backoffice_permissions'] ?? [])),
                         (string) $data['reason'],
                     );
                     $this->getRecord()->refresh();
@@ -947,6 +974,9 @@ final class EditBackofficeUser extends EditRecord
             }
         }
 
+        $data['backoffice_permissions'] = BackofficePermissionGroups::split($data['backoffice_permissions']);
+        $data['locked_backoffice_permissions'] = BackofficePermissionGroups::split($data['locked_backoffice_permissions']);
+
         return $data;
     }
 
@@ -977,7 +1007,7 @@ final class EditBackofficeUser extends EditRecord
             $record,
             (array) ($data['creation_permissions'] ?? []),
             (array) ($data['privileged_permissions'] ?? []),
-            (array) ($data['backoffice_permissions'] ?? []),
+            BackofficePermissionGroups::flatten((array) ($data['backoffice_permissions'] ?? [])),
             (string) ($data['change_reason'] ?? ''),
         );
 

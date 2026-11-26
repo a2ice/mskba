@@ -5,7 +5,8 @@
     $dashboardActions = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetActions::class);
     $dashboardButtonStyles = \App\Modules\Dashboard\Domain\Models\DashboardButtonStyle::query()
         ->where('enabled', true)->pluck('class_name')->all();
-    $dashboardButtonCss = app(\App\Modules\Dashboard\Application\Services\DashboardButtonStyleCompiler::class)
+    $dashboardPartialRefresh = $dashboardPartialRefresh ?? false;
+    $dashboardButtonCss = $dashboardPartialRefresh ? '' : app(\App\Modules\Dashboard\Application\Services\DashboardButtonStyleCompiler::class)
         ->cssForWidgets($dashboardWidgets);
 @endphp
 @if ($dashboardButtonCss !== '')
@@ -32,10 +33,18 @@
         $imageCss = "--widget-image-gap: {$imageGap}px; --widget-image-fr: {$imageWidth}fr; --widget-text-fr: ".(100 - $imageWidth)."fr; --widget-image-width: {$imageWidth}%";
         $widgetVersion = hash('sha256', serialize($widget->getAttributes()));
         $refreshSeconds = min(60, max(0, (int) ($widget->refresh_delay_seconds ?? 5)));
+        $dynamicData = $widget->kind === 'dynamic'
+            ? app(\App\Modules\Dashboard\Application\Services\DashboardDataRegistry::class)->dataForDisplay($widget, $dashboardUser)
+            : null;
+        $autoHidden = $dynamicData !== null && $dynamicData->total === 0
+            && \App\Modules\Dashboard\Application\Services\DashboardDataRegistry::supportsHideWhenEmpty($widget->source_key)
+            && ($widget->source_settings['hide_when_empty'] ?? false) === true;
     @endphp
     <article class="panel app-dashboard-widget app-dashboard-widget--{{ $widget->size === 'full' ? 'full' : 'half' }}"
              data-dashboard-widget="{{ $widget->id }}" data-widget-kind="{{ $widget->kind }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}" data-widget-can-move="{{ $widget->can_move ? '1' : '0' }}"
              data-widget-version="{{ $widgetVersion }}" data-widget-refresh-delay="{{ $refreshSeconds }}"
+             @if ($widget->kind === 'dynamic') data-widget-source="{{ $widget->source_key }}" data-widget-live="{{ $widget->usesLiveRefresh() ? '1' : '0' }}" @endif
+             @if ($autoHidden) hidden @endif
              @if ($gradientGlow) style="--surface-glow: {{ $gradientGlow }}" @endif>
         <div class="app-dashboard-widget__header{{ $widget->can_move ? ' app-dashboard-widget__header--movable' : '' }}"
              @if ($widget->can_move) data-dashboard-drag-handle tabindex="0"
@@ -86,6 +95,12 @@
                 <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body ?: $messagesDefault, ['unread_count' => $dashboardUnread]) !!}</div>
 
                 @break
+            @case('dynamic')
+                @include('theme::pages.account.partials.dashboard-dynamic-content', [
+                    'source' => $widget->source_key,
+                    'data' => $dynamicData?->toArray(),
+                ])
+                @break
             @case('custom_html')
                 @php
                     // The iframe intentionally has an opaque origin: never allow-same-origin.
@@ -123,13 +138,13 @@
         </div>
     </article>
 @empty
-    @if ($dashboardAvailableWidgets->isEmpty())
+    @if (! $dashboardPartialRefresh && $dashboardAvailableWidgets->isEmpty())
         <section class="panel app-dashboard-widget app-dashboard-widget--full">
             <h2>Виджетов пока нет</h2><p>Информация появится здесь после настройки администратором.</p>
         </section>
     @endif
 @endforelse
-@if ($dashboardAvailableWidgets->isNotEmpty())
+@if (! $dashboardPartialRefresh && $dashboardAvailableWidgets->isNotEmpty())
     <button type="button" class="panel app-dashboard-widget app-dashboard-widget--add"
             data-dashboard-add-widget title="Добавить виджет" aria-label="Добавить виджет">
         <span class="app-dashboard-widget__add-icon" aria-hidden="true">+</span>
