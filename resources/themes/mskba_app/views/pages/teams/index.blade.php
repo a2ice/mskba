@@ -1,52 +1,44 @@
-@extends('theme::layouts.app', ['title' => 'Найти команду'])
+@php
+    $title = 'Найти команду';
+    $categoryTitle = $title;
+    $categoryDescription = 'Подбери команду по формату, составу и наличию свободных мест.';
+    $categoryRootId = 'teams-catalog';
+    $categoryHeadingId = 'team-catalog-heading';
+    $categoryRootClass = 'app-category app-team-section app-team-public';
+    $categorySidebarLabel = 'Фильтры команд';
+    $categoryView = request('view') === 'list' ? 'list' : 'cards';
+    $categoryBaseUrl = route('teams.index');
+    $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
+    $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'teams-category-filter-desktop', 'name' => 'q', 'value' => $filters['q'], 'placeholder' => 'Название команды', 'label' => 'Поиск команд'];
+    $categoryVisibleCount = $teams->count();
+    $categoryResultTotal = $teams->total();
+@endphp
+@extends('theme::layouts.category')
 
-@section('content')
-    <section class="container app-team-section app-team-public" aria-labelledby="team-catalog-heading">
-        <header class="app-account-overview__intro">
-            <h1 id="team-catalog-heading">Найти команду</h1>
-            <p>Подбери команду по формату, составу и наличию свободных мест.</p>
-        </header>
+@section('category-heading-action')
+    <div class="app-team-actions">
+        @auth <a class="button secondary" href="{{ route('account.teams') }}">Мои команды</a> @endauth
+        @can('team-create') <a class="button secondary" href="{{ route('teams.create') }}">Создать команду</a> @endcan
+    </div>
+@endsection
 
-        <div class="app-team-actions">
-            @auth <a class="button secondary" href="{{ route('account.teams') }}">Мои команды</a> @endauth
-            @can('team-create') <a class="button secondary" href="{{ route('teams.create') }}">Создать команду</a> @endcan
+@section('category-sidebar')
+    <h2>Поиск команд</h2>
+    @include('theme::pages.teams.partials.category-filters', ['scope' => 'desktop'])
+@endsection
+
+@section('category-before-items')
+    <details class="app-category__mobile-filters panel">
+        <summary>Фильтры <span aria-hidden="true">⌄</span></summary>
+        <div class="app-category__mobile-filters-body">
+            @include('theme::pages.teams.partials.category-filters', ['scope' => 'mobile'])
         </div>
+    </details>
+@endsection
 
-        <form class="panel app-team-filters" method="GET" action="{{ route('teams.index') }}" aria-label="Поиск команд">
-            <label class="app-team-field">
-                <span>Название или описание</span>
-                <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название команды">
-            </label>
-            <label class="app-team-field">
-                <span>Формат</span>
-                <select name="sport_type">
-                    <option value="">Любой</option>
-                    @foreach (\App\Modules\Team\Domain\Enums\TeamSportTypeEnum::cases() as $type)
-                        <option value="{{ $type->value }}" @selected($filters['sport_type'] === $type->value)>{{ $type->label() }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label class="app-team-field">
-                <span>Размер состава</span>
-                <select name="member_count">
-                    <option value="">Любой</option>
-                    <option value="small" @selected($filters['member_count'] === 'small')>До 5 участников</option>
-                    <option value="medium" @selected($filters['member_count'] === 'medium')>6–10 участников</option>
-                    <option value="large" @selected($filters['member_count'] === 'large')>От 11 участников</option>
-                </select>
-            </label>
-            <label class="app-team-checkbox">
-                <input type="checkbox" name="hiring" value="1" @checked($filters['hiring'])>
-                <span>Идёт набор</span>
-            </label>
-            <div class="app-team-filter-actions">
-                <button class="button primary" type="submit">Найти</button>
-                <a class="app-team-link" href="{{ route('teams.index') }}">Сбросить</a>
-            </div>
-        </form>
-
-        <p class="muted" data-context-results-count data-context-result-total="{{ $teams->total() }}" role="status">Найдено команд: {{ $teams->total() }}</p>
-        <div class="app-team-grid" aria-label="Результаты поиска команд">
+@section('category-items')
             @forelse ($teams as $team)
                 <article class="panel app-team-card">
                     <div class="app-team-card__title">
@@ -70,7 +62,9 @@
                     <a class="button secondary" href="{{ route('teams.index') }}">Все команды</a>
                 </section>
             @endforelse
-        </div>
-        <div class="app-team-pagination">{{ $teams->links() }}</div>
-    </section>
+
+@endsection
+
+@section('category-after-items')
+    <div class="app-team-pagination">{{ $teams->appends(request()->except('page'))->links() }}</div>
 @endsection
