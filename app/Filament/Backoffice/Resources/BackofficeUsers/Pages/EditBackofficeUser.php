@@ -3,6 +3,7 @@
 namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages;
 
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
+use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Finance\Application\Services\BackofficeUserWalletFunding;
@@ -441,7 +442,7 @@ final class EditBackofficeUser extends EditRecord
                         $actor, $this->getRecord(),
                         (array) ($state['creation_permissions'] ?? []),
                         (array) ($state['privileged_permissions'] ?? []),
-                        (array) ($state['backoffice_permissions'] ?? []),
+                        BackofficePermissionGroups::flatten((array) ($state['backoffice_permissions'] ?? [])),
                         (string) $data['reason'],
                     );
                     $this->getRecord()->refresh();
@@ -973,6 +974,9 @@ final class EditBackofficeUser extends EditRecord
             }
         }
 
+        $data['backoffice_permissions'] = BackofficePermissionGroups::split($data['backoffice_permissions']);
+        $data['locked_backoffice_permissions'] = BackofficePermissionGroups::split($data['locked_backoffice_permissions']);
+
         return $data;
     }
 
@@ -1003,7 +1007,7 @@ final class EditBackofficeUser extends EditRecord
             $record,
             (array) ($data['creation_permissions'] ?? []),
             (array) ($data['privileged_permissions'] ?? []),
-            (array) ($data['backoffice_permissions'] ?? []),
+            BackofficePermissionGroups::flatten((array) ($data['backoffice_permissions'] ?? [])),
             (string) ($data['change_reason'] ?? ''),
         );
 
