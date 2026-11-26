@@ -51,7 +51,9 @@ final class EditVenueCatalogLanding extends EditRecord
                         ? ' Базовый SEO-чеклист заполнен. Проверьте релевантность и достоверность текста вручную.'
                         : ' Для будущей индексации проверьте: '.implode(', ', $missing).'.';
                     $body .= ' Включение в sitemap запрошено: '.($readiness['sitemap_requested'] ? 'да' : 'нет').'.';
-                    $body .= ' Сейчас индексация всех SEO-посадочных отключена; проверка ничего не публикует.';
+                    $body .= app(\App\Modules\Content\Application\Services\VenueCatalogLandingIndexPolicy::class)->enabled(request())
+                        ? ' Общий режим индексации разрешён на этом хосте; проверка ничего не публикует.'
+                        : ' Общий режим индексации на этом хосте выключен; проверка ничего не публикует.';
 
                     $notification = Notification::make()->title('Проверка сохранённой подборки')->body($body)->persistent();
                     if ($count < 3 || ($result['missing_district'] ?? 0) > 0 || $missing !== []) {
