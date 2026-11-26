@@ -46,7 +46,8 @@ const notification = (id) => ({
     href: '/account/notifications',
 });
 
-test('only three visible toasts, waiting queue and no read on dismiss', () => {
+test('only three visible toasts, closing acknowledges and advances queue', async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ unread_count: 22 }) });
     const region = new FakeElement('section');
     region.hidden = true;
     const dock = createNotificationToastDock(region, () => {});
@@ -57,7 +58,7 @@ test('only three visible toasts, waiting queue and no read on dismiss', () => {
     dock.reconcile(batch);
     assert.equal(region.children.length, 3);
 
-    region.children[0].children[1].listeners.click();
+    await region.children[0].children[1].listeners.click();
     assert.equal(dock.size(), 3);
     assert.deepEqual(region.children.map((node) => node.dataset.messageToastId), ['2','3','4']);
     dock.reconcile([]);
@@ -65,7 +66,7 @@ test('only three visible toasts, waiting queue and no read on dismiss', () => {
     assert.equal(region.hidden, true);
 });
 
-test('explicit read marks message read and updates count without coupling to close', async () => {
+test('closing marks message read and updates count', async () => {
     const previousFetch = globalThis.fetch;
     const calls = [];
     globalThis.fetch = async (url, options) => {
@@ -77,7 +78,7 @@ test('explicit read marks message read and updates count without coupling to clo
         const counts = [];
         const dock = createNotificationToastDock(region, (count) => counts.push(count));
         dock.reconcile([notification(1), notification(2)]);
-        const read = region.children[0].children.find(el => el.className === 'app-message-toast__read');
+        const read = region.children[0].children.find(el => el.className === 'app-message-toast__close');
         await read.listeners.click();
         assert.equal(dock.size(), 1);
         assert.deepEqual(counts, [1]);
@@ -96,7 +97,7 @@ test('failed read does not discard unread toast or reduce the count', async () =
         const counts = [];
         const dock = createNotificationToastDock(region, (count) => counts.push(count));
         dock.add(notification(8));
-        await region.children[0].children.find(el => el.className === 'app-message-toast__read').listeners.click();
+        await region.children[0].children.find(el => el.className === 'app-message-toast__close').listeners.click();
         assert.equal(dock.size(), 1);
         assert.deepEqual(counts, []);
         assert.equal(region.children[0].querySelector('.app-message-toast__error')?.textContent,
