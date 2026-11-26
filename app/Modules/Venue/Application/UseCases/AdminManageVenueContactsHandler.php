@@ -45,7 +45,7 @@ final class AdminManageVenueContactsHandler
             return $venue->contacts()->create([
                 ...$attributes,
                 'is_primary' => $primary,
-                'is_public' => false,
+                'is_public' => (bool) ($data['is_public'] ?? false),
             ]);
         }, 3);
     }
@@ -71,9 +71,6 @@ final class AdminManageVenueContactsHandler
                 $attributes['meta'] = null;
             } else {
                 $attributes['is_public'] = (bool) ($data['is_public'] ?? false);
-                if ($attributes['is_public'] && ! $contact->hasBeenVerified()) {
-                    throw ValidationException::withMessages(['is_public' => 'Сначала подтвердите контакт.']);
-                }
             }
             $contact->update($attributes);
 
