@@ -9,6 +9,7 @@ use App\Filament\Backoffice\Resources\Venues\Pages\ListVenues;
 use App\Filament\Backoffice\Resources\Venues\Support\VenueRentalPolicyEditor;
 use App\Filament\Backoffice\Resources\Venues\Support\VenueTariffModal;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\ContactsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PricingRulesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalBookingsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalInterestsRelationManager;
@@ -740,6 +741,7 @@ final class VenueResource extends Resource
     {
         return [
             CourtsRelationManager::class,
+            ContactsRelationManager::class,
             PricingRulesRelationManager::class,
             SpecialTermsRelationManager::class,
             // A single first-level tab. EditVenue renders its three members
