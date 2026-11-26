@@ -1,4 +1,5 @@
 import { subscribePrivate } from '../../../js/realtime.js';
+import { acknowledgeNotification } from './notification-toasts.js';
 
 export const conversationFromHref = (href, origin) => {
     try {
@@ -55,8 +56,7 @@ export const createNotificationPopover = (userId, options = {}) => {
         + '<button type="button" data-popover-close aria-label="Закрыть окно">'
         + '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
         + '<div class="app-notification-popover__content" data-popover-content></div>'
-        + '<footer class="app-notification-popover__footer"><a data-popover-original href="/account/notifications">Открыть полностью</a>'
-        + '<button type="button" data-popover-read>Отметить прочитанным</button></footer>';
+        + '<footer class="app-notification-popover__footer"><a data-popover-original href="/account/notifications">Открыть полностью</a></footer>';
     const backdrop = document.createElement('div');
     backdrop.className = 'app-notification-popover__backdrop';
     backdrop.hidden = true;
@@ -65,7 +65,6 @@ export const createNotificationPopover = (userId, options = {}) => {
     const heading = root.querySelector('[data-popover-title]');
     const content = root.querySelector('[data-popover-content]');
     const original = root.querySelector('[data-popover-original]');
-    const read = root.querySelector('[data-popover-read]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let active = null;
     let descriptor = null;
@@ -132,6 +131,16 @@ export const createNotificationPopover = (userId, options = {}) => {
         }
         node.textContent = message || '';
     };
+    const markOpened = async (notice) => {
+        try {
+            const result = await acknowledgeNotification(notice, csrf);
+            options.onRead?.(notice);
+            if (result) document.dispatchEvent(new CustomEvent('notification:count-changed',
+                { detail: { unread_count: result.unread_count } }));
+        } catch (error) {
+            if (active === notice && !root.hidden) showError(error.message);
+        }
+    };
     const accessLost = () => {
         stop();
         contract = null;
@@ -179,6 +188,7 @@ export const createNotificationPopover = (userId, options = {}) => {
             if (older || !previous.dataset.before) previous.dataset.before = data.next_before || '';
             previous.hidden = !previous.dataset.before;
         }
+        return true;
     };
 
     const state = async () => {
@@ -263,7 +273,8 @@ export const createNotificationPopover = (userId, options = {}) => {
             } catch (error) { showError(error.message); }
             finally { sending = false; if (button.isConnected) button.disabled = false; }
         });
-        await history();
+        const loaded = await history();
+        if (loaded && active === notification && !root.hidden && contract === result) void markOpened(notification);
         await state();
         // An older request must never subscribe after the user switched dialogs.
         if (active !== notification || descriptor !== selected || contract !== result || root.hidden) return;
@@ -325,8 +336,7 @@ export const createNotificationPopover = (userId, options = {}) => {
                         const result = await response.json();
                         status.textContent = result.message || 'Действие выполнено.';
                         actions.remove();
-                        read.disabled = true;
-                        read.textContent = 'Прочитано';
+                        void markOpened(notice);
                         document.dispatchEvent(new CustomEvent('notification:count-changed', { detail: {} }));
                     } catch (error) {
                         status.textContent = error.message;
@@ -357,8 +367,6 @@ export const createNotificationPopover = (userId, options = {}) => {
         session.set(modeKey, 'open');
         heading.textContent = notice.title || 'Уведомление MSKBA';
         original.href = safeHref(notice.href) || '/account/notifications';
-        read.disabled = Boolean(notice.is_read);
-        read.textContent = notice.is_read ? 'Прочитано' : 'Отметить прочитанным';
         const saved = session.get(placeKey);
         if (saved && window.matchMedia('(min-width: 768px)').matches) {
             try {
@@ -373,33 +381,16 @@ export const createNotificationPopover = (userId, options = {}) => {
                 root.style.right = 'auto'; root.style.bottom = 'auto';
             } catch { /* invalid position */ }
         }
-        if (!descriptor) showDetails(notice);
-        else {
+        if (!descriptor) {
+            showDetails(notice);
+            void markOpened(notice);
+        } else {
             content.textContent = 'Загружаем переписку…';
             try { await openConversation(); }
             catch (error) { if (active?.id === notice.id) showError(error.message); }
         }
         root.querySelector('[data-popover-close]').focus();
     };
-
-    read.addEventListener('click', async () => {
-        if (!active) return;
-        const selected = active;
-        read.disabled = true;
-        try {
-            const response = await fetch(selected.read_url, { method: 'PATCH', credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf } });
-            if (!response.ok) throw new Error('Не удалось отметить прочитанным.');
-            const data = await response.json();
-            if (active !== selected) return;
-            document.dispatchEvent(new CustomEvent('notification:count-changed',
-                { detail: { unread_count: data.unread_count } }));
-            selected.is_read = true;
-            read.textContent = 'Прочитано';
-        } catch (error) {
-            if (active === selected) { read.disabled = false; showError(error.message); }
-        }
-    });
 
     const handle = root.querySelector('[data-popover-drag]');
     handle.tabIndex = 0;
