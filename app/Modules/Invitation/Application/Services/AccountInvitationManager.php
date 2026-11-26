@@ -39,9 +39,11 @@ final class AccountInvitationManager
         User $issuer, string $email, string $scopeType, int $scopeId,
         string $role, string $title, ?string $description, int $days
     ): array {
+        abort_unless(app(AccountInvitationAccess::class)->canIssueAny($issuer), 403);
+        if ($scopeType !== 'venue' || ! in_array($role, ['owner', 'staff', 'manager', 'booking_operator'], true)) {
+            throw ValidationException::withMessages(['role' => 'Этот контекст или тип приглашения пока не поддерживается.']);
+        }
         $email = (new ContactValue(ContactTypeEnum::EMAIL, $email))->value();
-        $this->assertTarget($scopeType, $scopeId, $role);
-        $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
         if ($days < 1 || $days > 30) {
             throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
         }
@@ -51,6 +53,7 @@ final class AccountInvitationManager
             $issuer = $this->authorizeActor($issuer);
             abort_unless(app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $role), 403);
             $this->assertTarget($scopeType, $scopeId, $role);
+            $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
             $this->assertNoActiveDuplicate($email, $scopeType, $scopeId, $role);
             $record = AccountInvitation::query()->create([
                 'status' => 'pending',
