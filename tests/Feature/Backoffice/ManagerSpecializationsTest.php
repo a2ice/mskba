@@ -186,6 +186,32 @@ final class ManagerSpecializationsTest extends TestCase
         $this->assertTrue(app(UserOperationalPermissionChecker::class)->allows($user, Permission::CREATE_EVENT));
     }
 
+    public function test_grouped_role_profile_editor_preserves_flat_permissions_and_inheritance(): void
+    {
+        $super = $this->actor(Role::SUPERADMIN);
+        $manager = $this->actor(Role::MANAGER);
+        $profile = SystemRolePermissionProfile::query()->findOrFail(Role::MANAGER->value);
+        $existing = [Permission::BACKOFFICE_ACCESS->value, Permission::CREATE_TEAM->value];
+        $profile->update(['permissions' => $existing]);
+        $updated = [...$existing, Permission::BACKOFFICE_INVITATION_VIEW->value];
+        $groups = \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups::class;
+
+        $this->actingAs($super);
+        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('backoffice'));
+        \Livewire\Livewire::test(
+            \App\Filament\Backoffice\Resources\SystemRoleProfiles\Pages\EditSystemRoleProfile::class,
+            ['record' => $profile->getRouteKey()],
+        )
+            ->assertFormSet(['permissions' => $groups::split($existing, includeGlobal: true)])
+            ->fillForm(['permissions' => $groups::split($updated, includeGlobal: true)])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertEqualsCanonicalizing($updated, $profile->fresh()->permissions);
+        $this->assertTrue(app(UserOperationalPermissionChecker::class)->allows($manager, Permission::BACKOFFICE_INVITATION_VIEW));
+        $this->assertFalse(app(UserOperationalPermissionChecker::class)->allows($manager, Permission::MANAGE_SYSTEM_ROLES));
+    }
+
     public function test_system_role_profile_changes_baseline_for_existing_manager(): void
     {
         $manager = $this->actor(Role::MANAGER);
