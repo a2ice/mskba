@@ -28,6 +28,8 @@ class Contact extends Model
 {
     use Auditable, SoftDeletes;
 
+    protected $hidden = ['comment'];
+
     protected static function booted(): void
     {
         static::saving(function (Contact $contact): void {
