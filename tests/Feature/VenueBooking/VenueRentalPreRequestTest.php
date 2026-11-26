@@ -3,6 +3,7 @@
 namespace Tests\Feature\VenueBooking;
 
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Dashboard\Application\Providers\NeedsAttentionProvider;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
@@ -84,9 +85,21 @@ final class VenueRentalPreRequestTest extends TestCase
         [$customer, $actor] = $this->person();
         $pre = $this->pre($venue, $actor);
         $thread = $pre->conversation->id;
+        config()->set('features.venue_rental.portal', true);
+        config()->set('features.venue_rental_rollout.mode', 'all');
+        $attention = app(NeedsAttentionProvider::class);
+        $this->assertSame(0, $attention->getData($customer, [])->total);
         $service = app(VenueRentalPreRequests::class);
         $booking = $service->offer($pre, $representative);
         $this->assertSame($booking->id, $service->offer($pre, $representative)->id);
+        $actions = $attention->getData($customer, []);
+        $this->assertSame(1, $actions->total);
+        $this->assertSame('rental_proposal', $actions->items[0]['kind']);
+        $this->assertSame(route('account.venue-pre-requests.show', $pre, false), $actions->items[0]['url']);
+        $this->assertSame(0, $attention->getData($representative->user, [])->total);
+        config()->set('features.venue_rental.portal', false);
+        $this->assertSame(0, $attention->getData($customer, [])->total);
+        config()->set('features.venue_rental.portal', true);
         $this->assertSame('rental', $booking->flow);
         $this->assertSame($customer->id, $booking->requester_user_id);
         $this->assertSame($representative->id, $booking->created_by_representative_id);
@@ -108,6 +121,7 @@ final class VenueRentalPreRequestTest extends TestCase
         $this->assertNotNull($accepted->hold_expires_at);
         $this->assertSame($snapshot, $accepted->quote_snapshot);
         $this->assertSame(VenueRentalPreRequestStatus::RESOLVED, $pre->refresh()->status);
+        $this->assertSame(0, $attention->getData($customer, [])->total);
         $this->assertSame($accepted->optimistic_version, $service->respond($pre, $actor, $booking->id, true)->optimistic_version);
         $this->assertSame($thread, $accepted->conversation->id);
         app(ConfirmVenueBookingHandler::class)->handle($booking->id, $representative);

@@ -38,6 +38,7 @@
             'upcoming_events' => 'В расписании пока нет предстоящих мероприятий.',
             'my_rental_requests' => 'Активных заявок и предзаявок пока нет.',
             'wallet_summary' => 'Операций пока нет.',
+            'needs_attention' => 'Сейчас нет действий, требующих твоего внимания.',
             default => 'Новых сообщений нет.',
         };
     @endphp
@@ -57,6 +58,9 @@
             @case('upcoming_events')
                 <p>Мероприятий в расписании: <strong>{{ $total }}</strong></p>
                 @break
+            @case('needs_attention')
+                <p>Требуют внимания: <strong>{{ $total }}</strong></p>
+                @break
             @case('my_rental_requests')
                 <p>Заявок: <strong>{{ (int) ($summary['booking_total'] ?? 0) }}</strong> · Предзаявок: <strong>{{ (int) ($summary['pre_request_total'] ?? 0) }}</strong></p>
                 @break
@@ -72,6 +76,7 @@
                             'upcoming_events' => ($item['venue_name'] ?? '').' · '.(($item['role'] ?? '') === 'organizer' ? 'Организатор' : 'Участвую'),
                             'my_rental_requests' => (($item['kind'] ?? '') === 'pre_request' ? 'Предзаявка' : 'Заявка').' · '.($item['status_label'] ?? ''),
                             'wallet_summary' => $date($item['completed_at'] ?? null),
+                            'needs_attention' => ($item['description'] ?? '').(isset($item['deadline_at']) ? ' · Ответить до '.$date($item['deadline_at']) : ''),
                             default => '',
                         };
                         $time = $date($item['starts_at'] ?? null);
