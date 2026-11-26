@@ -27,11 +27,10 @@ use Illuminate\Validation\ValidationException;
 
 final class AccountInvitationManager
 {
-    public function authorizeIssuer(?User $issuer): User
+    private function authorizeActor(?User $actor): User
     {
-        $user = $issuer?->canonical();
-        abort_unless($user !== null && $user->isConfirmed()
-            && $user->system_role === UserSystemRoleEnum::SUPERADMIN, 403);
+        $user = $this->lockCanonicalUser($actor);
+        abort_unless($user !== null && app(AccountInvitationAccess::class)->canViewAny($user), 403);
 
         return $user;
     }
@@ -40,7 +39,6 @@ final class AccountInvitationManager
         User $issuer, string $email, string $scopeType, int $scopeId,
         string $role, string $title, ?string $description, int $days
     ): array {
-        $issuer = $this->authorizeIssuer($issuer);
         $email = (new ContactValue(ContactTypeEnum::EMAIL, $email))->value();
         $this->assertTarget($scopeType, $scopeId, $role);
         $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
@@ -49,7 +47,9 @@ final class AccountInvitationManager
         }
         $token = bin2hex(random_bytes(32));
         $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token) {
-            Venue::query()->whereKey($scopeId)->lockForUpdate()->firstOrFail();
+            $venue = Venue::query()->whereKey($scopeId)->lockForUpdate()->firstOrFail();
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $role), 403);
             $this->assertTarget($scopeType, $scopeId, $role);
             $this->assertNoActiveDuplicate($email, $scopeType, $scopeId, $role);
             $record = AccountInvitation::query()->create([
@@ -77,7 +77,6 @@ final class AccountInvitationManager
 
     public function renew(AccountInvitation $invitation, User $issuer, int $days = 7): string
     {
-        $issuer = $this->authorizeIssuer($issuer);
         if ($days < 1 || $days > 30 || ! $invitation->canManageLink()) {
             throw ValidationException::withMessages(['days' => 'Это приглашение нельзя продлить.']);
         }
@@ -85,6 +84,8 @@ final class AccountInvitationManager
         DB::transaction(function () use ($invitation, $days, $token, $issuer): void {
             Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canManage($issuer, $record), 403);
             abort_unless($record->canManageLink(), 409);
             $this->assertTarget($record->scope_type, $record->scope_id, $record->role);
             $this->assertNoActiveDuplicate($record->contact_value, $record->scope_type, $record->scope_id, $record->role, $record->id);
@@ -105,7 +106,6 @@ final class AccountInvitationManager
 
     public function restore(AccountInvitation $invitation, User $issuer, int $days, string $reason): string
     {
-        $issuer = $this->authorizeIssuer($issuer);
         $reason = trim($reason);
         if ($days < 1 || $days > 30) {
             throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
@@ -117,6 +117,8 @@ final class AccountInvitationManager
         DB::transaction(function () use ($invitation, $issuer, $days, $reason, $token): void {
             Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canManage($issuer, $record), 403);
             abort_unless($record->status === 'revoked' && $record->accepted_user_id === null, 409);
             $this->assertTarget($record->scope_type, $record->scope_id, $record->role);
             $this->assertNoActiveDuplicate($record->contact_value, $record->scope_type, $record->scope_id, $record->role, $record->id);
@@ -154,9 +156,11 @@ final class AccountInvitationManager
 
     public function revoke(AccountInvitation $invitation, User $issuer): void
     {
-        $issuer = $this->authorizeIssuer($issuer);
         DB::transaction(function () use ($invitation, $issuer): void {
+            Venue::query()->whereKey($invitation->scope_id)->lockForUpdate()->firstOrFail();
             $record = AccountInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
+            $issuer = $this->authorizeActor($issuer);
+            abort_unless(app(AccountInvitationAccess::class)->canManage($issuer, $record), 403);
             abort_unless($record->canManageLink(), 409);
             $record->forceFill(['status' => 'revoked', 'revoked_at' => now()])->save();
             $this->event($record, 'revoked', ['issuer_id' => $issuer->id]);
@@ -314,7 +318,8 @@ final class AccountInvitationManager
             }
 
             $issuer = $this->lockCanonicalUser(User::query()->find($record->created_by_user_id));
-            if (! $this->canAuthorizeMembership($issuer, $venue)) {
+            if ($issuer === null || $issuer->isSameIdentity($user)
+                || ! app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $record->role)) {
                 $this->progress($record, 'awaiting_authorization', [
                     'issuer_id' => $record->created_by_user_id,
                     'reason' => 'issuer_no_longer_authorized',
