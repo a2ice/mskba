@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
 use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
+use App\Modules\Content\Application\Services\VenueCatalogLandingIndexPolicy;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -79,6 +80,7 @@ class VenueController extends Controller
     public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse|RedirectResponse
     {
         $navigation = app(VenueCatalogLandingNavigation::class);
+        $hasOriginalQuery = $request->query() !== [];
         $isLandingPreview = $request->routeIs('admin.content.catalog-landings.preview');
         $requestedLanding = $isLandingPreview
             ? $navigation->preparePreview($request)
@@ -159,8 +161,11 @@ class VenueController extends Controller
                 'landingUrl' => $isLandingPreview ? $navigation->previewUrl($landing) : $navigation->url($landing),
                 'isLandingPreview' => $isLandingPreview,
                 'landingRelatedLinks' => $pageNumber === 1 && ! $isFragment ? $navigation->relatedLinks($landing) : [],
-                // Indexing and sitemap eligibility are deliberately deferred.
-                'metaRobots' => 'noindex, nofollow, noarchive',
+                'metaRobots' => app(VenueCatalogLandingIndexPolicy::class)->robots(
+                    $request, $landing, count($venues),
+                    ! $isLandingPreview && ! $isFragment && ! $request->expectsJson()
+                        && ! $hasOriginalQuery && $request->routeIs('venues.collections.show'),
+                ),
             ];
         }
 
@@ -219,7 +224,7 @@ class VenueController extends Controller
                 'total' => $total,
             ])->header('Cache-Control', 'private, no-store');
 
-            return $isLandingPreview ? $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive') : $response;
+            return $landing !== null ? $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive') : $response;
         }
 
         $response = ThemeResolver::page('venues.index', $landingData + compact(
