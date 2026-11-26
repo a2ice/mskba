@@ -20,7 +20,7 @@ if (dashboard) {
     let pickerCatalog = [];
 
     const widgets = () => Array.from(dashboard.querySelectorAll('[data-dashboard-widget]'));
-    const movable = node => node?.dataset.widgetCanMove === '1';
+    const movable = node => node?.dataset.widgetCanMove === '1' && !node.hidden;
     const ids = () => widgets().map(node => Number(node.dataset.dashboardWidget));
     const slots = () => widgets().map(node => ({
         id: Number(node.dataset.dashboardWidget),

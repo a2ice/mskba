@@ -152,6 +152,11 @@ if (dashboard) {
                         if (current.dataset.widgetKind !== 'dynamic' && incoming?.dataset.widgetKind !== 'dynamic') continue;
                         const content = current.querySelector('.app-dashboard-widget__content');
                         const replacement = incoming?.querySelector('.app-dashboard-widget__content');
+                        if (incoming && current.hidden !== incoming.hidden) {
+                            document.dispatchEvent(new Event('mskba:dashboard-edit-cancel'));
+                            reconcile(data.html);
+                            return;
+                        }
                         if (content && replacement && content.outerHTML !== replacement.outerHTML) content.replaceWith(replacement);
                     }
                     return;
@@ -186,7 +191,7 @@ if (dashboard) {
 
             const current = Array.from(dashboard.querySelectorAll('[data-dashboard-widget]'));
             if (!sameDashboardIds(current.map(node => node.dataset.dashboardWidget), data.visible_ids)) return false;
-            const affected = current.filter(node => node.dataset.widgetKind === 'dynamic' && keys.includes(node.dataset.widgetSource));
+            const affected = current.filter(node => node.dataset.widgetKind === 'dynamic' && node.dataset.widgetLive !== '0' && keys.includes(node.dataset.widgetSource));
             const template = document.createElement('template');
             template.innerHTML = data.html;
             const replacements = Array.from(template.content.children);
@@ -203,10 +208,14 @@ if (dashboard) {
                 const oldContent = node.querySelector('.app-dashboard-widget__content');
                 const newContent = incoming.querySelector('.app-dashboard-widget__content');
                 if (!oldContent || !newContent) return false;
-                patches.push([oldContent, newContent]);
+                patches.push([node, incoming.hidden, oldContent, newContent]);
             }
-            for (const [oldContent, newContent] of patches) {
+            if (dashboard.dataset.dashboardOrdering === '1' && patches.some(([node, hidden]) => node.hidden !== hidden)) {
+                document.dispatchEvent(new Event('mskba:dashboard-edit-cancel'));
+            }
+            for (const [node, hidden, oldContent, newContent] of patches) {
                 if (oldContent.outerHTML !== newContent.outerHTML) oldContent.replaceWith(newContent);
+                node.hidden = hidden;
             }
             return true;
         } catch (_error) {
@@ -268,7 +277,7 @@ if (dashboard) {
         subscribePrivate(channel, '.notification.created', () => scheduleLiveRefresh());
         subscribePrivate(channel, '.dashboard.widgets.invalidated', event => {
             const nodes = Array.from(dashboard.querySelectorAll('[data-widget-kind="dynamic"]'));
-            const sources = nodes.map(node => node.dataset.widgetSource);
+            const sources = nodes.filter(node => node.dataset.widgetLive !== '0').map(node => node.dataset.widgetSource);
             if (event?.catalog_changed || sources.some(key => !key)) {
                 refresh();
                 return;

@@ -29,7 +29,7 @@ final class AccountDashboardRefreshController extends Controller
 
         if ($sources !== null) {
             $selected = $visible->filter(static fn ($widget): bool =>
-                $widget->kind === 'dynamic' && in_array($widget->source_key, $sources, true))->values();
+                $widget->usesLiveRefresh() && in_array($widget->source_key, $sources, true))->values();
 
             return response()->json([
                 'partial' => true,

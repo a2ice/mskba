@@ -40,6 +40,26 @@ final class DashboardDataRegistry
         return is_string($source) && (self::PROVIDERS[$source]['limit'] ?? false);
     }
 
+    public static function supportsHideWhenEmpty(mixed $source): bool
+    {
+        return is_string($source) && isset(self::PROVIDERS[$source]) && $source !== 'wallet_summary';
+    }
+
+    /** Read once per rendered card; never reuse personal data across requests. */
+    public function dataForDisplay(AccountDashboardWidget $widget, User $user): ?DashboardWidgetData
+    {
+        try {
+            return $this->getData($widget, $user);
+        } catch (\Throwable $exception) {
+            if (! $exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+                || ! in_array($exception->getStatusCode(), [403, 404], true)) {
+                report($exception);
+            }
+
+            return null;
+        }
+    }
+
     private function resolve(AccountDashboardWidget $widget): ?DashboardDataProvider
     {
         $key = $widget->source_key;

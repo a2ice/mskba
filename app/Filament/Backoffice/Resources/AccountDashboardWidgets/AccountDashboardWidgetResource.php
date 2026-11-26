@@ -112,6 +112,17 @@ final class AccountDashboardWidgetResource extends Resource
                             ->integer()->minValue(1)->maxValue(10)->default(5)
                             ->required(fn (Get $get): bool => $get('kind') === 'dynamic' && DashboardDataRegistry::supportsLimit($get('source_key')))
                             ->visible(fn (Get $get): bool => $get('kind') === 'dynamic' && DashboardDataRegistry::supportsLimit($get('source_key'))),
+                        Toggle::make('source_settings.hide_when_empty')->label('Скрывать при отсутствии данных')
+                            ->default(false)
+                            ->visible(fn (Get $get): bool => $get('kind') === 'dynamic' && DashboardDataRegistry::supportsHideWhenEmpty($get('source_key')))
+                            ->helperText('Карточка автоматически вернётся при появлении данных. Пользовательские настройки не меняются.'),
+                        Toggle::make('source_settings.live_enabled')->label('Мгновенное обновление по событиям источника')
+                            ->default(true)->visible(fn (Get $get): bool => $get('kind') === 'dynamic')
+                            ->helperText('При выключении сохраняются полная сверка, уведомления, восстановление соединения и проверка прав.'),
+                        TextInput::make('source_settings.horizon_days')->label('Горизонт поиска мероприятий (дней)')
+                            ->integer()->minValue(7)->maxValue(90)->default(30)
+                            ->visible(fn (Get $get): bool => $get('kind') === 'dynamic' && $get('source_key') === 'my_interests')
+                            ->required(fn (Get $get): bool => $get('kind') === 'dynamic' && $get('source_key') === 'my_interests'),
                         CodeEditor::make('body')->label('HTML-содержимое')->language(Language::Html)
                             ->columnSpanFull()
                             ->helperText('Текст с безопасной HTML-разметкой: <p>, <strong>, <ul>, <li>. Для счётчика сообщений: {{ unread_count }}. Кнопки настраиваются во вкладке «Действия». Пустое поле — стандартный текст.')
@@ -303,6 +314,27 @@ final class AccountDashboardWidgetResource extends Resource
                     throw ValidationException::withMessages(['data.source_settings.limit' => 'Допустимо от 1 до 10 записей.']);
                 }
                 $data['source_settings'] = ['limit' => $limit];
+            }
+            foreach (['hide_when_empty' => false, 'live_enabled' => true] as $key => $default) {
+                if ($key === 'hide_when_empty' && ! DashboardDataRegistry::supportsHideWhenEmpty($source)) {
+                    continue;
+                }
+                $value = $settings[$key] ?? $default;
+                if (! is_bool($value) && ! in_array($value, [0, 1, '0', '1'], true)) {
+                    throw ValidationException::withMessages(['data.source_settings.'.$key => 'Некорректное значение переключателя.']);
+                }
+                if ((bool) $value !== $default) {
+                    $data['source_settings'][$key] = (bool) $value;
+                }
+            }
+            if ($source === 'my_interests') {
+                $days = filter_var($settings['horizon_days'] ?? 30, FILTER_VALIDATE_INT);
+                if ($days === false || $days < 7 || $days > 90) {
+                    throw ValidationException::withMessages(['data.source_settings.horizon_days' => 'Допустимо от 7 до 90 дней.']);
+                }
+                if ($days !== 30) {
+                    $data['source_settings']['horizon_days'] = $days;
+                }
             }
 
         } else {

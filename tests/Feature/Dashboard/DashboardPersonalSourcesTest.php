@@ -38,6 +38,22 @@ final class DashboardPersonalSourcesTest extends TestCase
         $this->assertSame(0, $provider->getData($user, [])->total);
     }
 
+    public function test_interest_horizon_is_configurable_and_defaults_to_thirty_days(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED, 'is_published' => true]);
+        VenueSubscription::query()->create(['user_id' => $user->id, 'venue_id' => $venue->id, 'status' => 'active']);
+        Event::factory()->create([
+            'venue_id' => $venue->id, 'type' => EventTypeEnum::TRAINING,
+            'starts_at' => now()->addDays(20), 'ends_at' => now()->addDays(20)->addHour(),
+        ]);
+        $provider = app(MyInterestsProvider::class);
+        $this->assertSame(1, $provider->getData($user, [])->total);
+        $data = $provider->getData($user, ['horizon_days' => 14]);
+        $this->assertSame(0, $data->total);
+        $this->assertSame(14, $data->summary['horizon_days']);
+    }
+
     public function test_empty_wallet_has_zero_balances_and_no_transactions(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);

@@ -58,6 +58,15 @@ final class EditAccountDashboardWidget extends EditRecord
             seconds: (int) $this->getRecord()->refresh_delay_seconds);
     }
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['source_settings'] = array_replace([
+            'limit' => 5, 'hide_when_empty' => false, 'live_enabled' => true, 'horizon_days' => 30,
+        ], $data['source_settings'] ?? []);
+
+        return $data;
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         AccountDashboardWidgetResource::assertSafeData($data, $this->record);
