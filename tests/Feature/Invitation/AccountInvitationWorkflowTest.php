@@ -119,6 +119,53 @@ final class AccountInvitationWorkflowTest extends TestCase
         $this->assertFalse($invitation->events()->where('event', 'interested')->exists());
     }
 
+    public function test_invitation_shows_proposed_username_after_explicit_interest_and_ignores_inactive_custom_value(): void
+    {
+        [, , $invitation, $token] = $this->invite('bookingdesk99@example.test');
+        $this->followingRedirects()->get(route('account-invitations.show', $token))->assertOk()
+            ->assertSee('Вы получили приглашение')->assertDontSee('inv-proposed-username');
+        $this->post(route('account-invitations.interest'))->assertRedirect();
+        $this->get(route('account-invitations.continue'))->assertOk()
+            ->assertSee('bookingdesk')->assertSee('inv-proposed-username');
+        $this->assertNull($invitation->fresh()->accepted_user_id);
+        $this->post(route('account-invitations.register'), [
+            'proposed_username' => 'bookingdesk',
+            'username' => 'ignored_custom',
+            'password' => 'SafePass#2026',
+            'password_confirmation' => 'SafePass#2026',
+            'privacy_consent' => '1',
+            'accept_invitation' => '1',
+        ])->assertRedirect(route('account-invitations.continue'));
+        $this->assertSame('bookingdesk', User::findOrFail($invitation->fresh()->accepted_user_id)->username);
+    }
+
+    public function test_stale_username_suggestion_requires_confirmation_of_new_value(): void
+    {
+        [, , $invitation, $token] = $this->invite('bookingdesk99@example.test');
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $this->post(route('account-invitations.interest'))->assertRedirect();
+        User::factory()->create(['username' => 'bookingdesk']);
+        $this->post(route('account-invitations.register'), [
+            'proposed_username' => 'bookingdesk',
+            'password' => 'SafePass#2026',
+            'password_confirmation' => 'SafePass#2026',
+            'privacy_consent' => '1',
+            'accept_invitation' => '1',
+        ])->assertRedirect(route('account-invitations.continue'))->assertSessionHasErrors('username');
+        $this->assertNull($invitation->fresh()->accepted_user_id);
+        $this->get(route('account-invitations.continue'))->assertOk()->assertSee('bookingdesk777');
+        $this->post(route('account-invitations.register'), [
+            'proposed_username' => 'bookingdesk777',
+            'custom_username' => '1',
+            'username' => 'my_booking_login',
+            'password' => 'SafePass#2026',
+            'password_confirmation' => 'SafePass#2026',
+            'privacy_consent' => '1',
+            'accept_invitation' => '1',
+        ])->assertRedirect(route('account-invitations.continue'));
+        $this->assertSame('my_booking_login', User::findOrFail($invitation->fresh()->accepted_user_id)->username);
+    }
+
     public function test_registration_explicitly_verifies_invited_email_but_does_not_grant_ownership(): void
     {
         [$issuer, $venue, $invitation, $token] = $this->invite();

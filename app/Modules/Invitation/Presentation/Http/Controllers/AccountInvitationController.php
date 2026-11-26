@@ -4,6 +4,8 @@ namespace App\Modules\Invitation\Presentation\Http\Controllers;
 
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
+use App\Modules\Identity\Application\Services\UsernameSuggestionService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Invitation\Presentation\Http\Requests\InvitationRegisterRequest;
@@ -24,6 +26,9 @@ final class AccountInvitationController
     public function entry(Request $request, string $token, AccountInvitationManager $manager): RedirectResponse
     {
         $manager->findByToken($token);
+        if ($request->session()->get('account_invitation_token') !== $token) {
+            $request->session()->forget('account_invitation_started');
+        }
         $request->session()->put('account_invitation_token', $token);
 
         return redirect()->route('account-invitations.continue')
@@ -45,10 +50,17 @@ final class AccountInvitationController
             $invitation = $manager->advance($invitation, $current);
         }
 
+        $started = $request->session()->get('account_invitation_started') === $invitation->token_hash
+            || $request->session()->has('errors');
+        $suggestedUsername = $started && $current === null && $invitation->canManageLink() && ! $invitation->isExpired()
+            ? app(UsernameSuggestionService::class)->suggest($invitation->contact_value) : null;
+
         return response()->view('invitations.show', [
             'invitation' => $invitation,
             'token' => $token,
             'currentUser' => $current,
+            'started' => $started,
+            'suggestedUsername' => $suggestedUsername,
         ])->withHeaders([
             'Cache-Control' => 'private, no-store, max-age=0',
             'Referrer-Policy' => 'same-origin',
@@ -60,7 +72,9 @@ final class AccountInvitationController
     {
         $token = (string) $request->session()->get('account_invitation_token', '');
         $invitation = $manager->findByToken($token);
-        $manager->markInterested($invitation);
+        if ($manager->markInterested($invitation)) {
+            $request->session()->put('account_invitation_started', $invitation->token_hash);
+        }
 
         return redirect()->route('account-invitations.continue')->withHeaders([
             'Cache-Control' => 'private, no-store, max-age=0',
@@ -94,6 +108,11 @@ final class AccountInvitationController
         }
 
         $data = $request->validated();
+        $suggestions = app(UsernameSuggestionService::class);
+        if (! $suggestions->isAvailable($data['username'])) {
+            throw ValidationException::withMessages(['username' => 'Этот логин уже занят. Проверьте предложенный логин или выберите свой.'])
+                ->redirectTo(route('account-invitations.continue'));
+        }
         try {
             $user = DB::transaction(function () use ($data, $request, $register, $manager, $invitation) {
                 $created = $register->handle(
@@ -112,6 +131,12 @@ final class AccountInvitationController
                 $manager->accept($invitation, $created, true);
                 return $created;
             });
+        } catch (UniqueConstraintViolationException $e) {
+            if ($suggestions->isAvailable($data['username'])) {
+                throw $e;
+            }
+            throw ValidationException::withMessages(['username' => 'Этот логин уже занят. Проверьте новый предложенный логин или выберите свой.'])
+                ->redirectTo(route('account-invitations.continue'));
         } catch (InvalidArgumentException $e) {
             throw ValidationException::withMessages(['username' => $e->getMessage()])
                 ->redirectTo(route('account-invitations.continue'));
