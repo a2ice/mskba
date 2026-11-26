@@ -62,6 +62,36 @@ final class AdminManageVenueContactsTest extends TestCase
         $handler->add($actor, $venue, ['type' => 'email', 'value' => 'DESK@example.test']);
     }
 
+    public function test_publication_is_independent_of_venue_contact_verification(): void
+    {
+        Mail::fake();
+        $actor = $this->admin();
+        $venue = Venue::factory()->create();
+        $handler = app(AdminManageVenueContactsHandler::class);
+        $email = $handler->add($actor, $venue, [
+            'type' => 'email', 'value' => 'public@example.test', 'is_public' => true,
+        ]);
+        $this->assertTrue($email->is_public);
+        $this->assertNull($email->verified_at);
+        $phone = $handler->add($actor, $venue, [
+            'type' => 'phone', 'value' => '+79001234567',
+        ]);
+        $this->assertFalse($phone->is_public);
+        $handler->edit($actor, $venue, $phone->id, [
+            'type' => 'phone', 'value' => $phone->value, 'is_public' => true,
+        ]);
+        $this->assertTrue($phone->fresh()->is_public);
+        $this->assertNull($phone->fresh()->verified_at);
+        $handler->edit($actor, $venue, $email->id, [
+            'type' => 'email', 'value' => $email->value, 'is_public' => false,
+        ]);
+        $this->assertFalse($email->fresh()->is_public);
+        $this->assertNull($email->fresh()->verified_at);
+        $this->assertFalse($email->verifications()->exists());
+        $this->assertFalse($phone->verifications()->exists());
+        Mail::assertNothingSent();
+    }
+
     public function test_venue_contact_mutations_cannot_target_another_venue_or_user(): void
     {
         $actor = $this->admin();
