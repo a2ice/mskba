@@ -37,11 +37,16 @@ final readonly class VenueCatalogLandingEditor
             'include_in_sitemap' => ['required', 'boolean'],
             'intro_text' => ['nullable', 'string', 'max:20000'],
             'body_text' => ['nullable', 'string', 'max:100000'],
+            'related_landing_ids' => ['sometimes', 'nullable', 'array', 'list', 'max:12'],
+            'related_landing_ids.*' => ['required', 'integer', 'distinct', Rule::exists('venue_catalog_landings', 'id')->where(fn ($query) => $record ? $query->where('id', '!=', $record->getKey()) : $query)],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:320'],
         ])->validate();
 
         $data['type'] = VenueTypeFilter::canonical($data['type'] ?? null);
+        if (array_key_exists('related_landing_ids', $data)) {
+            $data['related_landing_ids'] = array_map('intval', $data['related_landing_ids'] ?? []);
+        }
         foreach (['intro_text', 'body_text'] as $key) {
             $data[$key] = isset($data[$key]) ? $this->sanitizer->sanitize($data[$key]) : null;
         }
