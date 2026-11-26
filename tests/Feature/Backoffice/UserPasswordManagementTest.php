@@ -52,6 +52,27 @@ final class UserPasswordManagementTest extends TestCase
         $this->assertTrue($target->is_temporary_password);
     }
 
+    public function test_password_action_reports_invalid_credentials_and_keeps_old_password(): void
+    {
+        $admin = $this->person(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->person(UserSystemRoleEnum::SYSTEM);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $oldHash = $target->password;
+
+        foreach ([
+            ['admin_password' => 'Incorrect3!', 'new_password' => 'NewStrong2!', 'new_password_confirmation' => 'NewStrong2!'],
+            ['admin_password' => 'AdminStrong1!', 'new_password' => 'NewStrong2!', 'new_password_confirmation' => 'OtherStrong3!'],
+            ['admin_password' => 'AdminStrong1!', 'new_password' => 'lowercase123', 'new_password_confirmation' => 'lowercase123'],
+        ] as $values) {
+            Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+                ->assertActionVisible('setUserPassword')
+                ->callAction('setUserPassword', data: $values + ['reason' => 'Проверка отображения ошибок'])
+                ->assertNotified('Пароль не установлен');
+            $this->assertSame($oldHash, $target->fresh()->password);
+        }
+    }
+
     public function test_other_roles_cannot_access_the_superadmin_password_action(): void
     {
         $admin = $this->person(UserSystemRoleEnum::ADMIN);
