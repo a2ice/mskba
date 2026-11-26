@@ -2,6 +2,9 @@
 
 namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 
+use App\Filament\Backoffice\Resources\AccountInvitations\AccountInvitationResource;
+use App\Modules\Invitation\Application\Services\AccountInvitationAccess;
+use App\Modules\Invitation\Application\Services\AccountInvitationManager;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationDeliveryException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
@@ -90,6 +93,23 @@ final class ContactsRelationManager extends RelationManager
         Notification::make()->success()->title($success)->send();
     }
 
+    private function canInvite(Contact $contact): bool
+    {
+        $actor = auth('web')->user();
+        $venue = $this->venue();
+        if (! $this->manager()->canManage($actor, $venue)
+            || $contact->type !== ContactTypeEnum::EMAIL || ! $contact->hasBeenVerified()) {
+            return false;
+        }
+        foreach (['owner', 'staff', 'manager', 'booking_operator'] as $role) {
+            if (app(AccountInvitationAccess::class)->canIssue($actor, $venue, $role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -130,6 +150,38 @@ final class ContactsRelationManager extends RelationManager
                     ->schema([TextInput::make('code')->label('Код из письма')->required()->length(6)->regex('/^\d{6}$/D')])
                     ->action(fn (Action $action, Contact $record, array $data) => $this->run($action,
                         fn () => $this->manager()->confirmCode($this->actor(), $this->venue(), $record->id, $data['code']), 'Контакт подтверждён')),
+                Action::make('inviteContact')->label('Пригласить')->icon('heroicon-o-user-plus')
+                    ->visible(fn (Contact $record): bool => $this->canInvite($record))
+                    ->modalHeading(fn (): string => 'Приглашение — '.$this->venue()->name)
+                    ->modalDescription('Приглашение будет отправлено на подтверждённый контакт площадки. Полномочия предоставляются только после выполнения условий подключения.')
+                    ->fillForm(fn (Contact $record): array => ['email' => $record->value, 'days' => 7])
+                    ->schema(fn (): array => AccountInvitationResource::issueFields(fn (): Venue => $this->venue(), true))
+                    ->action(function (Action $action, Contact $record, array $data): void {
+                        abort_unless($this->canInvite($record), 403);
+                        try {
+                            [$invitation] = app(AccountInvitationManager::class)->create(
+                                $this->actor(), (string) $data['email'], 'venue', $this->venue()->id,
+                                (string) $data['role'], (string) ($data['title'] ?? ''),
+                                $data['description'] ?? null, (int) $data['days'], $record->id,
+                            );
+                        } catch (ValidationException $exception) {
+                            Notification::make()->danger()->title('Не удалось отправить приглашение')
+                                ->body(collect($exception->errors())->flatten()->first())->send();
+                            $action->halt();
+
+                            return;
+                        } catch (\Illuminate\Auth\Access\AuthorizationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface | \Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+                            throw $exception;
+                        } catch (\Throwable $exception) {
+                            // Transport failures can leave a created record. Never expose the bearer URL.
+                            Notification::make()->danger()->title('Не удалось отправить приглашение')
+                                ->body('Проверьте почтовый транспорт и раздел приглашений. Если запись создана, обновите ссылку для повторной отправки.')->send();
+                            $action->halt();
+
+                            return;
+                        }
+                        Notification::make()->success()->title('Приглашение #'.$invitation->id.' отправлено')->send();
+                    }),
                 Action::make('setPrimary')->label('Сделать основным')->icon('heroicon-o-star')
                     ->visible(fn (Contact $record): bool => ! $record->is_primary)
                     ->requiresConfirmation()
