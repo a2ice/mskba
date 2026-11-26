@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Application\Services\RentalCatalogAnalytics;
 use App\Modules\Content\Application\Services\VenueCatalogLandingNavigation;
 use App\Modules\Content\Application\Services\VenueCatalogLandingIndexPolicy;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
@@ -193,6 +194,8 @@ class VenueController extends Controller
                 'myInterests' => $myInterests,
                 'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
             ]);
+
+            app(RentalCatalogAnalytics::class)->record($request, $landing?->id, $filters, count($venues));
 
             return $isLandingPreview ? $this->privateLandingPreview($response) : $response;
         }
