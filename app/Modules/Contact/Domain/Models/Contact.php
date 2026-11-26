@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'type',
     'value',
     'label',
+    'comment',
     'is_primary',
     'is_public',
     'verified_at',
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Contact extends Model
 {
     use Auditable, SoftDeletes;
+
+    protected $hidden = ['comment'];
 
     protected static function booted(): void
     {
