@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let attempted = false;
     let pending = null;
     let deciding = false;
+    let coordinateRequest = null;
+    let permissionPromptAttempted = false;
+    const permissionPromptKey = 'mskba:venue-distance:permission-requested';
 
     async function request(action, payload = {}) {
         const response = await fetch(dialog.dataset.locationUrl, {
@@ -129,13 +132,33 @@ document.addEventListener('DOMContentLoaded', () => {
         void locate(event.detail);
     });
 
+    function requestCoordinates({ prompt = false } = {}) {
+        if (coordinateRequest) return coordinateRequest;
+        if (prompt) {
+            // Do not repeatedly show a native permission prompt on pagination,
+            // filter changes or reload after the user dismisses it.
+            if (permissionPromptAttempted) return;
+            permissionPromptAttempted = true;
+            try {
+                if (window.sessionStorage.getItem(permissionPromptKey)) return;
+                window.sessionStorage.setItem(permissionPromptKey, '1');
+            } catch { /* storage may be disabled; the page-local guard remains */ }
+        }
+        coordinateRequest = Promise.resolve()
+            .then(getCurrentCoordinates)
+            .then(locate)
+            .catch(() => { /* location is optional */ })
+            .finally(() => { coordinateRequest = null; });
+        return coordinateRequest;
+    }
+
     async function permissionChanged(permission) {
         if (permission.state === 'granted') {
             if (available) {
                 showOffer();
                 return;
             }
-            try { await locate(await getCurrentCoordinates()); } catch { /* optional */ }
+            await requestCoordinates();
         } else if (available && permission.state !== 'granted') {
             try {
                 await request('forget');
@@ -152,14 +175,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Never initiate an unsolicited permission prompt. Reuse an existing grant
-    // or the actual successful browser location from the nearby filter.
+    function withoutPermissionApi() {
+        if (available) showOffer();
+        else void requestCoordinates({ prompt: true });
+    }
+
+    // On the first catalogue visit, actually request browser permission when
+    // it has not yet been decided. A denial must not block or reprompt.
     if (navigator.permissions?.query) {
-        navigator.permissions.query({ name: 'geolocation' }).then(permission => {
+        navigator.permissions.query({ name: 'geolocation' }).then(async permission => {
             permission.addEventListener?.('change', () => void permissionChanged(permission));
-            void permissionChanged(permission);
-        }).catch(showOffer);
+            await permissionChanged(permission);
+            if (permission.state === 'prompt' && !available) {
+                void requestCoordinates({ prompt: true });
+            }
+        }).catch(withoutPermissionApi);
     } else {
-        showOffer();
+        withoutPermissionApi();
     }
 });
