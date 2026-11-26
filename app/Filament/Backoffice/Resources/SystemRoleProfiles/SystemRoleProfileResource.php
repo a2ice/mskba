@@ -2,6 +2,7 @@
 
 namespace App\Filament\Backoffice\Resources\SystemRoleProfiles;
 
+use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficePermissionGroups;
 use App\Filament\Backoffice\Resources\SystemRoleProfiles\Pages\EditSystemRoleProfile;
 use App\Filament\Backoffice\Resources\SystemRoleProfiles\Pages\ListSystemRoleProfiles;
 use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
@@ -58,16 +59,31 @@ final class SystemRoleProfileResource extends Resource
                         ->content(fn (?SystemRolePermissionProfile $record): string => $record === null
                             ? '—'
                             : Role::from($record->role)->label().' ('.$record->role.')'),
-                    CheckboxList::make('permissions')->label('Разрешения')
+                    ...self::permissionSections($profiles),
+                ]),
+        ]);
+    }
+
+    private static function permissionSections(StaffPermissionProfiles $profiles): array
+    {
+        $sections = [];
+        foreach (BackofficePermissionGroups::all(includeGlobal: true) as $id => $group) {
+            $permissions = $group['permissions'];
+            $sections[] = Section::make($group['label'])
+                ->collapsible()
+                ->schema([
+                    CheckboxList::make('permissions.'.$id)->label('Базовые разрешения')
                         ->options(array_combine(
-                            array_map(static fn (Permission $p): string => $p->value, Permission::cases()),
-                            array_map(static fn (Permission $p): string => $p->label(), Permission::cases())
+                            array_map(static fn (Permission $p): string => $p->value, $permissions),
+                            array_map(static fn (Permission $p): string => $p->label(), $permissions),
                         ))
                         ->disableOptionWhen(fn (string $value, ?SystemRolePermissionProfile $record): bool =>
                             $record === null || ! $profiles->allowedInProfile(Role::from($record->role), Permission::from($value)))
                         ->columns(2),
-                ]),
-        ]);
+                ]);
+        }
+
+        return $sections;
     }
 
     public static function validatePermissions(SystemRolePermissionProfile $record, array $data): void
