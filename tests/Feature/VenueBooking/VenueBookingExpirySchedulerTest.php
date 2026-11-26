@@ -127,6 +127,9 @@ final class VenueBookingExpirySchedulerTest extends TestCase
     {
         Queue::fake();
         $booking = $this->booking(deadline: CarbonImmutable::now()->addMinute());
+        // Fixture creation now queues a dashboard invalidation. Isolate the
+        // dispatcher invocation, retaining the assertion that it queues nothing.
+        Queue::fake();
         config()->set('features.venue_rental.rental_flow', false);
         $this->assertSame(0, app(VenueBookingExpiryDispatcher::class)->dispatchDue());
         Queue::assertNothingPushed();

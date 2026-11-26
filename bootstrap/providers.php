@@ -4,6 +4,7 @@ use App\Modules\Acquisition\Infrastructure\Providers\AcquisitionServiceProvider;
 use App\Modules\Ai\Infrastructure\Providers\AiServiceProvider;
 use App\Modules\Contact\Infrastructure\Providers\ContactServiceProvider;
 use App\Modules\Coordination\Infrastructure\Providers\CoordinationInterfaceServiceProvider;
+use App\Modules\Dashboard\Infrastructure\Providers\DashboardRealtimeServiceProvider;
 use App\Modules\Event\Infrastructure\Providers\EventLifecycleServiceProvider;
 use App\Modules\Favorites\Infrastructure\Providers\FavoritesServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityCanonicalizationServiceProvider;
@@ -31,6 +32,7 @@ return [
     AccessServiceProvider::class,
     ContactServiceProvider::class,
     CoordinationInterfaceServiceProvider::class,
+    DashboardRealtimeServiceProvider::class,
     EventLifecycleServiceProvider::class,
     FavoritesServiceProvider::class,
     IdentityCanonicalizationServiceProvider::class,
