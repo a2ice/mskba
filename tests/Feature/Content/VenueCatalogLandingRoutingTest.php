@@ -225,6 +225,32 @@ final class VenueCatalogLandingRoutingTest extends TestCase
         $this->get($this->url())->assertOk()->assertDontSee('data-venue-landing-related', false);
     }
 
+    public function test_indexing_and_sitemap_remain_disabled_even_when_editor_flags_are_enabled(): void
+    {
+        config(['features.venue_catalog_landings.enabled' => true]);
+        $city = City::factory()->create();
+        $landing = $this->landing($city);
+        $landing->update([
+            'allow_indexing' => true, 'include_in_sitemap' => true,
+            'intro_text' => '<p>Introduction</p>', 'body_text' => '<p>Body</p>',
+        ]);
+        $this->venue($city, 'EligibleHall');
+        foreach (['mskba_app', 'mskba_dark'] as $theme) {
+            $this->theme($theme);
+            foreach (['mskba.ru', 'dev.mskba.ru'] as $host) {
+                $base = 'https://'.$host;
+                $url = $base.'/venues/collections/rent/test';
+                $response = $this->get($url)->assertOk()
+                    ->assertSee('name="robots" content="noindex, nofollow, noarchive"', false)
+                    ->assertSee($landing->h1)->assertSee('EligibleHall');
+                if ($host === 'dev.mskba.ru') {
+                    $response->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+                }
+                $this->get($base.'/sitemap.xml')->assertOk()->assertDontSee('/venues/collections/rent/test', false);
+            }
+        }
+    }
+
     public function test_existing_venue_and_court_routes_are_not_captured(): void
     {
         $this->assertSame('venues.show', Route::getRoutes()->match(Request::create('/venues/collections'))->getName());

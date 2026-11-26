@@ -5,6 +5,7 @@ namespace App\Filament\Backoffice\Resources\VenueCatalogLandings\Pages;
 use App\Filament\Backoffice\Resources\VenueCatalogLandings\VenueCatalogLandingResource;
 use App\Modules\Content\Application\Services\VenueCatalogLandingEditor;
 use App\Modules\Content\Application\Services\VenueCatalogLandingSelectionAudit;
+use App\Modules\Content\Application\Services\VenueCatalogLandingIndexReadiness;
 use Filament\Notifications\Notification;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Content\Domain\Models\PageSeoSetting;
@@ -22,7 +23,8 @@ final class EditVenueCatalogLanding extends EditRecord
             Action::make('inspectSelection')->label('Проверить выборку')
                 ->tooltip('Проверяет сохранённые фильтры без изменения записи')
                 ->action(function (): void {
-                    $result = app(VenueCatalogLandingSelectionAudit::class)->inspect($this->record->fresh());
+                    $landing = $this->record->fresh();
+                    $result = app(VenueCatalogLandingSelectionAudit::class)->inspect($landing);
                     $count = $result['matching'];
                     $body = 'По сохранённым фильтрам найдено площадок: '.$count.'. ';
                     $body .= $count === 0
@@ -34,9 +36,25 @@ final class EditVenueCatalogLanding extends EditRecord
                             .'. Округов и районов в справочнике города: '.$result['district_count'].'.';
                     }
                     $body .= ' Это количество площадок, а не свободных слотов.';
+                    $readiness = app(VenueCatalogLandingIndexReadiness::class)->inspect($landing, $count);
+                    $labels = [
+                        'active' => 'активность подборки',
+                        'nonempty' => 'непустая выдача',
+                        'intro' => 'текст над каталогом',
+                        'body' => 'текст под каталогом',
+                        'meta_title' => 'индивидуальный Meta Title',
+                        'meta_description' => 'индивидуальный Meta Description',
+                        'index_requested' => 'разрешение индексации в настройках',
+                    ];
+                    $missing = array_intersect_key($labels, array_filter($readiness['checks'], fn (bool $passed): bool => ! $passed));
+                    $body .= $missing === []
+                        ? ' Базовый SEO-чеклист заполнен. Проверьте релевантность и достоверность текста вручную.'
+                        : ' Для будущей индексации проверьте: '.implode(', ', $missing).'.';
+                    $body .= ' Включение в sitemap запрошено: '.($readiness['sitemap_requested'] ? 'да' : 'нет').'.';
+                    $body .= ' Сейчас индексация всех SEO-посадочных отключена; проверка ничего не публикует.';
 
                     $notification = Notification::make()->title('Проверка сохранённой подборки')->body($body)->persistent();
-                    if ($count < 3 || ($result['missing_district'] ?? 0) > 0) {
+                    if ($count < 3 || ($result['missing_district'] ?? 0) > 0 || $missing !== []) {
                         $notification->warning();
                     } else {
                         $notification->success();
