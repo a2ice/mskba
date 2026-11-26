@@ -9,6 +9,20 @@ return [
     'user' => env('UI_STUDIO_USER'),
     'password_hash' => env('UI_STUDIO_PASSWORD_HASH'),
     'cases' => [
+        'account-invitation' => [
+            'title' => 'Принятие приглашения — #1060',
+            'issue' => 1060,
+            'revision' => 1,
+            'sources' => [
+                'resources/views/invitations/onboarding.blade.php',
+                'resources/views/ui-studio/cases/account-invitation.blade.php',
+                'resources/views/ui-studio/frame.blade.php',
+            ],
+            'kit_changes' => [],
+            'status' => 'На визуальной приёмке',
+            'templates' => ['mskba_app', 'mskba_dark', 'mskba_streetball', 'blank'],
+            'states' => ['normal' => 'Получено приглашение', 'register' => 'Новый аккаунт', 'custom' => 'Свои логин и пароль', 'collision' => 'Логин занят', 'existing' => 'Существующий аккаунт', 'expired' => 'Просрочено', 'revoked' => 'Аннулировано', 'accepted' => 'Принято'],
+        ],
         'event-detail' => [
             'sources' => [
                 'resources/views/ui-studio/cases/event-detail.blade.php',
