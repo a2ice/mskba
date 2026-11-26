@@ -181,6 +181,35 @@ final class AdminCreateUserTest extends TestCase
         $this->assertNull($user->contacts()->sole()->verified_at);
     }
 
+    public function test_superadmin_can_attest_real_email_and_phone_for_test_accounts(): void
+    {
+        $actor = $this->actor(Role::SUPERADMIN);
+        $handler = app(AdminCreateUserHandler::class);
+        foreach ([
+            ['real_email_fixture', 'email', 'Tester@Example.test', 'tester@example.test'],
+            ['real_phone_fixture', 'phone', '+7 (900) 123-45-67', '+79001234567'],
+        ] as [$username, $type, $input, $expected]) {
+            $user = $handler->handle($actor, $username, 'TestPass1!', 'TestPass1!', true, true, [
+                'confirmed' => true, 'contact_type' => $type, 'contact_value' => $input,
+                'contact_verified' => true,
+            ]);
+            $contact = $user->contacts()->sole();
+            $this->assertTrue($user->is_test_account);
+            $this->assertSame(UserStatusEnum::CONFIRMED, $user->status);
+            $this->assertSame($expected, $contact->value);
+            $this->assertTrue($contact->is_primary);
+            $this->assertFalse($contact->is_public);
+            $this->assertNotNull($contact->verified_at);
+            $this->assertSame('filament_test_admin_attested', $contact->meta['verification_source']);
+            $this->assertSame($actor->id, $contact->meta['actor_user_id']);
+            $this->assertFalse($contact->meta['otp_verified']);
+            $audit = \App\Modules\Audit\Domain\Models\AuditLog::query()
+                ->where('auditable_id', $user->id)->where('event', 'admin_user_created')->sole();
+            $this->assertTrue($audit->metadata['test_contact_verification_attested_by_admin']);
+            $this->assertFalse($audit->metadata['test_contact_verification_simulated']);
+        }
+    }
+
     public function test_invalid_fixture_requests_do_not_consume_number_or_create_relations(): void
     {
         $actor = $this->actor(Role::SUPERADMIN);
@@ -191,7 +220,8 @@ final class AdminCreateUserTest extends TestCase
         ]);
         foreach ([
             [false, 'test_1@mskba.ru', true],
-            [true, 'arbitrary@example.test', true],
+            [true, 'not-an-email', true],
+            [true, 'OCCUPIED@example.test', true],
             [true, 'occupied@example.test', false],
             [true, 'test_99@mskba.ru', true],
         ] as [$consent, $email, $verified]) {
