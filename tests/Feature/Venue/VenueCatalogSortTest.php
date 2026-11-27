@@ -116,6 +116,33 @@ final class VenueCatalogSortTest extends TestCase
             ->assertOk()->assertJson(['answered' => true]);
     }
 
+    public function test_distance_option_is_available_without_permission_and_new_point_replaces_old_origin(): void
+    {
+        $this->get('/venues?sort=new')->assertOk()
+            ->assertSee('data-venue-distance-option', false)
+            ->assertSee('По удаленности')
+            ->assertDontSee('data-venue-distance-template', false)
+            ->assertSee('data-auto-prompt="0"', false);
+
+        foreach (['West' => 37.1, 'East' => 38.1] as $name => $longitude) {
+            $address = Address::factory()->create(['latitude' => 55.7, 'longitude' => $longitude]);
+            $location = Location::factory()->create(['address_id' => $address->id]);
+            Venue::factory()->create([
+                'name' => 'ReplaceOrigin '.$name,
+                'status' => VenueStatusEnum::CONFIRMED,
+                'location_id' => $location->id,
+            ]);
+        }
+        $this->postJson(route('venues.distance-location'), [
+            'action' => 'locate', 'latitude' => 55.7, 'longitude' => 37.1,
+        ])->assertOk();
+        $this->get('/venues?sort=distance')->assertOk()->assertSeeInOrder(['ReplaceOrigin West', 'ReplaceOrigin East']);
+        $this->postJson(route('venues.distance-location'), [
+            'action' => 'locate', 'latitude' => 55.7, 'longitude' => 38.1,
+        ])->assertOk();
+        $this->get('/venues?sort=distance')->assertOk()->assertSeeInOrder(['ReplaceOrigin East', 'ReplaceOrigin West']);
+    }
+
     public function test_unknown_sort_is_rejected_in_json_requests(): void
     {
         $this->getJson('/venues?sort=arbitrary')->assertUnprocessable();

@@ -17,7 +17,7 @@ function harness({ state = 'prompt', storage = new Map(), permissions = true, an
         '[data-distance-status]': { hidden: true },
     };
     const dialog = {
-        dataset: { locationAvailable: '0', promptAnswered: answered ? '1' : '0', distanceSelected: '0', locationUrl: '/venues/distance-location' },
+        dataset: { autoPrompt: '1', locationAvailable: '0', promptAnswered: answered ? '1' : '0', distanceSelected: '0', locationUrl: '/venues/distance-location' },
         open: false, showModal() { this.open = true; }, close() { this.open = false; },
         querySelector(selector) { return controls[selector]; }, addEventListener() {},
     };

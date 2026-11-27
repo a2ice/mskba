@@ -29,14 +29,12 @@
                         }
                         $url = $baseUrl.(count($query) ? '?'.http_build_query($query) : '');
                     @endphp
-                    @if($value === 'distance' && isset($venueDistanceAvailable) && !$venueDistanceAvailable)<template data-venue-distance-template>@endif
                     <a href="{{ $url }}" @class(['is-selected' => ($sortValue ?? '') === $value])
                        @if($value === 'distance' && isset($venueDistanceAvailable)) data-venue-distance-option @endif
                        @if(($sortValue ?? '') === $value) aria-current="true" @endif>
                         {{ $caption }}
                         @if(($sortValue ?? '') === $value)<span aria-hidden="true">✓</span>@endif
                     </a>
-                    @if($value === 'distance' && isset($venueDistanceAvailable) && !$venueDistanceAvailable)</template>@endif
                 @endforeach
             </div>
         </details>

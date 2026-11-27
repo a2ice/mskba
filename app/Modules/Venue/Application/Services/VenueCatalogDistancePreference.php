@@ -16,13 +16,12 @@ final class VenueCatalogDistancePreference
 
     public function locate(Request $request, float $latitude, float $longitude): void
     {
-        // Keep a consistent order for all pages in the current session.
-        if ($this->coordinates($request) === null) {
-            $request->session()->put($this->key($request).'.coordinates', [
-                'latitude' => $latitude,
-                'longitude' => $longitude,
-            ]);
-        }
+        // A newly confirmed point replaces the previous origin. Pagination
+        // only reads the stored coordinates and keeps a stable order.
+        $request->session()->put($this->key($request).'.coordinates', [
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+        ]);
     }
 
     public function answered(Request $request): bool
