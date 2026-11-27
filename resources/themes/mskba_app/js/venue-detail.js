@@ -1003,7 +1003,7 @@ if (dayBookingDialog) {
     function syncCourtDates(courtId) {
         const group = document.querySelector('[data-venue-schedule-court="' + courtId + '"]');
         if (group) dayBookingDialog.dataset.courtName = group.dataset.courtName || '';
-        if (!group && dayBookingDialog.dataset.eventCalendarCourt === String(courtId)) return;
+        if (!group && [dayBookingDialog.dataset.eventCalendarCourt, dayBookingDialog.dataset.initialCalendarCourt].includes(String(courtId))) return;
         dateButtons.forEach(button => {
             const source = group?.querySelector('[data-venue-day-entry][data-day-date="'
                 + button.dataset.venueDayDate + '"]');

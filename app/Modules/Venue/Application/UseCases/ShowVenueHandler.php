@@ -340,6 +340,7 @@ final class ShowVenueHandler
                 'quoteUrl' => route('venues.rental.quote', $venue),
                 'requestUrl' => route('account.venue-bookings.store'),
                 'authenticated' => $user !== null,
+                'occupancyRequiresConfirmation' => (bool) $venue->occupancy_requires_confirmation,
                 'confirmedAccount' => (bool) $user?->canonical()->isConfirmed(),
                 'minimumDurationMinutes' => (int) $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['minimum_duration_minutes'],
                 'maximumDurationMinutes' => (int) $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['maximum_duration_minutes'],

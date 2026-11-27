@@ -84,8 +84,19 @@ final class VenueRentalPreRequestTest extends TestCase
     public function test_unknown_occupancy_mode_uses_non_occupying_request_and_preserves_proposal_flow(): void
     {
         [, $representative, $venue] = $this->venue();
-        [, $actor] = $this->person();
+        [$customer, $actor] = $this->person();
         $venue->update(['occupancy_requires_confirmation' => true]);
+        $quote = app(\App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler::class)->handle(
+            $venue->refresh(), CarbonImmutable::parse('2026-11-18 18:00', 'Europe/Moscow'), 60,
+            VenueBookingScopeEnum::WHOLE, $customer, $venue->primaryCourt()->firstOrFail(),
+        );
+        try {
+            app(\App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler::class)
+                ->handle($actor, $quote->publicId, (string) Str::uuid());
+            $this->fail('Direct booking must not bypass unknown occupancy mode.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('RENTAL_REQUEST_REQUIRED', $exception->errorCode);
+        }
         $pre = $this->pre($venue->refresh(), $actor);
         $this->assertDatabaseCount('venue_bookings', 0);
         $this->assertDatabaseCount('venue_booking_payment_attempts', 0);

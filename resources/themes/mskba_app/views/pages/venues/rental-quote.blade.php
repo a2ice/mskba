@@ -150,6 +150,7 @@
     data-court-name="{{ $court->publicName() }}"
     data-day-url="{{ route('venues.schedule.day', $venue->id) }}"
     data-court-id="{{ $court->id }}"
+    data-initial-calendar-court="{{ $court->id }}"
     aria-labelledby="app-venue-day-dialog-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-day-dialog-title" data-venue-day-title>{{ $venue->name }}</h2>
