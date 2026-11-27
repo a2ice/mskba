@@ -4,7 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const dialog = document.querySelector('[data-venue-distance-prompt]');
     const catalog = document.querySelector('#venues-catalog');
     const menu = catalog?.querySelector('.app-catalog-tools__sort');
-    if (!dialog || !menu) return;
+    // Retain the former proactive suggestion for a future opt-in.
+    if (!dialog || !menu || dialog.dataset.autoPrompt !== '1') return;
 
     const template = menu.querySelector('[data-venue-distance-template]');
     const option = () => menu.querySelector('[data-venue-distance-option]');

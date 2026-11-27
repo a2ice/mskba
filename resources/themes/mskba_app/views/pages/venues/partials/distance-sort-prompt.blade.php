@@ -1,5 +1,6 @@
 <dialog class="mskba-modal venue-nearby-dialog" data-venue-distance-prompt
     data-location-url="{{ route('venues.distance-location') }}"
+    data-auto-prompt="0"
     data-location-available="{{ $venueDistanceAvailable ? '1' : '0' }}"
     data-prompt-answered="{{ $venueDistanceAnswered ? '1' : '0' }}"
     data-distance-selected="{{ ($filters['sort'] ?? '') === 'distance' ? '1' : '0' }}"
@@ -15,3 +16,5 @@
         <button type="button" class="button primary" data-distance-accept>Да, отсортировать</button>
     </footer>
 </dialog>
+
+<p data-venue-distance-error role="status" hidden></p>

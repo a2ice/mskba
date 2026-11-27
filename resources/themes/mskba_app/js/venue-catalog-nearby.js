@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const confirm = find('[data-nearby-confirm]');
         let point = toggle.checked ? coordinates(lat.value, lon.value) : null;
         let draft = null, mode = 'address', map = null, marker = null, loading = false, generation = 0;
+        let externalSelection = null;
 
         const message = (node, text = '') => { node.textContent = text; node.hidden = !text; };
         const sync = () => {
@@ -96,6 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
             message(dialogStatus, reason);
             find('[data-nearby-close]').focus();
         };
+        // Reuse this exact address/map picker for distance sorting without
+        // changing the nearby filter, radius, or draft form values.
+        root.addEventListener('mskba:venue-distance-select-point', event => {
+            if (dialog.open || !event.detail?.select) return;
+            externalSelection = event.detail;
+            open('Не удалось получить местоположение. Выберите адрес или точку на карте.');
+        });
         toggle.addEventListener('change', async () => {
             if (!toggle.checked) { point = null; sync(); message(status); return; }
             sync();
@@ -129,6 +137,14 @@ document.addEventListener('DOMContentLoaded', () => {
         addressInput.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); });
         confirm.addEventListener('click', () => {
             if (!draft) return;
+            if (externalSelection) {
+                const selection = externalSelection;
+                const selected = draft;
+                externalSelection = null;
+                dialog.close();
+                selection.select({ latitude: selected[0], longitude: selected[1] });
+                return;
+            }
             point = draft;
             sync();
             dialog.close();
@@ -140,7 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
             pressedOutside = false;
         });
         dialog.addEventListener('pointercancel', () => { pressedOutside = false; });
-        dialog.addEventListener('close', () => { ++generation; destroyMap(); updateDraft(null); sync(); });
+        dialog.addEventListener('close', () => {
+            const selection = externalSelection;
+            externalSelection = null;
+            ++generation;
+            destroyMap();
+            updateDraft(null);
+            sync();
+            selection?.cancel?.();
+        });
         window.addEventListener('pageshow', sync);
         sync();
     });
