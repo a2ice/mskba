@@ -1,0 +1,48 @@
+/* Compact, theme-token based status; the saved schedule remains visible. */
+.venue-schedule-refresh-heading {
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:4px 10px;
+    min-width:0;
+}
+.venue-schedule-refresh-status {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.35;
+    font-weight:500;
+}
+.venue-schedule-refresh-status .image-upload-loading__spinner {
+    width:14px;
+    height:14px;
+    flex:none;
+    border-width:2px;
+    border-color:var(--control-line, rgba(128,128,128,.25));
+    border-right-color:var(--accent-strong, var(--accent, #e67816));
+}
+.venue-schedule-refresh-status svg {
+    width:14px;
+    height:14px;
+    flex:none;
+}
+.venue-schedule-refresh-status[data-refresh-state="failed"] {
+    color:var(--danger, #c62828);
+}
+.venue-schedule-refresh-status [hidden] {
+    display:none !important;
+}
+[data-venue-refresh-disabled]:disabled {
+    cursor:wait;
+}
+[data-venue-refresh-disabled]:disabled:hover {
+    border-color:var(--control-line, var(--border, #d7dbe0));
+    background:var(--surface, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+    .venue-schedule-refresh-status .image-upload-loading__spinner {
+        animation:none;
+    }
+}

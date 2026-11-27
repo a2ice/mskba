@@ -1,5 +1,7 @@
 import { subscribePublic } from './realtime.js';
 
+import { markVisitRefreshFailed } from './venue-visit-schedule-state.js';
+
 // Only a page that actually queued (or joined) a refresh subscribes/polls.
 // No browser request initiates a third-party read; the endpoint is read-only.
 function initVisitScheduleRefresh() {
@@ -39,11 +41,7 @@ function initVisitScheduleRefresh() {
     async function check() {
         if (stopped || checking) return;
         if (Date.now() > deadline) {
-            for (const message of section.querySelectorAll('[data-venue-refresh-message]')) {
-                if (message.textContent.includes('Обновляем расписание')) {
-                    message.textContent = 'Расписание пока не удалось обновить. Показаны последние сохранённые данные.';
-                }
-            }
+            markVisitRefreshFailed(section, pending);
             stop();
             return;
         }
@@ -75,7 +73,15 @@ function initVisitScheduleRefresh() {
                 section.replaceWith(next);
                 section = next;
                 document.dispatchEvent(new CustomEvent('mskba:venue-schedule-replaced'));
-                for (const id of settled) pending.delete(id);
+                // The fragment can observe a newer state than the status
+                // request (another visitor may have started a refresh).
+                const rendered = JSON.parse(section.dataset.refreshStates || '{}');
+                for (const id of settled) {
+                    if (rendered[id]?.state !== 'updating') pending.delete(id);
+                }
+                for (const id of Object.keys(rendered)) {
+                    if (rendered[id].state === 'updating') pending.add(id);
+                }
             }
             if (!pending.size) stop();
         } catch {

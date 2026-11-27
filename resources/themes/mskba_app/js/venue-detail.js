@@ -936,6 +936,7 @@ if (dayBookingDialog) {
             if (boundDayOpenButtons.has(button)) return;
             boundDayOpenButtons.add(button);
             button.addEventListener('click', () => {
+                if (button.disabled) return;
                 const courtId = Number(button.dataset.courtId);
                 if (Number.isSafeInteger(courtId) && courtId > 0) {
                     dayBookingDialog.dispatchEvent(new CustomEvent('mskba:choose-court', {

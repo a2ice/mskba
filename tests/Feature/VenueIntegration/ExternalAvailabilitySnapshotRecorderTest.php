@@ -744,7 +744,9 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         Bus::assertNotDispatched(RefreshVisitedCourtSchedule::class);
 
         $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk()
-            ->assertSee('Обновляем расписание');
+            ->assertSee('Обновляем…')
+            ->assertSee('data-venue-refresh-spinner', false)
+            ->assertSee('data-refresh-state="updating"', false);
         for ($i = 0; $i < 9; $i++) {
             $this->assertSame('updating', $refresh->forVenue($venue->id, enqueue: true)[$court->id]['state']);
         }
