@@ -1,3 +1,4 @@
+import '../../../../js/components/venue-cover-parallax.js';
 import '../../../mskba_app/js/venue-catalog-nearby.js';
 import '../../../mskba_app/js/venue-catalog-geography.js';
 import '../../../mskba_app/js/venue-catalog-types.js';

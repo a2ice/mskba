@@ -1,0 +1,14 @@
+/* A small, clipped scroll-parallax; no layout shift or moving controls. */
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+    .app-venues-catalog__photo.venue-cover-parallax,
+    .venue-catalog-item--card > .venue-catalog-item__image.venue-cover-parallax {
+        overflow: hidden;
+    }
+    .app-venues-catalog__photo.venue-cover-parallax > img,
+    .venue-catalog-item--card > .venue-catalog-item__image.venue-cover-parallax > img {
+        display: block;
+        transform-origin: 50% 0;
+        transform: translate3d(0, var(--venue-cover-shift, 0%), 0) scale(1.1);
+        transition: none;
+    }
+}
