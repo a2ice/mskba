@@ -9,7 +9,8 @@ export function venueCoverShift(top, height) {
     if (!Number.isFinite(top) || !Number.isFinite(height) || height <= 0) return 0;
     const t = Math.max(0, Math.min(1, (0.85 * height - top) / (0.70 * height)));
     // Ease in/out at the boundaries; a position-derived value is reversible.
-    return -10 * t * t * (3 - 2 * t);
+    // Reveal the top of the oversized image as the card approaches the top.
+    return -10 * (1 - t * t * (3 - 2 * t));
 }
 
 function init() {

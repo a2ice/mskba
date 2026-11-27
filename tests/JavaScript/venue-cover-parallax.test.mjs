@@ -6,19 +6,19 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync(new URL('../../resources/js/components/venue-cover-parallax.js', import.meta.url), 'utf8');
 const { venueCoverShift } = await import('data:text/javascript;base64,' + Buffer.from(source.replace(/^import .*;\n/m, '')).toString('base64'));
 
-test('clamped start and end at 85% and 15% of the viewport', () => {
-    assert.equal(Math.abs(venueCoverShift(1000, 1000)), 0);
-    assert.equal(Math.abs(venueCoverShift(850, 1000)), 0);
+test('reversed direction: -10% at 85% and 0% at 15% of viewport', () => {
+    assert.equal(venueCoverShift(1000, 1000), -10);
+    assert.equal(venueCoverShift(850, 1000), -10);
     assert.equal(venueCoverShift(500, 1000), -5);
-    assert.equal(venueCoverShift(150, 1000), -10);
-    assert.equal(venueCoverShift(-100, 1000), -10);
+    assert.equal(Math.abs(venueCoverShift(150, 1000)), 0);
+    assert.equal(Math.abs(venueCoverShift(-100, 1000)), 0);
 });
 test('position-based, bounded, monotonic and reversible across viewport sizes', () => {
     const tops = [900, 850, 750, 650, 500, 350, 250, 150, 0];
     const down = tops.map(top => venueCoverShift(top, 1000));
     const up = [...tops].reverse().map(top => venueCoverShift(top, 1000));
     assert.deepEqual(up, [...down].reverse());
-    assert.ok(down.every((x, i) => x >= -10 && x <= 0 && (!i || x <= down[i - 1])));
+    assert.ok(down.every((x, i) => x >= -10 && x <= 0 && (!i || x >= down[i - 1])));
     assert.equal(venueCoverShift(250, 500), -5);
     assert.equal(venueCoverShift(0, 0), 0);
     assert.equal(venueCoverShift(NaN, 500), 0);
