@@ -272,3 +272,11 @@
 @media (prefers-reduced-motion: reduce) {
     .app-mobile-primary__filter-chevron { transition: none; }
 }
+
+/* On a compact catalog the top toolbar owns search; the dock is filters only. */
+@media(max-width:768px){
+    .app-mobile-primary__panel--filters.is-toolbar-search .app-mobile-primary__filter-preview{display:none}
+    .has-catalog-toolbar-search .app-mobile-primary__search-icon{display:none}
+    .has-catalog-toolbar-search .app-mobile-primary__catalog-filter-icon[hidden]{display:block!important}
+    .app-mobile-primary__catalog-filter-icon{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+}
