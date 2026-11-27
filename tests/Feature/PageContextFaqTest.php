@@ -80,7 +80,8 @@ final class PageContextFaqTest extends TestCase
             ->assertSee('data-help-launcher', false)
             ->assertSee('app-venues-catalog__create', false)
             ->assertSee('data-help-venue-create-template', false)
-            ->assertSee('Мы приветствуем вклад каждого участника')
+            ->assertSee('Много площадок не бывает!')
+            ->assertSee('Знаете баскетбольный зал или уличную площадку, которой еще нет на портале?')
             ->assertSee('data-help-initial-section="venues"', false)
             ->assertSee('data-help-back', false)
             ->assertSee('data-context-help-dialog', false);
