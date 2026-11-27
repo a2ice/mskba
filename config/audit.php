@@ -32,6 +32,7 @@ use App\Modules\Venue\Domain\Models\VenueCourtCalendarSlotPrice;
 use App\Modules\Venue\Domain\Models\VenuePricingRule;
 use App\Modules\Venue\Domain\Models\PortalCommissionPolicy;
 use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
+use App\Modules\Venue\Domain\Models\VenueAssignedManager;
 use App\Modules\Venue\Domain\Models\VenueCommissionPolicy;
 use App\Modules\Venue\Domain\Models\VenueCourtCommissionPolicy;
 use App\Modules\Venue\Domain\Models\VenueCourtPricingRuleOverride;
@@ -74,6 +75,7 @@ return [
         VenuePricingRule::class,
         PortalCommissionPolicy::class,
         VenueCommissionAgent::class,
+        VenueAssignedManager::class,
         VenueCommissionPolicy::class,
         VenueCourtCommissionPolicy::class,
         VenueCourtPricingRuleOverride::class,
