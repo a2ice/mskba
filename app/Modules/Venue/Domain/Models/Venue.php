@@ -304,6 +304,16 @@ class Venue extends Model
                 ->where('status', \App\Modules\Contract\Domain\Enums\ContractStatusEnum::ACTIVE->value));
     }
 
+    public function agentAgreements(): HasMany
+    {
+        return $this->hasMany(VenueAgentAgreement::class);
+    }
+
+    public function assignedManagers(): HasMany
+    {
+        return $this->hasMany(VenueAssignedManager::class);
+    }
+
     public function commissionPolicy(): HasOne
     {
         return $this->hasOne(VenueCommissionPolicy::class);

@@ -80,18 +80,19 @@ final class EditVenue extends EditRecord
     {
         $group = $this->getCachedRelationManagers()[$key] ?? null;
 
-        if (! ($group instanceof RelationGroup) || ! in_array($group->getLabel(), ['Интеграции', 'Заявки'], true)) {
+        if (! ($group instanceof RelationGroup) || ! in_array($group->getLabel(), ['Интеграции', 'Заявки', 'Контракты'], true)) {
             return parent::getRelationManagerTabComponent($key);
         }
 
         $isIntegration = $group->getLabel() === 'Интеграции';
+        $isContracts = $group->getLabel() === 'Контракты';
         $group->ownerRecord($this->getRecord())->pageClass(static::class);
 
         return $group->getTabComponent()
             ->schema(fn (): array => [
-                Tabs::make($isIntegration ? 'Разделы интеграции' : 'Разделы заявок')
-                    ->key($isIntegration ? 'venueIntegrationSections' : 'venueRentalRequestsSections')
-                    ->persistTabInQueryString($isIntegration ? 'integration-section' : 'requests-section')
+                Tabs::make($isContracts ? 'Разделы контрактов' : ($isIntegration ? 'Разделы интеграции' : 'Разделы заявок'))
+                    ->key($isContracts ? 'venueContractSections' : ($isIntegration ? 'venueIntegrationSections' : 'venueRentalRequestsSections'))
+                    ->persistTabInQueryString($isContracts ? 'contract-section' : ($isIntegration ? 'integration-section' : 'requests-section'))
                     ->tabs(collect($group->getManagers())->map(function (string $manager): Tab {
                         [$label, $icon] = match ($manager) {
                             VenueIntegrationsRelationManager::class => ['Настройки', 'heroicon-o-cog-6-tooth'],
