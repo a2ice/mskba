@@ -26,8 +26,14 @@ final class VenueIntegrationNavigationTest extends TestCase
         $relations = VenueResource::getRelations();
 
         $this->assertContains(\App\Filament\Backoffice\Resources\Venues\RelationManagers\SpecialTermsRelationManager::class, $relations);
-        $this->assertCount(2, array_filter($relations, fn ($relation): bool => $relation instanceof RelationGroup));
-        $this->assertSame('Заявки', collect($relations)->filter(fn ($relation): bool => $relation instanceof RelationGroup)->values()->last()->getLabel());
+        $groups = collect($relations)->filter(fn ($relation): bool => $relation instanceof RelationGroup)->values();
+        $this->assertSame(['Интеграции', 'Заявки', 'Контракты'], $groups->map(fn (RelationGroup $group): string => $group->getLabel())->all());
+        $this->assertSame([
+            \App\Filament\Backoffice\Resources\Venues\RelationManagers\ContractHistoryRelationManager::class,
+            \App\Filament\Backoffice\Resources\Venues\RelationManagers\CommercialMembershipsRelationManager::class,
+            \App\Filament\Backoffice\Resources\Venues\RelationManagers\AgentAgreementsRelationManager::class,
+            \App\Filament\Backoffice\Resources\Venues\RelationManagers\AssignedManagersRelationManager::class,
+        ], $groups->last()->getManagers());
 
         $group = collect($relations)->first(fn ($relation): bool => $relation instanceof RelationGroup && $relation->getLabel() === 'Интеграции');
         $this->assertInstanceOf(RelationGroup::class, $group);
