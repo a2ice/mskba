@@ -81,6 +81,8 @@ final class PageContextFaqTest extends TestCase
             ->assertSee('app-venues-catalog__create', false)
             ->assertSee('data-help-venue-create-template', false)
             ->assertSee('Мы приветствуем вклад каждого участника')
+            ->assertSee('data-help-initial-section="venues"', false)
+            ->assertSee('data-help-back', false)
             ->assertSee('data-context-help-dialog', false);
 
         $url = route('venues.show', $venue->routeIdentifier());
@@ -88,7 +90,8 @@ final class PageContextFaqTest extends TestCase
             ->assertSee('data-venue-floating-create', false)
             ->assertDontSee('data-help-launcher', false)
             ->assertSee('data-venue-heading-rating', false)
-            ->assertDontSee('data-help-venue-create-template', false)
+            ->assertSee('data-help-venue-create-template', false)
+            ->assertSee('data-help-initial-section="venues"', false)
             ->assertSee('Пока нет оценок игроков');
 
         foreach ([[5, true], [4, true], [1, false]] as [$rating, $published]) {
