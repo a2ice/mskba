@@ -53,3 +53,36 @@ test('mobile dock keeps search icon and a distinct filter icon with chevron', ()
     assert.match(styles, /app-mobile-primary__panel--filters \.app-mobile-primary__panel-header\s*\{[\s\S]*?margin: 0;[\s\S]*?padding: 8px 18px;/);
     assert.match(js, /filterLabel\.textContent = 'Поиск'/);
 });
+
+test('mobile catalog rebinds its sole toolbar search to the actual filter form', () => {
+    const bind = js.match(/if \(toolbarSearch && activeForm\?\.id\) \{([\s\S]*?)\n            \} else \{/);
+    assert.ok(bind);
+    const run = new Function('toolbarSearch', 'activeForm',
+        'let replacedSearch, activeSearch;' + bind[1] + ';return { replacedSearch, activeSearch };');
+    const attrs = new Map([['form', 'desktop']]);
+    const toolbar = { value: 'basket', setAttribute: (key, value) => attrs.set(key, value) };
+    const duplicate = { value: '', disabled: false };
+    const form = { id: 'mobile', querySelector: () => duplicate };
+    const result = run(toolbar, form);
+    assert.equal(result.activeSearch, toolbar);
+    assert.equal(attrs.get('form'), 'mobile');
+    assert.equal(duplicate.disabled, true);
+    assert.equal(toolbar.value, 'basket');
+    const venueForm = { id: 'venue-catalog-filter-form', querySelector: () => null };
+    assert.equal(run(toolbar, venueForm).activeSearch, toolbar);
+    assert.equal(attrs.get('form'), 'venue-catalog-filter-form');
+    assert.match(js, /toolbarSearch\.setAttribute\('form', toolbarDesktopForm\)/);
+    assert.match(js, /replacedSearch\.disabled = false/);
+    assert.match(js, /filterPreview\.hidden = usesToolbarSearch \|\| !activeSearch/);
+    assert.match(js, /toolbarSearch\.form\?\.requestSubmit\(\)/);
+    assert.match(js, /filterLabel\.textContent = 'Фильтры'/);
+});
+
+test('compact toolbar stays sticky and search visible with mobile dock', () => {
+    const css = read('resources/themes/mskba_app/css/catalog-controls.css');
+    assert.match(css, /\.panel\.app-category-toolbar--compact\{[^}]*position:sticky;top:var\(--app-sticky-offset/);
+    assert.doesNotMatch(css, /\.panel\.app-category-toolbar--compact\{position:static/);
+    assert.match(css, /html\.has-app-mobile-context \.app-category-toolbar__search--desktop\{display:block\}/);
+    assert.match(css, /\.panel\.app-category-toolbar--compact \.app-category-toolbar__search\{font-size:16px/);
+    assert.match(styles, /\.is-toolbar-search \.app-mobile-primary__filter-preview\{display:none\}/);
+});
