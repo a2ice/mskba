@@ -2,6 +2,8 @@
 
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
+use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum as Privacy;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueReview;
@@ -20,7 +22,7 @@ final class VenueReviewController
         abort_if($mine && $viewer === null, 401);
         $ids = $viewer?->identityIds() ?? [];
         $data = $request->validate(['before' => ['nullable', 'integer', 'min:1']]);
-        $query = $venue->reviews()->with('user.profile')
+        $query = $venue->reviews()->with('user.profile.activeAvatar')
             ->when($mine, fn ($q) => $q->whereIn('user_id', $ids),
                 fn ($q) => $q->where('is_published', true))
             ->when(isset($data['before']), fn ($q) => $q->where('id', '<', $data['before']))
@@ -29,16 +31,23 @@ final class VenueReviewController
         $reviews = $query->take(10)->values();
 
         return response()->json([
-            'reviews' => $reviews->map(function (VenueReview $review) use ($ids): array {
+            'reviews' => $reviews->map(function (VenueReview $review) use ($ids, $viewer): array {
                 $user = $review->user;
                 $own = in_array((int) $review->user_id, $ids, true);
+                $author = $user?->nickname ?: $user?->username;
+                $privacy = app(UserPrivacyAccessService::class);
+                $avatarAllowed = $user && ($own || ($privacy->allows($user, $viewer, Privacy::PROFILE)
+                    && $privacy->allows($user, $viewer, Privacy::AVATAR)));
+                if (! $author || filter_var($author, FILTER_VALIDATE_EMAIL)) {
+                    $author = 'Игрок';
+                }
 
                 return [
                     'id' => $review->id,
                     'rating' => $review->rating,
                     'body' => $review->body,
-                    'author' => $user?->nickname ?: ($user?->username ?: 'Игрок'),
-                    'avatar' => $user?->profile?->avatarUrl(),
+                    'author' => $author,
+                    'avatar' => $avatarAllowed ? $user?->profile?->avatarUrl() : null,
                     'published' => (bool) $review->is_published,
                     'own' => $own,
                 ];
