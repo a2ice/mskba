@@ -114,11 +114,11 @@
                 <p class="eyebrow accent">{{ $venue->type }}@if($displayAreaLabel): {{ $displayAreaLabel }}@endif</p>
                 @if(count($venue->courts) > 1)
                     <details class="app-venue-court-picker" data-venue-court-dropdown>
-                        <summary aria-label="Выбрать зал или корт">{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : 'Все залы и корты' }}
+                        <summary aria-label="Выбрать зал или корт">{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : 'Вся площадка' }}
                             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
                         </summary>
                         <nav aria-label="Залы и корты площадки">
-                            <a href="{{ route('venues.show', $venue->routeIdentifier()) }}" @if(!$venue->isCourtPage) aria-current="page" @endif>Все залы и корты · общая страница</a>
+                            <a href="{{ route('venues.show', $venue->routeIdentifier()) }}" @if(!$venue->isCourtPage) aria-current="page" @endif>Вся площадка</a>
                             @foreach($venue->courts as $court)
                                 <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $court['routeIdentifier']]) }}"
                                     @if($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) aria-current="page" @endif>{{ $court['name'] }}</a>
@@ -133,11 +133,14 @@
                     $venueRating = $venue->about->rating;
                     $venueRatingLabel = $venueRating === null ? 'Пока нет оценок игроков' : 'Рейтинг площадки: '.number_format($venueRating, 1, '.', '').' из 5 · оценок: '.($venue->about->ratingCount ?? 0);
                 @endphp
-                <span class="app-venue-intro__rating{{ $venueRating === null ? ' is-unrated' : '' }}" data-venue-heading-rating
-                      title="{{ $venueRatingLabel }}" role="img" aria-label="{{ $venueRatingLabel }}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.5 6.3-.9L12 2.8Z"/></svg>
-                    <span aria-hidden="true">{{ $venueRating === null ? '—' : number_format($venueRating, 1, '.', '') }}</span>
-                </span>
+                <button type="button" class="app-venue-intro__rating{{ $venueRating === null ? ' is-unrated' : '' }}" data-venue-heading-rating data-venue-review-open
+                      title="{{ $venueRatingLabel }}" aria-label="Оценить площадку. {{ $venueRatingLabel }}" aria-haspopup="dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <defs><linearGradient id="venue-rating-fill"><stop data-review-fill offset="{{ ($venueRating ?? 0) * 20 }}%" stop-color="var(--accent)"/><stop data-review-fill offset="{{ ($venueRating ?? 0) * 20 }}%" stop-color="transparent"/></linearGradient></defs>
+                        <path d="m12 2.8 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.5 6.3-.9L12 2.8Z" fill="url(#venue-rating-fill)"/>
+                    </svg>
+                    <span data-review-heading-value aria-hidden="true" @if($venueRating === null) hidden @endif>{{ $venueRating === null ? '' : number_format($venueRating, 1, '.', '') }}</span>
+                </button>
             </div>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
@@ -183,6 +186,7 @@
         <a href="#app-venue-interest" @if($activeVenueInterestCount === 0) hidden @endif>Интересы игроков</a>
         <a href="#app-venue-about">{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'О корте' : 'О зале') : 'О площадке' }}</a>
         <a href="#app-venue-schedule">Расписание</a>
+        <a href="#app-venue-reviews">Отзывы</a>
         @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
             <a href="#app-venue-nearby">Площадки рядом</a>
         @endif
@@ -343,7 +347,7 @@
                                     <span class="app-venue-court-overview__separator" aria-hidden="true">|</span>
                                     <span>{{ \App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum::tryFrom($court['environment'] ?? '')?->label() ?? 'Тип не указан' }}</span>
                                     <span class="app-venue-court-overview__separator" aria-hidden="true">|</span>
-                                    <span class="app-venue-court-overview__status"><svg aria-hidden="true"><use href="#{{ $court['isOpen'] ? 'check' : 'close' }}"/></svg>{{ $court['isOpen'] ? 'Работает' : 'Не работает' }}</span>
+                                    <span class="app-venue-court-overview__status" data-operational="{{ $court['isOpen'] ? 'active' : 'inactive' }}"><svg aria-hidden="true"><use href="#{{ $court['isOpen'] ? 'check' : 'close' }}"/></svg>{{ $court['isOpen'] ? 'Работает' : 'Не работает' }}</span>
                                 </li>
                             @endforeach
                         </ul>
@@ -378,11 +382,9 @@
                         @endforeach
                     </div>
                 @endif
-                @if($venue->about->rating !== null)
-                    <p>Оценка игроков: {{ $venue->about->rating }} · отзывов: {{ $venue->about->ratingCount ?? 0 }}</p>
-                @endif
             </section>
             @include('theme::pages.venues.schedule-fragment')
+            @include('theme::pages.venues.partials.reviews')
             @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
                 @php
                     $nearbyHandler = app(\App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler::class);
@@ -577,6 +579,7 @@
     </form>
 </dialog>
 @include('theme::pages.venues.partials.day-event-dialog')
+@include('theme::pages.venues.partials.review-dialogs')
 @auth
     @include('theme::pages.account.partials.direct-message-dialog')
 @endauth
