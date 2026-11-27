@@ -21,8 +21,9 @@
             </div>
         </form>
     @else
-        <p>Войди в аккаунт, чтобы оставить оценку и отзыв.</p>
-        <a class="button primary full" href="{{ route('login') }}">Войти</a>
+        <p>Для того чтобы оценить площадку и оставить отзыв, необходимо авторизоваться.</p>
+        <button type="button" class="button primary full" data-review-auth-start>Войти</button>
+        <p class="error" data-review-auth-error role="alert" hidden></p>
     @endauth
 </dialog>
 <dialog class="app-venue-overlay app-venue-review-dialog app-venue-review-thanks" data-review-thanks aria-labelledby="app-venue-review-thanks-title">
