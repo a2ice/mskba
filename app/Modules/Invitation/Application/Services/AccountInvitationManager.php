@@ -389,7 +389,16 @@ final class AccountInvitationManager
                 'reason' => $reason,
             ]);
 
-            return $this->grantAndComplete($record, $venue, $user, $reviewer, $permissions);
+            $result = $this->grantAndComplete($record, $venue, $user, $reviewer, $permissions);
+            if ($result->status !== 'completed') {
+                // Roll back the review event as well: no successful decision
+                // was made and the existing contract must remain untouched.
+                throw ValidationException::withMessages([
+                    'reason' => 'Действующий договор не покрывает предложенные права. Сначала согласуйте изменение договора отдельным процессом.',
+                ]);
+            }
+
+            return $result;
         }, 3);
     }
 

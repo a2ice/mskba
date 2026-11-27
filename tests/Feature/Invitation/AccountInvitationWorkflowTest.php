@@ -417,6 +417,34 @@ final class AccountInvitationWorkflowTest extends TestCase
             ->where('scope_id', $venue->id)->where('user_id', $user->id)->count());
     }
 
+    public function test_review_of_conflicting_existing_contract_does_not_report_success(): void
+    {
+        [$issuer, $venue, $invitation] = $this->invite('conflict-manager@example.test', 'manager');
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user->createProfile([
+            'first_name' => 'Иван', 'last_name' => 'Сотрудник',
+            'birth_date' => '1990-01-01', 'gender' => 'male',
+        ]);
+        $membership = app(\App\Modules\Venue\Application\UseCases\ManageVenueMembershipHandler::class)->grant(
+            $venue, $user, \App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum::MANAGER,
+            $issuer, [\App\Modules\Venue\Domain\Enums\VenuePermissionEnum::VIEW],
+        );
+        $manager = app(AccountInvitationManager::class);
+        $manager->accept($invitation, $user);
+        $this->assertSame('awaiting_authorization', $invitation->fresh()->progress);
+        try {
+            $manager->approveCompletion($invitation->fresh(), $issuer, 'Проверено основание назначения роли');
+            $this->fail('A conflicting contract cannot be approved silently.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('reason', $exception->errors());
+        }
+        $this->assertSame('pending', $invitation->fresh()->status);
+        $this->assertSame('awaiting_authorization', $invitation->fresh()->progress);
+        $this->assertNull($invitation->fresh()->granted_membership_id);
+        $this->assertSame(0, $invitation->events()->where('event', 'authorization_reviewed')->count());
+        $this->assertSame(['view'], $membership->contract->permissions()->pluck('permission')->all());
+    }
+
     public function test_confirmed_status_without_actual_requirements_does_not_grant_employee_role(): void
     {
         [, $venue, $invitation] = $this->invite('forced-staff@example.test', 'staff');
