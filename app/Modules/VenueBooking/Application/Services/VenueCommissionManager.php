@@ -89,6 +89,10 @@ final readonly class VenueCommissionManager
             if ($selectedAgentId !== null) {
                 $agent = VenueCommissionAgent::query()->where('venue_id', $venue->id)
                     ->where('is_active', true)->findOrFail($selectedAgentId);
+                if ($agreement === null && VenueAgentAgreement::query()
+                    ->where('venue_id', $venue->id)->where('commission_agent_id', $agent->id)->exists()) {
+                    throw ValidationException::withMessages(['selected_agent_id' => 'Для повторного назначения агента требуется новый подтверждённый договор.']);
+                }
                 $user = $agent->user;
                 if ($user === null || ! $user->isConfirmed() || $user->isBlocked() || $user->trashed()) {
                     throw ValidationException::withMessages(['selected_agent_id' => 'Выбранный агент неактивен.']);
@@ -153,6 +157,7 @@ final readonly class VenueCommissionManager
     public function saveAgent(
         Venue $venue, User $actor, User $candidate,
         string $mode, string $input = '0', bool $active = true,
+        ?VenueAgentAgreement $agreement = null,
     ): VenueCommissionAgent {
         $actor = $this->superadmin($actor);
         $candidate = $candidate->canonical();
@@ -165,18 +170,31 @@ final readonly class VenueCommissionManager
         [$mode, $value] = $this->parse($mode, $input, $currency, false);
 
         return DB::transaction(function () use (
-            $venue, $actor, $candidate, $mode, $value, $currency, $active,
+            $venue, $actor, $candidate, $mode, $value, $currency, $active, $agreement,
         ): VenueCommissionAgent {
             Venue::query()->whereKey($venue->id)->lockForUpdate()->firstOrFail();
             if (VenueAgentAgreement::query()->where('venue_id', $venue->id)
                 ->whereIn('user_id', $candidate->identityIds())->where('active_marker', true)->exists()) {
                 throw ValidationException::withMessages(['user_id' => 'Условия активного агентского договора изменяются отдельным согласованием.']);
             }
+            if ($agreement !== null) {
+                $proposal = VenueAgentAgreement::query()->where('venue_id', $venue->id)
+                    ->where('user_id', $candidate->id)->lockForUpdate()->findOrFail($agreement->id);
+                abort_unless($active && $proposal->status === 'verified'
+                    && $proposal->contract_id === null && $proposal->commission_agent_id === null
+                    && $proposal->accepted_at !== null && $proposal->reviewed_at !== null
+                    && hash_equals($proposal->terms_hash, $proposal->calculatedTermsHash())
+                    && $proposal->mode === $mode && $proposal->value === $value && $proposal->currency === $currency, 409);
+            }
             $agent = VenueCommissionAgent::query()
                 ->where('venue_id', $venue->id)->where('user_id', $candidate->id)
                 ->lockForUpdate()->first() ?? new VenueCommissionAgent([
                     'venue_id' => $venue->id, 'user_id' => $candidate->id,
                 ]);
+            if ($agreement === null && $agent->exists && VenueAgentAgreement::query()
+                ->where('venue_id', $venue->id)->where('commission_agent_id', $agent->id)->exists()) {
+                throw ValidationException::withMessages(['user_id' => 'История агентского договора требует нового согласования условий.']);
+            }
             $agent->fill([
                 'is_active' => $active,
                 'mode' => $mode,

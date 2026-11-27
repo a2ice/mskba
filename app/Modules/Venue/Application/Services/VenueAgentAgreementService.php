@@ -3,6 +3,11 @@
 namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Contract\Application\Services\ContractAssurance;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\Venue\Domain\Events\VenueMembershipRevoked;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Venue\Application\UseCases\ManageVenueMembershipHandler;
@@ -162,7 +167,7 @@ final class VenueAgentAgreementService
                 'none' => '0',
             };
             // The existing finance service owns normalization/versioning.
-            $assignment = $commission->saveAgent($venue, $actor, $candidate, $record->mode, $rate);
+            $assignment = $commission->saveAgent($venue, $actor, $candidate, $record->mode, $rate, agreement: $record);
             $membership = app(ManageVenueMembershipHandler::class)->grant(
                 $venue, $candidate, VenueMembershipAccessLevelEnum::AGENT, $actor, $permissions,
             );
@@ -185,6 +190,94 @@ final class VenueAgentAgreementService
 
             return $record;
         }, 3);
+    }
+
+    /** Replace a managed active agreement only with the exact, separately verified successor. */
+    public function replace(Venue $venue, VenueAgentAgreement $previous, VenueAgentAgreement $next, User $actor, string $reason): VenueAgentAgreement
+    {
+        $reason = $this->retirementReason($reason);
+
+        return DB::transaction(function () use ($venue, $previous, $next, $actor, $reason): VenueAgentAgreement {
+            $venue = Venue::query()->lockForUpdate()->findOrFail($venue->id);
+            $this->assertVenue($venue);
+            $actor = $this->lockActor($actor);
+            $this->authorizePortal($actor);
+            $current = $this->lockAgreement($venue, $previous);
+            $successor = $this->lockAgreement($venue, $next);
+            abort_if($current->id === $successor->id || $successor->status !== 'verified', 409);
+            $this->retireLocked($venue, $current, $actor, $reason, 'replaced');
+
+            // A failed activation rolls back retirement and all financial changes.
+            return $this->activate($venue, $successor, $actor);
+        }, 3);
+    }
+
+    public function deactivate(Venue $venue, VenueAgentAgreement $agreement, User $actor, string $reason): VenueAgentAgreement
+    {
+        $reason = $this->retirementReason($reason);
+
+        return DB::transaction(function () use ($venue, $agreement, $actor, $reason): VenueAgentAgreement {
+            $venue = Venue::query()->withTrashed()->lockForUpdate()->findOrFail($venue->id);
+            $actor = $this->lockActor($actor);
+            $this->authorizePortal($actor);
+
+            return $this->retireLocked($venue, $this->lockAgreement($venue, $agreement), $actor, $reason, 'deactivated');
+        }, 3);
+    }
+
+    private function retirementReason(string $reason): string
+    {
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 10 || mb_strlen($reason) > 500) {
+            throw ValidationException::withMessages(['reason' => 'Укажите причину (10–500 символов).']);
+        }
+
+        return $reason;
+    }
+
+    private function retireLocked(Venue $venue, VenueAgentAgreement $record, User $actor, string $reason, string $status): VenueAgentAgreement
+    {
+        abort_unless($record->status === 'active' && $record->active_marker === true
+            && $record->contract_id !== null && $record->commission_agent_id !== null, 409);
+        abort_if($actor->isSameIdentity((int) $record->user_id), 403);
+        $policy = VenueCommissionPolicy::query()->where('venue_id', $venue->id)->lockForUpdate()->firstOrFail();
+        abort_unless((int) $policy->selected_agent_id === (int) $record->commission_agent_id, 409);
+        $assignment = VenueCommissionAgent::query()->where('venue_id', $venue->id)
+            ->lockForUpdate()->findOrFail($record->commission_agent_id);
+        $contract = Contract::query()->with('membership')->lockForUpdate()->findOrFail($record->contract_id);
+        $member = $contract->membership;
+        abort_unless((int) $assignment->user_id === (int) $record->user_id
+            && $contract->comment === VenueAgentAgreement::CONTRACT_MARKER
+            && $member !== null && $member->scope_type->value === 'venue'
+            && (int) $member->scope_id === (int) $venue->id
+            && (int) $member->user_id === (int) $record->user_id && $member->access_level === 'agent', 409);
+
+        // Existing operational ACL is contract-based, not frozen per booking.
+        // Fail closed until outstanding work is resolved, rather than silently
+        // removing a participant's access to an existing financial obligation.
+        // Conservative venue-wide guard: includes bookings without an agent
+        // snapshot that may still rely on the outgoing agent's scoped rights.
+        $outstanding = VenueBooking::query()->where('venue_id', $venue->id)
+            ->where(function ($query): void {
+                $query->whereIn('status', ['pending', 'requested', 'held'])
+                    ->orWhere(fn ($q) => $q->where('status', 'confirmed')->where('ends_at', '>', now()))
+                    ->orWhereHas('invoices', fn ($q) => $q->whereNotIn('status', ['paid', 'cancelled']));
+            })->exists();
+        if ($outstanding) {
+            throw ValidationException::withMessages(['agreement' => 'Есть незавершённые заявки или расчёты площадки. Сначала завершите обязательства; смена агента не должна лишать участников доступа.']);
+        }
+
+        $record->update(['status' => $status, 'active_marker' => null, 'closed_at' => now(),
+            'closed_by_user_id' => $actor->id, 'closure_reason' => $reason]);
+        $contract->update(['status' => ContractStatusEnum::INACTIVE, 'expires_at' => now()]);
+        $member->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
+        $assignment->update(['is_active' => false, 'version' => $assignment->version + 1,
+            'updated_by_user_id' => $actor->id]);
+        $policy->update(['selected_agent_id' => null, 'version' => $policy->version + 1,
+            'updated_by_user_id' => $actor->id]);
+        DB::afterCommit(static fn () => event(new VenueMembershipRevoked($member->id)));
+
+        return $record;
     }
 
     private function assertAcceptedTerms(VenueAgentAgreement $record): void

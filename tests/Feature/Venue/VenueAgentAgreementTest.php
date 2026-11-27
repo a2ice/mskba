@@ -111,6 +111,51 @@ final class VenueAgentAgreementTest extends TestCase
         $this->assertSame(525, $record->commissionAgent()->first()->value);
     }
 
+    public function test_replacement_is_atomic_and_legacy_editor_cannot_restore_retired_agreement(): void
+    {
+        config()->set('features.venue_rental.rental_flow', true);
+        $venue = Venue::factory()->create();
+        $admin = $this->user(Role::SUPERADMIN);
+        $agent = $this->user();
+        $other = $this->user();
+        $service = app(VenueAgentAgreementService::class);
+        $verified = function (User $candidate, string $rate) use ($venue, $admin, $service) {
+            $record = $service->propose($venue, $candidate, $admin, 'percent', $rate, [Permission::VIEW],
+                'Согласованные условия сотрудничества.');
+            $record = $service->accept($venue, $record, $candidate, $record->terms_hash);
+
+            return $service->verify($venue, $record, $admin, 'Тестовый договор №123', 'Проверены условия и основание договора.');
+        };
+        $first = $service->activate($venue, $verified($agent, '5'), $admin);
+        $second = $verified($other, '7');
+        $other->forceFill(['status' => UserStatusEnum::UNCONFIRMED])->save();
+        try {
+            $service->replace($venue, $first, $second, $admin, 'Согласована замена коммерческого агента.');
+            $this->fail('Invalid successor must not retire the old agreement.');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+        $this->assertSame('active', $first->fresh()->status);
+        $this->assertEquals($first->commission_agent_id, $venue->commissionPolicy()->value('selected_agent_id'));
+        $other->forceFill(['status' => UserStatusEnum::CONFIRMED])->save();
+
+        $second = $service->replace($venue, $first, $second, $admin, 'Согласована замена коммерческого агента.');
+        $this->assertSame('replaced', $first->fresh()->status);
+        $this->assertNull($first->fresh()->active_marker);
+        $this->assertSame('inactive', $first->contract()->first()->status->value);
+        $this->assertFalse($first->commissionAgent()->first()->is_active);
+        $this->assertSame('active', $second->status);
+        $this->assertSame(700, $second->commissionAgent->value);
+        $this->assertEquals($second->commission_agent_id, $venue->commissionPolicy()->value('selected_agent_id'));
+
+        $service->deactivate($venue, $second, $admin, 'Завершено сотрудничество с агентом.');
+        $this->assertSame('deactivated', $second->fresh()->status);
+        $this->assertNull($venue->commissionPolicy()->value('selected_agent_id'));
+        $this->expectException(ValidationException::class);
+        app(\App\Modules\VenueBooking\Application\Services\VenueCommissionManager::class)
+            ->saveAgent($venue, $admin, $agent, 'percent', '9');
+    }
+
     public function test_proposal_does_not_infer_financial_authority_or_allow_unsafe_permissions(): void
     {
         $venue = Venue::factory()->create();
