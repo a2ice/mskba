@@ -10,6 +10,6 @@ final class VkContentPublication extends Model
 
     protected function casts(): array
     {
-        return ['is_enabled' => 'boolean', 'group_id' => 'integer', 'post_id' => 'integer', 'published_at' => 'datetime'];
+        return ['is_enabled' => 'boolean', 'requires_cover' => 'boolean', 'group_id' => 'integer', 'post_id' => 'integer', 'published_at' => 'datetime'];
     }
 }

@@ -34,7 +34,7 @@ final class PublishVkContentJob implements ShouldQueue
 
                 return null;
             }
-            if (! VkWallPublisher::photoTokenAvailable()) {
+            if ($row->requires_cover && ! VkWallPublisher::photoTokenAvailable()) {
                 $row->update(['status' => 'awaiting_auth', 'last_error' => 'Ожидается повторная авторизация загрузки фото ВКонтакте.']);
 
                 return null;
@@ -57,7 +57,8 @@ final class PublishVkContentJob implements ShouldQueue
         }
 
         try {
-            $attachment = $publisher->prepareAttachment($content, $publication->group_id);
+            $attachment = $publication->requires_cover
+                ? $publisher->prepareAttachment($content, $publication->group_id) : null;
         } catch (Throwable) {
             $publication->update(! VkWallPublisher::photoTokenAvailable()
                 ? ['status' => 'awaiting_auth', 'last_error' => 'Ожидается повторная авторизация загрузки фото ВКонтакте.']

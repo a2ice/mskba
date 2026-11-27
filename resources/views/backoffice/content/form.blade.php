@@ -271,7 +271,7 @@
             @if(! $vkConfigured)
                 <small class="form-text">Публикация во ВКонтакте не настроена.</small>
             @elseif(! $vkPhotoAuthorized)
-                <small class="form-text">Для ВКонтакте требуется повторная авторизация. Выбранная публикация с обложкой будет ожидать её; сайт и Telegram не блокируются.</small>
+                <small class="form-text">Без обложки ВКонтакте публикует текст со ссылкой. Для публикации с обложкой требуется повторная авторизация; сайт и Telegram не блокируются.</small>
             @endif
             @if($vkPublication?->post_id)
                 <a href="https://vk.com/wall-{{ $vkPublication->group_id }}_{{ $vkPublication->post_id }}" target="_blank" rel="noopener noreferrer">Открыть публикацию ВКонтакте</a>

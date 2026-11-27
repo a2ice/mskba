@@ -127,7 +127,7 @@ final class EditorialNewsAgentApiTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_social_publication_rejects_dev_and_vk_without_cover(): void
+    public function test_social_publication_rejects_dev_and_allows_vk_text_without_photo_authorization(): void
     {
         Queue::fake();
         Http::fake();
@@ -145,14 +145,15 @@ final class EditorialNewsAgentApiTest extends TestCase
             'app.env' => 'production', 'app.url' => 'https://mskba.ru',
             'vk.wall.enabled' => true, 'vk.wall.group_id' => 174334075,
             'vk.wall.community_token' => 'test-community', 'vk.wall.user_token' => 'test-photo',
-            'vk.wall.user_token_expires_at' => now()->addHour()->timestamp,
+            'vk.wall.user_token_expires_at' => now()->subMinute()->timestamp,
         ]);
+        $this->getJson(self::URI.'/destinations/list')->assertJsonPath('data.vk.available', false)->assertJsonPath('data.vk.text_available', true);
         $this->postJson(self::URI.'/winter-basketball/publish', [
             'publish_in_vk' => true, 'vk_group_id' => 174334075,
-        ])->assertUnprocessable();
-        $this->assertFalse(ContentItem::query()->sole()->publish_in_feed);
+        ])->assertOk()->assertJsonPath('data.status', 'published')->assertJsonPath('data.vk_publication.status', 'pending');
+        $this->assertTrue(ContentItem::query()->sole()->publish_in_feed);
         $this->assertDatabaseCount('telegram_content_publications', 0);
-        $this->assertDatabaseCount('vk_content_publications', 0);
+        $this->assertDatabaseHas('vk_content_publications', ['requires_cover' => false, 'status' => 'pending']);
         Http::assertNothingSent();
     }
 

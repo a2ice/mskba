@@ -28,13 +28,16 @@ final class VkContentPublicationManager
             }
 
             $groupId = (int) config('vk.wall.group_id');
-            $ready = VkWallPublisher::photoTokenAvailable();
+            // Keep the selected mode stable across edits and retries, including legacy photo rows.
+            $requiresCover = $row === null ? $content->cover()->exists() : $row->requires_cover;
+            $ready = ! $requiresCover || VkWallPublisher::photoTokenAvailable();
             $status = $ready ? 'pending' : 'awaiting_auth';
             $error = $ready ? null : 'Ожидается повторная авторизация загрузки фото ВКонтакте.';
             if ($row === null) {
                 $row = VkContentPublication::query()->create([
                     'content_item_id' => $content->id, 'is_enabled' => true,
                     'status' => $status, 'group_id' => $groupId, 'last_error' => $error,
+                    'requires_cover' => $requiresCover,
                 ]);
             } else {
                 $row->update(['is_enabled' => true]);

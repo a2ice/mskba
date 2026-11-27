@@ -88,6 +88,7 @@ final class EditorialNewsAgentApiController extends Controller
                 ->orderBy('title')->orderBy('id')->get(['id', 'title', 'type']) : [],
             'vk' => [
                 'available' => VkWallPublisher::configured(),
+                'text_available' => (bool) $vk,
                 'can_defer' => (bool) $vk,
                 'group_id' => $vk ? (int) config('vk.wall.group_id') : null,
             ],
@@ -140,9 +141,9 @@ final class EditorialNewsAgentApiController extends Controller
                 || TelegramChat::query()->where('is_active', true)->whereIn('id', $chatIds)->count() !== count($chatIds))) {
                 throw ValidationException::withMessages(['telegram_chat_ids' => 'Выберите активные подключённые Telegram-чаты на production.']);
             }
-            if ($sendVk && (! VkWallPublisher::wallConfigured() || (! $deferVk && ! VkWallPublisher::photoTokenAvailable())
-                || $groupId !== (int) config('vk.wall.group_id') || ! $item->cover()->exists())) {
-                throw ValidationException::withMessages(['publish_in_vk' => 'ВКонтакте недоступен, изменилось сообщество или отсутствует обложка.']);
+            if ($sendVk && (! VkWallPublisher::wallConfigured() || (! $deferVk && $item->cover()->exists() && ! VkWallPublisher::photoTokenAvailable())
+                || $groupId !== (int) config('vk.wall.group_id'))) {
+                throw ValidationException::withMessages(['publish_in_vk' => 'ВКонтакте недоступен, изменилось сообщество или требуется авторизация загрузки обложки.']);
             }
 
             $item->update([
