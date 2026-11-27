@@ -175,4 +175,21 @@ final class SocialIntegrationSettingsTest extends TestCase
         ])->assertSessionHasErrors('social');
         Http::assertNothingSent();
     }
+    public function test_admin_can_enable_vk_text_publication_without_photo_authorization(): void
+    {
+        config(['app.env' => 'production', 'app.url' => 'https://mskba.ru',
+            'vk.wall.user_token' => null, 'vk.wall.user_token_expires_at' => 1]);
+        $this->actingAs($this->admin());
+        Http::fake(['https://api.vk.com/method/groups.getById' => Http::response(['response' => ['groups' => [['id' => 12345]]]])]);
+        Http::preventStrayRequests();
+        $this->post(route('backoffice.social-integrations.save', 'vk'), [
+            'community_url' => 'https://vk.ru/mskba_official',
+            'group_id' => '12345', 'community_token' => 'test-community',
+            'enabled' => '1', 'password' => 'test-password',
+        ])->assertSessionHas('social_status');
+        $this->assertTrue(config('vk.wall.enabled'));
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), 'groups.getById')
+            && $request['access_token'] === 'test-community');
+    }
 }

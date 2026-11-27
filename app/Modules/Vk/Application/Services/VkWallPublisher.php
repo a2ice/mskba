@@ -92,13 +92,16 @@ final class VkWallPublisher
         return 'photo'.(int) $photo['owner_id'].'_'.(int) $photo['id'];
     }
 
-    public function publish(ContentItem $content, int $groupId, string $attachment): int
+    public function publish(ContentItem $content, int $groupId, ?string $attachment): int
     {
         $data = ['owner_id' => -$groupId, 'from_group' => 1, 'message' => $this->message($content)];
-        if (blank($attachment)) {
-            throw new RuntimeException('Для публикации во ВКонтакте нужна обложка.');
+        // Only a deliberate text-mode job passes null. An invalid attachment is an error.
+        if ($attachment !== null) {
+            if (blank($attachment)) {
+                throw new RuntimeException('Не удалось подготовить обложку ВКонтакте.');
+            }
+            $data['attachments'] = $attachment;
         }
-        $data['attachments'] = $attachment;
 
         $response = $this->call('wall.post', $data);
         $postId = (int) ($response['post_id'] ?? 0);

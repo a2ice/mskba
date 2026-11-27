@@ -88,9 +88,10 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $response = $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk();
         $html = $response->getContent();
         $scheduleSection = explode('<section class="panel app-venue-block" id="app-venue-schedule">', $html, 2)[1] ?? '';
-        $scheduleSection = explode('<section class="panel app-venue-block" id="app-venue-about">', $scheduleSection, 2)[0];
+        $scheduleSection = explode('</section>', $scheduleSection, 2)[0];
 
         $this->assertStringContainsString('<h2>Расписание</h2>', $scheduleSection);
+        $this->assertStringNotContainsString('Онлайн-бронирование недоступно.', $scheduleSection);
         $this->assertStringNotContainsString('<h2>Часы работы</h2>', $scheduleSection);
         $this->assertStringContainsString('09:00–21:00', $scheduleSection);
         // Informational hours preserve breaks when online rental is disabled.
@@ -131,7 +132,7 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $response = $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk();
         $html = $response->getContent();
         $section = explode('id="app-venue-schedule">', $html, 2)[1] ?? '';
-        $section = explode('id="app-venue-about">', $section, 2)[0];
+        $section = explode('</section>', $section, 2)[0];
         $this->assertSame(2, substr_count($section, 'data-venue-schedule-court="'));
         $this->assertStringContainsString('data-venue-schedule-court="'.$first->id.'"', $section);
         $this->assertStringContainsString('data-venue-schedule-court="'.$second->id.'"', $section);
@@ -148,7 +149,7 @@ final class VenueAppScheduleActivitiesTest extends TestCase
             $venue->routeIdentifier(), $second->routeIdentifier(),
         ]))->assertOk()->getContent();
         $courtSchedule = explode('id="app-venue-schedule">', $detail, 2)[1] ?? '';
-        $courtSchedule = explode('id="app-venue-about">', $courtSchedule, 2)[0];
+        $courtSchedule = explode('</section>', $courtSchedule, 2)[0];
         $this->assertSame(1, substr_count($courtSchedule, 'data-venue-schedule-court="'));
         $this->assertStringContainsString('15:00–22:00', $courtSchedule);
         $this->assertStringNotContainsString('08:00–12:00', $courtSchedule);

@@ -1378,7 +1378,7 @@
         ],
         "operationId": "publishEditorialNews",
         "summary": "Опубликовать новость на сайте и по выбору в соцсетях",
-        "description": "editorial-news:publish. Без тела — только сайт. Явный выбор получателей требует editorial-news:social; внешние отправки только на production. Повтор с теми же получателями не создаёт новые задания; иной выбор после публикации возвращает 409. Статус pending не подтверждает доставку. При явном defer_vk_until_authorized=true допускается статус VK awaiting_auth; позднее отправится полноценная запись, без текстового режима.",
+        "description": "editorial-news:publish. Без тела — только сайт. Явный выбор получателей требует editorial-news:social; внешние отправки только на production. Повтор с теми же получателями не создаёт новые задания; иной выбор после публикации возвращает 409. Статус pending не подтверждает доставку. При явном defer_vk_until_authorized=true допускается статус VK awaiting_auth; позднее отправится полноценная запись с фотографией, без текстового fallback. Материал без обложки отправляется текстом со ссылкой без авторизации фото.",
         "parameters": [
           {
             "name": "alias",
@@ -3611,7 +3611,7 @@
           "defer_vk_until_authorized": {
             "type": "boolean",
             "default": false,
-            "description": "Только при publish_in_vk=true. Разрешает публикацию на сайте/Telegram сейчас, а VK с обязательной фотографией — после восстановления авторизации."
+            "description": "Только при publish_in_vk=true. Разрешает публикацию на сайте/Telegram сейчас, а VK с имеющейся фотографией — после восстановления авторизации. Без обложки ожидание авторизации фото не требуется."
           }
         },
         "if": {
@@ -3689,6 +3689,7 @@
                 "type": "object",
                 "required": [
                   "available",
+                  "text_available",
                   "group_id",
                   "can_defer"
                 ],
@@ -3696,6 +3697,10 @@
                   "available": {
                     "type": "boolean",
                     "description": "Готово к немедленной отправке с обложкой."
+                  },
+                  "text_available": {
+                    "type": "boolean",
+                    "description": "Сообщество настроено для текстовой публикации без обложки."
                   },
                   "group_id": {
                     "type": [

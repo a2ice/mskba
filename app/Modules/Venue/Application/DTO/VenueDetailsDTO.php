@@ -6,8 +6,8 @@ final readonly class VenueDetailsDTO
 {
     /**
      * @param  array<int, array{id: string, label: string, isAvailable: bool}>  $sections
-     * @param  array<int, array{id: int, name: string, alias: string, routeIdentifier: string, isPrimary: bool, supportsHalves: bool, hoopsCount: ?int, surfaceType: ?string, surfaceLabel: ?string, allowsWhole: bool, allowsHalves: bool}>  $courts
-     * @param  array{id: int, name: string, alias: string, routeIdentifier: string, isPrimary: bool, supportsHalves: bool, hoopsCount: ?int, surfaceType: ?string, surfaceLabel: ?string, allowsWhole: bool, allowsHalves: bool}  $selectedCourt
+     * @param  array<int, array{id: int, name: string, alias: string, routeIdentifier: string, isPrimary: bool, supportsHalves: bool, hoopsCount: ?int, surfaceType: ?string, surfaceLabel: ?string, lengthMeters: ?string, widthMeters: ?string, allowsWhole: bool, allowsHalves: bool, isOpen: bool}>  $courts
+     * @param  array{id: int, name: string, alias: string, routeIdentifier: string, isPrimary: bool, supportsHalves: bool, hoopsCount: ?int, surfaceType: ?string, surfaceLabel: ?string, lengthMeters: ?string, widthMeters: ?string, allowsWhole: bool, allowsHalves: bool, hoopsCondition: ?int, surfaceCondition: ?int, markingLabel: ?string}  $selectedCourt
      * @param  array<int, array{id: int, name: string, description: ?string, iconUrl: ?string}>  $amenities
      * @param  array<int, array{id: int, title: ?string, url: ?string}>  $featuredMedia
      * @param  array<int, VenueReviewDTO>  $reviews

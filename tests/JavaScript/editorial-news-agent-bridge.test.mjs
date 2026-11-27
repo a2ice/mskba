@@ -39,3 +39,35 @@ test('optional SEO fields are accepted and constrained', () => {
     assert.throws(() => validatePlan({ ...valid, meta_description: 'x'.repeat(321) }), /Invalid meta_description/);
     assert.throws(() => validatePlan({ ...valid, meta_keywords: 7 }), /Invalid meta_keywords/);
 });
+
+
+test('cover is optional for every channel', () => {
+    const { cover, ...base } = plan;
+    const site = { ...base, telegram_chat_titles: [], vk_group_id: null };
+    assert.equal(validatePlan(site), site);
+    assert.equal(validatePlan(base), base);
+    assert.equal(validatePlan({ ...site, telegram_chat_titles: ['MSKBA Official'] }).cover, undefined);
+    assert.equal(validatePlan({ ...site, vk_group_id: 174334075 }).cover, undefined);
+    assert.throws(() => validatePlan({ ...site, cover: null }), /Invalid cover path/);
+    assert.throws(() => validatePlan({ ...site, cover: '../../secret.jpg' }), /Invalid cover path/);
+    assert.throws(() => validatePlan({ ...site, allow_vk_wait: true }), /Invalid VK deferral/);
+    assert.equal(validatePlan({ ...site, cover }).cover, cover);
+});
+
+test('site-only delivery needs no social post or cover, but rejects unexpected destinations', () => {
+    const selection = { telegram_chat_ids: [], publish_in_vk: false };
+    const item = { status: 'published', url: 'https://mskba.ru/feed/news', has_cover: false,
+        telegram_publications: [], vk_publication: null };
+    assert.equal(delivery(item, selection), 'published');
+    assert.throws(() => delivery({ ...item, telegram_publications: [{ chat_id: 7 }] }, selection), /recipients/);
+    assert.throws(() => delivery({ ...item, vk_publication: { group_id: 174334075 } }, selection), /recipients/);
+});
+
+test('VK text requires configured wall, not photo authorization; photo mode never falls back', () => {
+    const { cover, ...textPlan } = plan;
+    const expired = { ...registry, vk: { available: false, text_available: true, can_defer: true, group_id: 174334075 } };
+    assert.deepEqual(selectDestinations(textPlan, expired), { telegram_chat_ids: [7], publish_in_vk: true, vk_group_id: 174334075 });
+    assert.throws(() => selectDestinations(plan, expired), /unavailable/);
+    assert.throws(() => selectDestinations(textPlan, expired, true), /unavailable/);
+    assert.throws(() => selectDestinations(textPlan, { ...expired, vk: { ...expired.vk, text_available: false } }), /unavailable/);
+});

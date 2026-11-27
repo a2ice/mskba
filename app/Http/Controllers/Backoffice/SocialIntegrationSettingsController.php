@@ -74,26 +74,27 @@ final class SocialIntegrationSettingsController
                 $data['user_token_expires_at'] = 1;
             }
             if ($data['enabled']) {
-                $token = config('vk.wall.user_token');
                 $communityToken = $data['community_token'] ?? config('vk.wall.community_token');
                 if (config('app.env') !== 'production'
                     || parse_url((string) config('app.url'), PHP_URL_HOST) !== 'mskba.ru'
-                    || $data['group_id'] <= 0 || blank($communityToken)
-                    || ! \App\Modules\Vk\Application\Services\VkWallPublisher::photoTokenAvailable()
-                    || isset($data['user_token_expires_at'])) {
-                    return $this->page()->withErrors(['social' => 'Для публикации нужны ID сообщества, ключ сообщества и действующая авторизация загрузки фотографий.']);
+                    || $data['group_id'] <= 0 || blank($communityToken)) {
+                    return $this->page()->withErrors(['social' => 'Для публикации нужны ID сообщества и ключ сообщества.']);
                 }
+                // Validate the chosen community without creating a real wall post.
+                // Photo authorization is independent and only needed for photo jobs.
                 try {
                     $probe = Http::asForm()->withoutRedirecting()->timeout(15)
-                        ->post('https://api.vk.com/method/photos.getWallUploadServer', [
-                            'group_id' => $data['group_id'], 'access_token' => $token,
+                        ->post('https://api.vk.com/method/groups.getById', [
+                            'group_id' => $data['group_id'], 'access_token' => $communityToken,
                             'v' => config('vk.wall.api_version', '5.199'),
                         ]);
-                    if (! $probe->successful() || blank($probe->json('response.upload_url'))) {
-                        return $this->page()->withErrors(['social' => 'Ключ не разрешает загрузку обложек. Код VK: '.(int) $probe->json('error.error_code').'. Сохраните ключ без включения публикации или добавьте пользовательский токен.']);
+                    $payload = $probe->json();
+                    $id = (int) (data_get($payload, 'response.groups.0.id') ?? data_get($payload, 'response.0.id'));
+                    if (! $probe->successful() || $id !== $data['group_id']) {
+                        return $this->page()->withErrors(['social' => 'ВКонтакте не подтвердил выбранное сообщество.']);
                     }
                 } catch (Throwable) {
-                    return $this->page()->withErrors(['social' => 'Не удалось проверить права загрузки ВКонтакте.']);
+                    return $this->page()->withErrors(['social' => 'Не удалось проверить сообщество ВКонтакте.']);
                 }
             }
         }

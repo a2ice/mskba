@@ -131,7 +131,9 @@ final class ShowVenueHandler
         $parentHoops = (int) ($venue->characteristics?->hoops_count ?? 0);
         $parentHoops = in_array($parentHoops, [1, 2], true) ? $parentHoops : null;
         $courtPayloads = $courts
-            ->map(fn (VenueCourt $court): array => $this->courtPayload($court, $parentHoops))
+            ->map(fn (VenueCourt $court): array => $this->courtPayload($court, $parentHoops) + [
+                'isOpen' => $this->courtPolicies->resolve($venue, $court)['is_open'],
+            ])
             ->all();
 
         $address = $venue->location?->address;
@@ -318,7 +320,15 @@ final class ShowVenueHandler
             courts: $courtPayloads,
             courtSchedules: $courtSchedules,
             isCourtPage: $courtIdentifier !== null,
-            selectedCourt: $this->courtPayload($selectedCourt, $parentHoops),
+            selectedCourt: $this->courtPayload($selectedCourt, $parentHoops) + [
+                // Legacy conditions belong to the venue, not to individual courts.
+                // They are unambiguous only for a venue with one court.
+                'hoopsCondition' => $courts->count() <= 1 ? $venue->characteristics?->hoops_condition : null,
+                'surfaceCondition' => $courts->count() <= 1 ? $venue->characteristics?->surface_condition : null,
+                'markingLabel' => $courts->count() <= 1
+                    ? ($venue->characteristics?->marking_condition ?? $venue->characteristics?->first_hoop_marking)?->label()
+                    : null,
+            ],
             effectiveCourtPolicy: $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy),
             amenities: $amenities,
             featuredMedia: $featuredMedia,
@@ -431,7 +441,7 @@ final class ShowVenueHandler
     }
 
     /**
-     * @return array{id: int, name: string, alias: string, routeIdentifier: string, isPrimary: bool, supportsHalves: bool, hoopsCount: ?int, surfaceType: ?string, surfaceLabel: ?string, allowsWhole: bool, allowsHalves: bool}
+     * @return array{id: int, name: string, alias: string, routeIdentifier: string, isPrimary: bool, supportsHalves: bool, hoopsCount: ?int, surfaceType: ?string, surfaceLabel: ?string, lengthMeters: ?string, widthMeters: ?string, allowsWhole: bool, allowsHalves: bool}
      */
     private function courtPayload(VenueCourt $court, ?int $parentHoops): array
     {
@@ -453,6 +463,8 @@ final class ShowVenueHandler
             'environment' => $court->environment?->value,
             'surfaceType' => $court->surface_type?->value,
             'surfaceLabel' => $court->surface_type?->label(),
+            'lengthMeters' => $court->length_meters,
+            'widthMeters' => $court->width_meters,
             'allowsWhole' => (bool) $court->allows_whole,
             'allowsHalves' => (bool) $court->allows_halves,
         ];

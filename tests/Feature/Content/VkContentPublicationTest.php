@@ -23,7 +23,7 @@ final class VkContentPublicationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function item(): ContentItem
+    private function item(bool $withCover = true): ContentItem
     {
         $user = User::factory()->create();
 
@@ -42,7 +42,9 @@ final class VkContentPublicationTest extends TestCase
             'feed_published_at' => now(),
         ]);
         Storage::fake('public');
-        app(ContentCoverManager::class)->replace($item, UploadedFile::fake()->image('cover.jpg', 80, 80)->get());
+        if ($withCover) {
+            app(ContentCoverManager::class)->replace($item, UploadedFile::fake()->image('cover.jpg', 80, 80)->get());
+        }
 
         return $item;
     }
@@ -170,5 +172,44 @@ final class VkContentPublicationTest extends TestCase
         $manager->sync($item, true);
         $job->handle(app(VkWallPublisher::class));
         Http::assertSentCount(4);
+    }
+    public function test_text_only_posts_once_without_photo_token(): void
+    {
+        $this->configureVk();
+        config(['vk.wall.user_token' => null, 'vk.wall.user_token_expires_at' => 1]);
+        Queue::fake();
+        Http::fake(['https://api.vk.com/method/wall.post' => Http::response(['response' => ['post_id' => 42]])]);
+        Http::preventStrayRequests();
+        $item = $this->item(false);
+        $manager = app(VkContentPublicationManager::class);
+        $manager->sync($item, true);
+        $row = VkContentPublication::query()->sole();
+        $this->assertFalse($row->requires_cover);
+        $this->assertSame('pending', $row->status);
+        $job = new PublishVkContentJob($row->id);
+        $job->handle(app(VkWallPublisher::class));
+        $manager->sync($item, true);
+        $job->handle(app(VkWallPublisher::class));
+        $this->assertSame(42, $row->fresh()->post_id);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), 'wall.post')
+            && $request['access_token'] === 'wall-token' && ! array_key_exists('attachments', $request->data())
+            && str_contains($request['message'], $item->publicUrl()));
+    }
+
+    public function test_photo_preparation_failure_never_posts_text(): void
+    {
+        $this->configureVk();
+        Queue::fake();
+        Http::fake();
+        $item = $this->item();
+        $manager = app(VkContentPublicationManager::class);
+        $manager->sync($item, true);
+        $row = VkContentPublication::query()->sole();
+        $this->assertTrue($row->requires_cover);
+        Storage::disk('public')->delete($item->cover()->sole()->path);
+        (new PublishVkContentJob($row->id))->handle(app(VkWallPublisher::class));
+        $this->assertSame('failed', $row->fresh()->status);
+        Http::assertNothingSent();
     }
 }
