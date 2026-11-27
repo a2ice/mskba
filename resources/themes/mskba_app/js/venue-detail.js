@@ -936,15 +936,15 @@ if (dayBookingDialog) {
             if (boundDayOpenButtons.has(button)) return;
             boundDayOpenButtons.add(button);
             button.addEventListener('click', () => {
-            const courtId = Number(button.dataset.courtId);
-            if (Number.isSafeInteger(courtId) && courtId > 0) {
-                dayBookingDialog.dispatchEvent(new CustomEvent('mskba:choose-court', {
-                    detail: {courtId, date: button.dataset.dayDate},
-                }));
-            } else {
-                // Preserve the Promise for callers (including booking tests).
-                return showDay(button.dataset.dayDate);
-            }
+                const courtId = Number(button.dataset.courtId);
+                if (Number.isSafeInteger(courtId) && courtId > 0) {
+                    dayBookingDialog.dispatchEvent(new CustomEvent('mskba:choose-court', {
+                        detail: {courtId, date: button.dataset.dayDate},
+                    }));
+                } else {
+                    // Preserve the Promise for callers (including booking tests).
+                    return showDay(button.dataset.dayDate);
+                }
             });
         });
     }

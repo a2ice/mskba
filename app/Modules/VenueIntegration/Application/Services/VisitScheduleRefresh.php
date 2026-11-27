@@ -93,28 +93,34 @@ final class VisitScheduleRefresh
             $sourceId = (int) $import->venue_integration_source_id;
             $key = self::pendingKey($sourceId);
             $state = 'stale';
-            if ($this->fresh($import)) {
-                $state = 'cached';
-            } elseif (Cache::has("venue-integration:findsport:refresh-error:{$sourceId}")) {
-                $state = 'failed';
-            } elseif (Cache::has($key)) {
-                $state = 'updating';
-            } elseif ($enqueue) {
-                $token = (string) Str::uuid();
-                if (Cache::add($key, $token, self::PENDING_SECONDS)) {
-                    try {
-                        Bus::dispatch(new RefreshVisitedCourtSchedule(
-                            (int) $import->id, $sourceId, $token,
-                        ));
-                        $state = 'updating';
-                    } catch (Throwable $exception) {
-                        Cache::forget($key);
-                        report($exception);
-                        $state = 'failed';
-                    }
-                } else {
+            try {
+                if ($this->fresh($import)) {
+                    $state = $import->snapshot->isStale() ? 'stale' : 'cached';
+                } elseif (Cache::has("venue-integration:findsport:refresh-error:{$sourceId}")) {
+                    $state = 'failed';
+                } elseif (Cache::has($key)) {
                     $state = 'updating';
+                } elseif ($enqueue) {
+                    $token = (string) Str::uuid();
+                    if (Cache::add($key, $token, self::PENDING_SECONDS)) {
+                        try {
+                            Bus::dispatch(new RefreshVisitedCourtSchedule(
+                                (int) $import->id, $sourceId, $token,
+                            ));
+                            $state = 'updating';
+                        } catch (Throwable $exception) {
+                            Cache::forget($key);
+                            report($exception);
+                            $state = 'failed';
+                        }
+                    } else {
+                        $state = 'updating';
+                    }
                 }
+
+            } catch (Throwable $exception) {
+                report($exception);
+                $state = 'failed';
             }
 
             $states[(int) $import->venue_court_id] = [

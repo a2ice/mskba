@@ -45,7 +45,7 @@ final class RefreshVisitedCourtSchedule implements ShouldQueue
                 return;
             }
 
-            $state = $refresh->forCourt($import->court)['state'];
+            $state = $refresh->forCourt($import->court, visitSourceId: $this->sourceId)['state'];
         } finally {
             // A simultaneous day-modal refresh may own the shared source lock.
             // Keep the pending marker until its bounded expiry in that case.

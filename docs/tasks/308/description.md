@@ -13,3 +13,7 @@
 
 ## Acceptance
 Feature integration: 10 одновременных просмотров -> один job, error keeps last snapshot, source disable, cooldown, multiple courts, Reverb payload, expired confidence, bounded requests. CI/dev deploy/ручная приёмка.
+
+## Реализация DEV: обновление при посещении
+
+См. [этап и приёмку](visit-refresh-dev.md). Периодический prefetch, общие адаптеры и failover оставлены следующим этапам; первоначальное применение остаётся ручным.

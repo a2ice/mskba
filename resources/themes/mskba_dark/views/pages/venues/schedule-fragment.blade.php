@@ -7,8 +7,7 @@
     $legacyShowOccupancy = $legacyBookableCourtIds !== []
         && ($venue->isCourtPage || count($venue->courtSchedules) === 1);
 @endphp
-            <section id="schedule" class="venue-show-section"
-                @if(!empty($scheduleRefresh))
+            <section id="schedule" class="venue-show-section"@if(!empty($scheduleRefresh))
                     data-venue-schedule-refresh
                     data-venue-id="{{ $venue->id }}"
                     data-refresh-court="{{ $venue->isCourtPage ? $venue->selectedCourt['id'] : '' }}"

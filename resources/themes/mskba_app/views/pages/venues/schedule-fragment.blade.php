@@ -2,8 +2,7 @@
     $bookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
     $isOutdoorCourt = $venue->isCourtPage && $venue->selectedCourt['environment'] === 'outdoor';
 @endphp
-            <section class="panel app-venue-block" id="app-venue-schedule"
-                @if(!empty($scheduleRefresh))
+            <section class="panel app-venue-block" id="app-venue-schedule"@if(!empty($scheduleRefresh))
                     data-venue-schedule-refresh
                     data-venue-id="{{ $venue->id }}"
                     data-refresh-court="{{ $venue->isCourtPage ? $venue->selectedCourt['id'] : '' }}"

@@ -147,6 +147,7 @@ function mountDayBooking({
         querySelectorAll: selector => selector === '[data-venue-day-open]' ? [opener] : [],
         createElement: tag => ({...node(), tagName: tag}),
         createTextNode: text => ({textContent: text}),
+        addEventListener() {},
     };
     const storage = sessionStore || new Map();
     const windowListeners = {};
