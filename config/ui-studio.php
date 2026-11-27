@@ -9,6 +9,23 @@ return [
     'user' => env('UI_STUDIO_USER'),
     'password_hash' => env('UI_STUDIO_PASSWORD_HASH'),
     'cases' => [
+        'rental-workflow' => [
+            'title' => 'Аренда — сквозной сценарий (#1062)',
+            'issue' => 1062,
+            'revision' => 1,
+            'status' => 'Кандидат — проверка',
+            'templates' => ['mskba_app'],
+            'states' => ['normal' => 'Заявка на аренду', 'inquiry' => 'Уточнение аренды', 'conflict' => 'Конфликт интервала'],
+            'sources' => [
+                'resources/views/ui-studio/cases/rental-workflow.blade.php',
+                'resources/views/ui-studio/cases/rental-workflow-styles.blade.php',
+                'resources/views/ui-studio/cases/rental-workflow-fixture.blade.php',
+                'resources/themes/mskba_app/views/pages/account/partials/chat-actions-trigger.blade.php',
+                'resources/themes/mskba_app/css/account-messages.css',
+                'resources/views/ui-studio/frame.blade.php',
+            ],
+            'kit_changes' => [],
+        ],
         'agent-agreement' => [
             'title' => 'Агентский договор — личный кабинет (#1061)',
             'issue' => 1061,
