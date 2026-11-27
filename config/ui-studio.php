@@ -9,6 +9,20 @@ return [
     'user' => env('UI_STUDIO_USER'),
     'password_hash' => env('UI_STUDIO_PASSWORD_HASH'),
     'cases' => [
+        'agent-agreement' => [
+            'title' => 'Агентский договор — личный кабинет (#1061)',
+            'issue' => 1061,
+            'revision' => 1,
+            'sources' => [
+                'resources/views/account/partials/agent-agreement-card.blade.php',
+                'resources/views/ui-studio/cases/agent-agreement.blade.php',
+                'resources/views/ui-studio/frame.blade.php',
+            ],
+            'kit_changes' => [],
+            'status' => 'На визуальной приёмке',
+            'templates' => ['mskba_app', 'mskba_dark'],
+            'states' => ['normal' => 'Предложение', 'accepted' => 'Акцептовано', 'verified' => 'Проверено', 'active' => 'Действует', 'closed' => 'Прекращено'],
+        ],
         'account-invitation' => [
             'title' => 'Принятие приглашения — #1060',
             'issue' => 1060,
