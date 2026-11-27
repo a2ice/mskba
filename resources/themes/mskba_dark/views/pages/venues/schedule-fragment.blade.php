@@ -31,11 +31,13 @@
 
                 @if(! $venue->isCourtPage || $legacyBookableCourtIds === [])
                     @forelse($venue->courtSchedules as $scheduleGroup)
-                        <div class="venue-show-section__court">
-                            @unless($venue->isCourtPage)
-                                <h3>{{ $scheduleGroup['name'] }}</h3>
-                            @endunless
-                            @include('components.venue-schedule-refresh-status', ['refreshState' => $scheduleRefresh[$scheduleGroup['id']] ?? null])
+                        <div class="venue-show-section__court" data-venue-refresh-scope="{{ $scheduleGroup['id'] }}">
+                            <div class="venue-schedule-refresh-heading">
+                                @unless($venue->isCourtPage)
+                                    <h3>{{ $scheduleGroup['name'] }}</h3>
+                                @endunless
+                                @include('components.venue-schedule-refresh-status', ['refreshState' => $scheduleRefresh[$scheduleGroup['id']] ?? null])
+                            </div>
                             @if($scheduleGroup['bookingEnabled'])
                                 <p>Онлайн-бронирование доступно.</p>
                                 <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}" class="btn btn--secondary btn--sm">Расписание и аренда</a>
@@ -48,8 +50,13 @@
                         <p>Режим работы не указан.</p>
                     @endforelse
                 @elseif($venue->about->scheduleDays !== [])
-                    @include('components.venue-schedule-refresh-status', ['refreshState' => $scheduleRefresh[$venue->selectedCourt['id']] ?? null])
-                    <div class="venue-schedule-preview">
+                    @php
+                        $refreshState = $scheduleRefresh[$venue->selectedCourt['id']] ?? null;
+                        $refreshing = ($refreshState['state'] ?? null) === 'updating';
+                    @endphp
+                    <div data-venue-refresh-scope="{{ $venue->selectedCourt['id'] }}">
+                    @include('components.venue-schedule-refresh-status', ['refreshState' => $refreshState])
+                    <div class="venue-schedule-preview" data-venue-refresh-days aria-busy="{{ $refreshing ? 'true' : 'false' }}">
                         @foreach($venue->about->scheduleDays as $day)
                             <button
                                 type="button"
@@ -59,6 +66,7 @@
                                 'is-closed' => $day['isClosed'],
                                 ])
                                 data-venue-day-card
+                                @if($refreshing) disabled data-venue-refresh-disabled @endif
                                 data-date="{{ $day['date'] }}"
                                 data-label="{{ $day['label'] }}"
                                 data-weekday="{{ $day['weekday'] }}"
@@ -90,6 +98,7 @@
                         <span><i class="venue-schedule-legend__dot venue-schedule-legend__dot--today"></i>Сегодня</span>
                     </div>
 
+                    </div>
                     <div class="venue-day-modal" data-venue-day-modal hidden>
                         <div class="venue-day-modal__backdrop" data-venue-day-modal-close></div>
                         <section class="venue-day-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="venue-day-modal-title">

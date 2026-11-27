@@ -15,20 +15,32 @@
                     @endif
                 </header>
                 @foreach($venue->courtSchedules as $scheduleGroup)
+                    @php
+                        $refreshState = $scheduleRefresh[$scheduleGroup['id']] ?? null;
+                        $refreshing = ($refreshState['state'] ?? null) === 'updating';
+                    @endphp
                     <div class="app-venue-schedule__court" data-venue-schedule-court="{{ $scheduleGroup['id'] }}"
+                        data-venue-refresh-scope="{{ $scheduleGroup['id'] }}"
                         data-court-name="{{ $scheduleGroup['name'] }}">
-                        @unless($venue->isCourtPage)
+                        @if(!$venue->isCourtPage || $refreshState)
                             <div class="app-venue-schedule__court-header">
-                                <h3>{{ $scheduleGroup['name'] }}</h3>
-                                <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">Подробнее</a>
+                                <div class="venue-schedule-refresh-heading">
+                                    @unless($venue->isCourtPage)
+                                        <h3>{{ $scheduleGroup['name'] }}</h3>
+                                    @endunless
+                                    @include('components.venue-schedule-refresh-status', ['refreshState' => $refreshState])
+                                </div>
+                                @unless($venue->isCourtPage)
+                                    <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">Подробнее</a>
+                                @endunless
                             </div>
-                        @endunless
-                        @include('components.venue-schedule-refresh-status', ['refreshState' => $scheduleRefresh[$scheduleGroup['id']] ?? null])
+                        @endif
                         @if(!($scheduleGroup['bookingEnabled'] ?? false))
                             <p class="muted">Онлайн-бронирование недоступно.</p>
                             @include('venues.partials.informational-hours', ['scheduleGroup' => $scheduleGroup])
                         @elseif(count($scheduleGroup['days']))
-                            <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}">
+                            <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}"
+                                data-venue-refresh-days aria-busy="{{ $refreshing ? 'true' : 'false' }}">
                                 @foreach($scheduleGroup['days'] as $day)
                                     @php
                                         $occupancy = $day['occupancyPercent'] ?? null;
@@ -37,6 +49,7 @@
                                     <div class="app-venue-schedule__entry" data-venue-day-entry data-day-date="{{ $day['date'] }}">
                                         <button type="button" class="app-venue-schedule__day app-venue-schedule__day--interactive"
                                             data-venue-day-open data-court-id="{{ $scheduleGroup['id'] }}"
+                                            @if($refreshing) disabled data-venue-refresh-disabled @endif
                                             data-day-date="{{ $day['date'] }}"
                                             aria-label="{{ $scheduleGroup['name'] }}: расписание и бронирование {{ $day['label'] ?? $day['date'] }}">
                                             <strong @class(['app-venue-schedule__date', 'is-weekend' => $isWeekend])>{{ $day['label'] ?? $day['date'] }}</strong>

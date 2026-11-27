@@ -36,6 +36,7 @@
 @import './pages/participant-catalog.css';
 @import './mobile-primary-bar';
 @import './image-upload';
+@import '../../../css/venue-visit-schedule-state.css';
 
 html {}
 body {

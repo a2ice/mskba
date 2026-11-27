@@ -513,7 +513,7 @@ function initVenueDayModal() {
 
     document.addEventListener('click', event => {
         const card = event.target.closest?.('[data-venue-day-card]');
-        if (modal.isConnected && card) open(card);
+        if (modal.isConnected && card && !card.disabled) open(card);
     });
 
     closeButtons.forEach((button) => {
