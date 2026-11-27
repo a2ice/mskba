@@ -78,10 +78,12 @@ final class ContextHelpTest extends TestCase
             ->assertOk()->assertJsonPath('section', 'venues')
             ->assertJsonPath('sections.1.key', 'venues')
             ->assertJsonPath('sections.1.articles.0.alias', 'venues-public')
+            ->assertJsonPath('sections.1.articles.0.is_venue_creation_guide', true)
             ->assertJsonMissing(['alias' => 'venues-private']);
 
         $this->getJson(route('faq.help-content', ['context' => 'venues', 'section' => 'venues', 'article' => 'venues-public']))
             ->assertOk()->assertJsonPath('article.title', 'Помощь по площадкам')
+            ->assertJsonPath('article.is_venue_creation_guide', true)
             ->assertJsonCount(3, 'breadcrumbs')
             ->assertJsonPath('breadcrumbs.2.label', 'Помощь по площадкам')
             ->assertJsonPath('article.html', '<p>Открытый материал</p>');

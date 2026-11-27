@@ -192,19 +192,14 @@
     .app-context-help__tabs button { font-size: 12px; }
 }
 
-/* Venue CTA permanently occupies the floating FAQ slot; no help animation. */
-.app-context-help-launcher.app-context-help-launcher--venue-create {
-    width: auto;
-    max-width: calc(100vw - var(--app-help-right) - 12px);
-    justify-content: center;
-    gap: 7px;
-    padding: 0 17px;
-    text-decoration: none;
-    color: #fff;
-}
-.app-context-help-launcher--venue-create .app-context-help-launcher__mark { flex: 0 0 22px; width: 22px; }
-.app-context-help-launcher--venue-create .app-context-help-launcher__mark svg { width: 22px; height: 22px; }
-.app-context-help-launcher--venue-create .app-context-help-launcher__label { padding: 0; font-size: 15px; }
+/* Venue CTA uses the same measured, right-anchored intro as Help. */
+.app-context-help-launcher.app-context-help-launcher--venue-create { text-decoration: none; color: #fff; }
+.app-context-help-launcher--venue-create .app-context-help-launcher__mark svg { width: 23px; height: 23px; }
+.app-context-help-launcher--venue-create .app-context-help-launcher__label { font-size: 15px; }
+.app-context-help__heading { display:flex; align-items:center; gap:10px; min-width:0; }
+.app-context-help__heading h2 { min-width:0; }
+.app-context-help__back[hidden] { display:none!important; }
+.app-context-help__back svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
 /* Catalogue FAQ invitation: the button is a normal navigation action. */
 .app-context-help__venue-create{display:grid;gap:10px;margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised)}
