@@ -194,6 +194,16 @@ final readonly class VenueCommissionManager
         }, 3);
     }
 
+    /** Validate and normalize a proposed agent rate without any financial writes.
+     * @return array{string,int}
+     */
+    public function parseAgentTerms(string $mode, string $input, string $currency): array
+    {
+        [$mode, $value] = $this->parse($mode, $input, $currency, false);
+
+        return [$mode, $value];
+    }
+
     /** @return array{?string,?int} */
     private function parse(string $mode, string $input, string $currency, bool $allowInherit): array
     {

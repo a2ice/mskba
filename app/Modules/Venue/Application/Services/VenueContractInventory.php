@@ -9,6 +9,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueAssignedManager;
+use App\Modules\Venue\Domain\Models\VenueAgentAgreement;
 use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +37,14 @@ final class VenueContractInventory
         $this->authorize($actor);
 
         return VenueCommissionAgent::query()->where('venue_id', $venue->id)->with('user');
+    }
+
+    public function agentAgreements(Venue $venue, User $actor): Builder
+    {
+        $this->authorize($actor);
+
+        return VenueAgentAgreement::query()->where('venue_id', $venue->id)
+            ->with(['user', 'contract', 'commissionAgent']);
     }
 
     public function assignedManagers(Venue $venue, User $actor): Builder
