@@ -21,9 +21,13 @@
 .venue-catalog-address{appearance:none;display:inline-flex;align-items:center;gap:7px;align-self:flex-start;max-width:100%;padding:0;border:0;background:none;text-align:left;color:var(--muted,#b7bcb5);font:inherit;font-size:14px;line-height:1.4;cursor:pointer}
 .venue-catalog-address svg{width:17px;height:17px;flex:none}
 .venue-catalog-address:hover span{text-decoration:underline;text-underline-offset:3px}
-.venue-catalog-address-row{display:flex;align-items:center;gap:4px;min-width:0;max-width:100%;align-self:flex-start}
-.venue-catalog-address-row .venue-catalog-address{flex:0 1 auto;min-width:0;align-self:center}
-.venue-catalog-address-row .venue-catalog-address span{min-width:0;overflow-wrap:anywhere}
+.venue-catalog-address-row{display:flex;align-items:flex-start;gap:7px;min-width:0;max-width:100%;align-self:flex-start;font-size:14px;line-height:1.4;color:var(--muted,#b7bcb5)}
+.venue-catalog-address-row>svg{width:17px;height:17px;flex:none;margin-top:1px}
+.venue-catalog-address-flow{min-width:0;overflow-wrap:anywhere}
+.venue-catalog-address-flow .venue-catalog-address{display:inline;color:inherit;font:inherit;text-decoration:none}
+.venue-catalog-address-flow .venue-catalog-address:hover{text-decoration:underline;text-underline-offset:3px}
+.venue-catalog-address-flow .venue-catalog-address-distance{display:inline-block;font:inherit;vertical-align:baseline}
+@media(max-width:520px){.venue-catalog-item--list .venue-catalog-address-row,.venue-catalog-item--list .venue-catalog-address-flow .venue-catalog-address{font-size:11px}}
 .venue-catalog-address-distance{appearance:none;flex:none;padding:0;border:0;background:none;color:var(--muted,#b7bcb5);font:inherit;font-size:14px;line-height:1.4;white-space:nowrap;cursor:pointer}
 .venue-catalog-address-distance:focus-visible{outline:2px solid var(--accent,#ff7a1a);outline-offset:2px;border-radius:4px}
 .venue-catalog-address-distance:is(:hover,[aria-expanded="true"]){text-decoration:underline;text-underline-offset:3px}

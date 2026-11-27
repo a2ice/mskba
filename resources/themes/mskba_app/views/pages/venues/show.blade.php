@@ -128,7 +128,7 @@
                 @endif
             </div>
             <div class="app-entity-heading">
-                <h1 id="app-venue-title">{{ $venue->name }}</h1>
+                <h1 id="app-venue-title">@if($venue->isCourtPage)<a class="app-venue-parent-link" href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a>@else{{ $venue->name }}@endif</h1>
                 @php
                     $venueRating = $venue->about->rating;
                     $venueRatingLabel = $venueRating === null ? 'Пока нет оценок игроков' : 'Рейтинг площадки: '.number_format($venueRating, 1, '.', '').' из 5 · оценок: '.($venue->about->ratingCount ?? 0);
@@ -166,7 +166,9 @@
                     @endif
                 </div>
             @endif
-            @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
+            @if($venue->shortDescription || $venue->isCourtPage)
+                <p class="app-venue-intro__copy">@if($venue->isCourtPage)<strong>{{ \Illuminate\Support\Str::ucfirst($venue->selectedCourt['name']) }}</strong>@if($venue->shortDescription): @endif @endif{{ $venue->shortDescription }}</p>
+            @endif
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-venue-play-open>Хочу здесь играть</button>
                 <button type="button" class="button secondary large" data-venue-favorite-main data-favorite-count="{{ $favoritesCount }}" aria-pressed="false"><svg class="venue-favorite-follow__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span data-venue-favorite-main-label>В избранное@if($favoritesCount > 0) ({{ $favoritesCount }})@endif</span></button>
@@ -179,8 +181,8 @@
             <a href="#app-venue-activities">Игры</a>
         @endif
         <a href="#app-venue-interest" @if($activeVenueInterestCount === 0) hidden @endif>Интересы игроков</a>
+        <a href="#app-venue-about">{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'О корте' : 'О зале') : 'О площадке' }}</a>
         <a href="#app-venue-schedule">Расписание</a>
-        <a href="#app-venue-about">О площадке</a>
         @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
             <a href="#app-venue-nearby">Площадки рядом</a>
         @endif
@@ -291,34 +293,61 @@
             @php
                 $bookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
             @endphp
-            @include('theme::pages.venues.schedule-fragment')
             <section class="panel app-venue-block" id="app-venue-about">
                 <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'О корте' : 'О зале') : 'О площадке' }}</h2></header>
                 @if($venue->isCourtPage)
                     @php
                         $policy = $venue->effectiveCourtPolicy;
+                        $court = $venue->selectedCourt;
+                        $conditionLabel = static fn (?int $value): ?string => match ($value) {
+                            1 => 'Очень плохое', 2 => 'Плохое', 3 => 'Удовлетворительное',
+                            4 => 'Хорошее', 5 => 'Отличное', default => null,
+                        };
+                        $properties = [
+                            ['sliders', 'Покрытие', $court['surfaceLabel']],
+                            ['sliders', 'Состояние покрытия', $conditionLabel($court['surfaceCondition'])],
+                            ['file-description', 'Разметка', $court['markingLabel']],
+                            ['ball', 'Количество колец', $court['hoopsCount']],
+                            ['ball', 'Состояние колец', $conditionLabel($court['hoopsCondition'])],
+                            ['arrow', 'Размеры', $court['lengthMeters'] > 0 && $court['widthMeters'] > 0
+                                ? (float) $court['lengthMeters'].' × '.(float) $court['widthMeters'].' м' : null],
+                            [$policy['is_open'] ? 'check' : 'close', 'Состояние', $policy['is_open'] ? 'Работает' : 'Временно закрыт'],
+                            ['currency-ruble', 'Стоимость', $policy['requires_payment'] ? 'Платно' : 'Бесплатно'],
+                            ['calendar', 'Доступ', $policy['requires_booking'] ? 'Необходимо бронирование' : 'Свободный доступ'],
+                        ];
+                        if ($policy['requires_booking']) {
+                            $properties[] = ['check', 'Подтверждение', $policy['requires_booking_approval'] ? 'Администратором' : 'Автоматическое'];
+                        }
+                        if ($policy['currency'] !== null && $policy['whole_price_per_step_minor'] !== null) {
+                            $properties[] = ['currency-ruble', 'Базовая цена всего '.$unitNoun.'а за '.$policy['time_step_minutes'].' мин.',
+                                number_format($policy['whole_price_per_step_minor'] / 100, 2, ',', ' ').' '.$policy['currency']];
+                        }
+                        if ($policy['currency'] !== null && $policy['half_price_per_step_minor'] !== null) {
+                            $properties[] = ['currency-ruble', 'Базовая цена половины за '.$policy['time_step_minutes'].' мин.',
+                                number_format($policy['half_price_per_step_minor'] / 100, 2, ',', ' ').' '.$policy['currency']];
+                        }
                     @endphp
                     <dl class="app-venue-court-properties">
-                        <div><dt>Состояние</dt><dd>{{ $policy['is_open'] ? 'Работает' : 'Временно закрыт' }}</dd></div>
-                        <div><dt>Стоимость</dt><dd>{{ $policy['requires_payment'] ? 'Платно' : 'Бесплатно' }}</dd></div>
-                        <div><dt>Запись</dt><dd>{{ $policy['requires_booking'] ? 'Необходимо бронирование' : 'Свободный доступ' }}</dd></div>
-                        <div><dt>Подтверждение</dt><dd>{{ $policy['requires_booking_approval'] ? 'Администратором' : 'Автоматическое' }}</dd></div>
-                        @if($policy['currency'] !== null && $policy['whole_price_per_step_minor'] !== null)
-                            <div><dt>Базовая цена всего {{ $unitNoun }}а за {{ $policy['time_step_minutes'] }} мин.</dt>
-                                <dd>{{ number_format($policy['whole_price_per_step_minor'] / 100, 2, ',', ' ') }} {{ $policy['currency'] }}</dd></div>
-                        @endif
-                        @if($policy['currency'] !== null && $policy['half_price_per_step_minor'] !== null)
-                            <div><dt>Базовая цена половины за {{ $policy['time_step_minutes'] }} мин.</dt>
-                                <dd>{{ number_format($policy['half_price_per_step_minor'] / 100, 2, ',', ' ') }} {{ $policy['currency'] }}</dd></div>
-                        @endif
-                        <div><dt>{{ $isOutdoorCourt ? 'Корт' : 'Зал' }}</dt><dd>{{ $venue->selectedCourt['name'] }}</dd></div>
-                        <div><dt>Количество колец</dt><dd>{{ $venue->selectedCourt['hoopsCount'] }}</dd></div>
-                        <div><dt>Покрытие</dt><dd>{{ $venue->selectedCourt['surfaceLabel'] ?: 'Не указано' }}</dd></div>
-                        <div><dt>Бронирование целиком</dt><dd>{{ $venue->selectedCourt['allowsWhole'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
-                        <div><dt>Бронирование половинами</dt><dd>{{ $venue->selectedCourt['supportsHalves'] && $venue->selectedCourt['allowsHalves'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
+                        @foreach($properties as [$icon, $label, $value])
+                            @if($value !== null && $value !== '')
+                                <div><svg aria-hidden="true"><use href="#{{ $icon }}"/></svg><dt>{{ $label }}</dt><dd>{{ $value }}</dd></div>
+                            @endif
+                        @endforeach
                     </dl>
                 @else
-                    <p class="app-venue-court-overview"><strong>Залов и кортов:</strong> {{ count($venue->courts) }}</p>
+                    @if(count($venue->courts))
+                        <ul class="app-venue-court-overview">
+                            @foreach($venue->courts as $court)
+                                <li>
+                                    <a class="app-venue-court-link" href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $court['routeIdentifier']]) }}">{{ $court['name'] }}</a>
+                                    <span class="app-venue-court-overview__separator" aria-hidden="true">|</span>
+                                    <span>{{ \App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum::tryFrom($court['environment'] ?? '')?->label() ?? 'Тип не указан' }}</span>
+                                    <span class="app-venue-court-overview__separator" aria-hidden="true">|</span>
+                                    <span class="app-venue-court-overview__status"><svg aria-hidden="true"><use href="#{{ $court['isOpen'] ? 'check' : 'close' }}"/></svg>{{ $court['isOpen'] ? 'Работает' : 'Не работает' }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 @endif
                 @if(trim((string) $venue->fullDescription) !== '')
                     <div class="app-venue-block__description app-venue-description">
@@ -353,6 +382,7 @@
                     <p>Оценка игроков: {{ $venue->about->rating }} · отзывов: {{ $venue->about->ratingCount ?? 0 }}</p>
                 @endif
             </section>
+            @include('theme::pages.venues.schedule-fragment')
             @if(is_numeric($venue->address?->latitude) && is_numeric($venue->address?->longitude))
                 @php
                     $nearbyHandler = app(\App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler::class);
