@@ -129,6 +129,15 @@
             </div>
             <div class="app-entity-heading">
                 <h1 id="app-venue-title">{{ $venue->name }}</h1>
+                @php
+                    $venueRating = $venue->about->rating;
+                    $venueRatingLabel = $venueRating === null ? 'Пока нет оценок игроков' : 'Рейтинг площадки: '.number_format($venueRating, 1, '.', '').' из 5 · оценок: '.($venue->about->ratingCount ?? 0);
+                @endphp
+                <span class="app-venue-intro__rating{{ $venueRating === null ? ' is-unrated' : '' }}" data-venue-heading-rating
+                      title="{{ $venueRatingLabel }}" role="img" aria-label="{{ $venueRatingLabel }}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.5 6.3-.9L12 2.8Z"/></svg>
+                    <span aria-hidden="true">{{ $venueRating === null ? '—' : number_format($venueRating, 1, '.', '') }}</span>
+                </span>
             </div>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
