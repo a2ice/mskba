@@ -6,7 +6,7 @@ import {
     initHelpLauncherIntro,
 } from '../../resources/themes/mskba_app/js/help-launcher-intro.js';
 
-function fixture({ reducedMotion = false, readyState = 'loading', size = '50px', labelWidth = 80 } = {}) {
+function fixture({ reducedMotion = false, readyState = 'loading', size = '50px', labelWidth = 80, venue = false } = {}) {
     const classes = new Set();
     const buttonListeners = {};
     const windowListeners = {};
@@ -24,7 +24,7 @@ function fixture({ reducedMotion = false, readyState = 'loading', size = '50px',
     };
     const doc = {
         readyState,
-        querySelector: (selector) => selector === '[data-help-launcher]' ? button : null,
+        querySelector: (selector) => selector === (venue ? '[data-venue-floating-create]' : '[data-help-launcher]') ? button : null,
     };
     const host = {
         matchMedia: () => ({ matches: reducedMotion }),
@@ -91,4 +91,15 @@ test('launcher is a single accessible action, with CSS-only label clipping', () 
     assert.match(css, /44%, 64% \{ width: var\(--app-help-expanded-width\)/);
     assert.match(css, /animation: app-help-intro 2\.5s ease-in-out both;/);
     assert.match(css, /prefers-reduced-motion: reduce/);
+});
+
+test('venue create uses the same intro and returns to a circular plus', () => {
+    const f = fixture({ venue: true, readyState: 'complete', labelWidth: 157 });
+    assert.equal(f.properties['--app-help-expanded-width'], '207px');
+    f.timers[0].callback();
+    assert.equal(f.classes.has('is-introducing'), true);
+    f.buttonListeners.animationend({ animationName: 'app-help-intro' });
+    assert.equal(f.classes.has('is-introducing'), false);
+    const blade = readFileSync(new URL('../../resources/themes/mskba_app/views/partials/help-launcher.blade.php', import.meta.url), 'utf8');
+    assert.match(blade, /data-help-intro-label aria-hidden="true">Добавить площадку<\/span>/);
 });
