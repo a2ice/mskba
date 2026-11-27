@@ -464,7 +464,7 @@ jobs:
                 fi
                 git reset --hard "$PREVIOUS_SHA" || true
                 if [ -f "$MANIFEST_BACKUP" ]; then mv "$MANIFEST_BACKUP" public/build/manifest.json; fi
-                $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue || true
+                $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue venue-schedule-queue || true
               fi
               exit "$code"
             }
@@ -604,7 +604,7 @@ jobs:
             tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
             cp "$ASSET_STAGE/manifest.json" public/build/manifest.json.pending
             mv -f public/build/manifest.json.pending public/build/manifest.json
-            $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue
+            $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue venue-schedule-queue
             ready=0
             for attempt in $(seq 1 20); do
               if curl --fail --silent --show-error --max-time 5 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ > /dev/null 2>&1; then
@@ -653,6 +653,11 @@ jobs:
             # a missing route or server error is a release failure.
             BACKOFFICE_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/backoffice)"
             case "$BACKOFFICE_HTTP" in 200|302|303) ;; *) echo "Backoffice smoke HTTP: $BACKOFFICE_HTTP"; exit 1;; esac
+            if ! $COMPOSE ps --status running --services | grep -qx venue-schedule-queue; then
+              echo 'Dev venue schedule queue worker is not running'
+              $COMPOSE logs --tail=50 venue-schedule-queue
+              exit 1
+            fi
             if ! $COMPOSE ps --status running --services | grep -qx queue; then
               echo 'Dev main queue worker is not running'
               $COMPOSE logs --tail=50 queue
@@ -784,7 +789,7 @@ jobs:
                 fi
                 $COMPOSE exec -T phpfpm php artisan optimize:clear || true
                 $COMPOSE exec -T phpfpm php artisan config:cache || true
-                $COMPOSE restart phpfpm queue nginx || true
+                $COMPOSE restart phpfpm queue nginx venue-schedule-queue || true
               else
                 rm -f "$backup"
               fi
@@ -822,7 +827,7 @@ jobs:
             $COMPOSE exec -T phpfpm php artisan config:cache
             # Queue is long-lived; Nginx can retain a stale PHP-FPM upstream
             # across service restarts (observed 502 on the first activation).
-            $COMPOSE restart phpfpm queue nginx
+            $COMPOSE restart phpfpm queue nginx venue-schedule-queue
             $COMPOSE exec -T phpfpm php -r '
               require "vendor/autoload.php";
               $app = require "bootstrap/app.php";

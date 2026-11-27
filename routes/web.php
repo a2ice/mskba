@@ -643,6 +643,8 @@ Route::prefix('venues')->group(function () {
             ->whereNumber('venue')
             ->name('venues.rental.availability');
     });
+    Route::get('/{venue}/schedule/refresh-status', \App\Modules\Venue\Presentation\Http\Controllers\VenueScheduleRefreshStatusController::class)
+        ->whereNumber('venue')->middleware('throttle:30,1')->name('venues.schedule.refresh-status');
     Route::get('/{venue}/schedule/day', VenueScheduleDayController::class)
         ->whereNumber('venue')
         ->middleware('throttle:30,1')

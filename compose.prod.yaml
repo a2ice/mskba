@@ -16,6 +16,9 @@ services:
   telegram-background-queue:
     container_name: mskbanew-telegram-background-queue
 
+  venue-schedule-queue:
+    container_name: mskbanew-venue-schedule-queue
+
   reverb:
     container_name: mskbanew-reverb
 

@@ -44,6 +44,9 @@ services:
   queue:
     <<: *app
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]
+  venue-schedule-queue:
+    <<: *app
+    command: ["php", "artisan", "queue:work", "redis", "--queue=venue-schedule-refresh", "--sleep=2", "--tries=1", "--timeout=60"]
   scheduler:
     <<: *app
     command: ["php", "artisan", "schedule:work"]

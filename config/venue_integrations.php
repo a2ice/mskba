@@ -12,6 +12,12 @@ return [
     // stays disabled. Public refresh is limited to an already-applied, verified
     // source, at most once every 300 seconds per source across all visitors.
     // Each feature has its own emergency off switch in the server's .env.
+    // Background visit refresh is isolated and enabled on DEV first.
+    'visit_schedule_refresh_enabled' => (bool) env(
+        'VENUE_INTEGRATIONS_VISIT_REFRESH_ENABLED',
+        env('APP_ENV') === 'staging',
+    ),
+
     'public_schedule_refresh_enabled' => (bool) env(
         'VENUE_INTEGRATIONS_PUBLIC_SCHEDULE_REFRESH_ENABLED',
         in_array(env('APP_ENV'), ['staging', 'production'], true),

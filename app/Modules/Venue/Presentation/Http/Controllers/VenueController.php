@@ -558,6 +558,8 @@ class VenueController extends Controller
         return ThemeResolver::page('venues.show', [
             'venue' => $venue,
             'nearbyVenues' => $nearbyVenues,
+            'scheduleRefresh' => app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class)
+                ->forVenue($venue->id, enqueue: $request->isMethod('GET')),
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::VENUE,
                 $venue->id,

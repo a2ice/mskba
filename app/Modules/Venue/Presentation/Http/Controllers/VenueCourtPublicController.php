@@ -50,6 +50,8 @@ final class VenueCourtPublicController extends Controller
 
         return ThemeResolver::page('venues.show', [
             'venue' => $details,
+            'scheduleRefresh' => app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class)
+                ->forVenue($details->id, (int) $details->selectedCourt['id'], $request->isMethod('GET')),
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::VENUE,
                 $details->id,
