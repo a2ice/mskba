@@ -658,6 +658,12 @@ Route::prefix('venues')->group(function () {
         ->where('landingSlug', \App\Modules\Content\Application\Services\VenueCatalogLandingNavigation::SLUG_PATTERN)
         ->name('venues.collections.show')
         ->defaults('breadcrumb', 'Подборки площадок');
+    Route::get('/{venue}/reviews', [\App\Modules\Venue\Presentation\Http\Controllers\VenueReviewController::class, 'index'])
+        ->whereNumber('venue')->middleware('throttle:60,1')->name('venues.reviews.index');
+    Route::post('/{venue}/reviews', [\App\Modules\Venue\Presentation\Http\Controllers\VenueReviewController::class, 'store'])
+        ->whereNumber('venue')->middleware(['auth', 'throttle:20,1'])->name('venues.reviews.store');
+    Route::patch('/{venue}/reviews/{review}', [\App\Modules\Venue\Presentation\Http\Controllers\VenueReviewController::class, 'update'])
+        ->whereNumber('venue')->whereNumber('review')->middleware(['auth', 'throttle:20,1'])->name('venues.reviews.update');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 
