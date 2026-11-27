@@ -16,20 +16,15 @@
         @if(request()->routeIs('venues', 'venues.collections.show', 'venues.show', 'venues.courts.show')) data-help-initial-section="venues" @endif
         aria-labelledby="context-help-title">
     <header class="mskba-modal__header app-context-dialog__header">
-        <div class="app-context-help__heading">
-            <button type="button" class="app-context-help__back" data-help-back aria-label="Назад" title="Назад" hidden>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
-            </button>
-            <h2 id="context-help-title">Помощь и FAQ</h2>
-        </div>
+        <h2 id="context-help-title">Помощь и FAQ</h2>
         <button type="button" data-context-help-close aria-label="Закрыть">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll app-context-help__body">
         @if(request()->routeIs('venues', 'venues.collections.show', 'venues.show', 'venues.courts.show'))
             <template data-help-venue-create-template>
                 <div class="app-context-help__venue-create" data-help-venue-create>
-                    <h4>Помогите пополнить каталог площадок</h4>
-                    <p>Знаете баскетбольный зал или уличную площадку, которой ещё нет в каталоге MSKBA? Добавляйте её! Мы приветствуем вклад каждого участника: так другим игрокам будет проще найти место для игры. После проверки новая площадка сможет появиться в каталоге.</p>
+                    <h4>Много площадок не бывает!</h4>
+                    <p>Знаете баскетбольный зал или уличную площадку, которой еще нет на портале?</p>
                     <a class="button primary" href="{{ route('venues.create') }}">Добавить площадку</a>
                 </div>
             </template>
@@ -46,6 +41,10 @@
             <button type="button" class="app-context-help__catalog-link" data-help-page-catalog>Перейти ко всем вопросам FAQ</button>
         </section>
         <div data-help-catalog>
+        <div class="app-context-help__navigation">
+            <button type="button" class="app-context-help__back" data-help-back aria-label="Назад" title="Назад" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+            </button>
         <div class="app-context-help__lookup" data-help-combobox>
             <input type="text" id="context-help-section" data-help-search
                    role="combobox" aria-label="Выбрать раздел FAQ" aria-autocomplete="list"
@@ -58,6 +57,7 @@
             <button type="button" class="app-context-help__clear" data-help-clear aria-label="Сбросить раздел FAQ" hidden>×</button>
             <div id="context-help-options" class="app-context-help__options" data-help-options
                  role="listbox" aria-label="Разделы FAQ" hidden></div>
+        </div>
         </div>
         <nav class="app-context-help__breadcrumbs" aria-label="Навигация внутри FAQ" data-help-breadcrumbs></nav>
         <div class="app-context-help__articles" data-help-articles role="status" aria-live="polite">Загружаем ответы…</div>
