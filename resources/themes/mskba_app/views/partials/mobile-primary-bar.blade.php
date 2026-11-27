@@ -189,6 +189,9 @@
                 <circle cx="10.8" cy="10.8" r="6.7"/>
                 <path d="m16 16 5 5"/>
             </svg>
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="app-mobile-primary__catalog-filter-icon" hidden>
+                <path d="M4 7h16M7 12h10M10 17h4"/>
+            </svg>
             <span data-app-mobile-primary-filter-label>Поиск</span>
             <span class="app-mobile-primary__filter-badge" data-app-mobile-primary-filter-badge hidden></span>
         </button>
