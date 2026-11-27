@@ -25,7 +25,7 @@ final class FindSportOnDemandRefresh
     ) {}
 
     /** @return array{state:string, message:string|null} */
-    public function forCourt(VenueCourt $court, ?CarbonInterface $asOf = null): array
+    public function forCourt(VenueCourt $court, ?CarbonInterface $asOf = null, ?int $visitSourceId = null): array
     {
         $reference = $asOf ?? now();
         $result = static fn (string $state, ?string $message = null): array => compact('state', 'message');
@@ -41,6 +41,10 @@ final class FindSportOnDemandRefresh
         }
 
         $source = $current->source;
+        if ($visitSourceId !== null && ((int) $current->venue_integration_source_id !== $visitSourceId
+                || ! app(VisitScheduleRefresh::class)->eligible($current))) {
+            return $result('disabled');
+        }
         if ($source === null || ! FindSportSourceIdentity::matches($source)
             || $source->adapter_key !== 'api'
             || $source->integration?->mode !== 'test'
@@ -81,7 +85,24 @@ final class FindSportOnDemandRefresh
                 return $result('cached');
             }
 
+            if ($visitSourceId !== null && ($fresh === null
+                    || (int) $fresh->venue_integration_source_id !== $visitSourceId
+                    || ! app(VisitScheduleRefresh::class)->eligible($fresh))) {
+                return $result('disabled');
+            }
+
             $report = $this->adapter->readFromPublicSchedule($source);
+            if ($visitSourceId !== null) {
+                // Admin may revoke or remap the source during a slow network read.
+                $latest = $this->applied->activeFor($court);
+                if ($latest === null || (int) $latest->venue_integration_source_id !== $visitSourceId
+                    || ! app(VisitScheduleRefresh::class)->eligible($latest)
+                    || ! $latest->court?->venue?->isPubliclyVisible()
+                    || $latest->source->version !== $source->version) {
+                    return $result('disabled');
+                }
+                $source = $latest->source;
+            }
             $snapshot = $this->recorder->recordFromPublicSchedule($source, $report);
             if (! $snapshot->complete) {
                 Cache::put($retryKey, true, now()->addSeconds(self::REFRESH_AFTER_SECONDS));

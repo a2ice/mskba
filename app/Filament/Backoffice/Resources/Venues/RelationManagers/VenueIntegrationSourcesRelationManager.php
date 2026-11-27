@@ -140,6 +140,29 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                 TextColumn::make('adapter_key')->label('Адаптер'),
                 TextColumn::make('permission_status')->label('Доступ')->badge(),
                 IconColumn::make('enabled')->label('Включён')->boolean(),
+                TextColumn::make('visit_refresh_last_success')->label('Последнее обновление')
+                    ->state(fn (VenueIntegrationSource $record): ?string => VenueCourtExternalScheduleImport::query()
+                        ->where('venue_integration_source_id', $record->id)->with('snapshot')->first()
+                        ?->snapshot?->observed_at?->setTimezone('Europe/Moscow')->format('d.m.Y H:i'))
+                    ->placeholder('—')->toggleable(),
+                TextColumn::make('visit_refresh_status')->label('Фоновое обновление')
+                    ->state(function (VenueIntegrationSource $record): string {
+                        $import = VenueCourtExternalScheduleImport::query()
+                            ->where('venue_integration_source_id', $record->id)->with(['source.integration', 'snapshot', 'court'])->first();
+                        $service = app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class);
+                        if ($import === null || ! $service->eligible($import)) {
+                            return 'Отключено';
+                        }
+                        $state = $service->forVenue((int) $import->venue_id, (int) $import->venue_court_id)[$import->venue_court_id]['state'] ?? 'disabled';
+
+                        return match ($state) {
+                            'cached' => 'Актуально',
+                            'updating' => 'Обновляется',
+                            'failed' => 'Ошибка обновления',
+                            'stale' => 'Требуется обновление',
+                            default => 'Отключено',
+                        };
+                    })->toggleable(),
                 TextColumn::make('priority')->label('Приоритет'),
                 TextColumn::make('version')->label('Версия'),
             ])

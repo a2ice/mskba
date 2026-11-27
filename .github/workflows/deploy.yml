@@ -156,7 +156,7 @@ jobs:
 
             mkdir -p bootstrap/cache public/build
 
-            $COMPOSE build phpfpm queue telegram-inbound-queue telegram-background-queue reverb
+            $COMPOSE build phpfpm queue telegram-inbound-queue telegram-background-queue venue-schedule-queue reverb
             $COMPOSE up -d db redis
 
             $COMPOSE run -T --rm phpfpm composer install \
@@ -234,13 +234,13 @@ jobs:
             # polling container is intentionally left alive until Telegram has
             # accepted the webhook, so failed webhook configuration cannot make
             # inbound bot updates disappear.
-            $COMPOSE up -d --force-recreate phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb
+            $COMPOSE up -d --force-recreate phpfpm nginx queue telegram-inbound-queue telegram-background-queue venue-schedule-queue reverb
 
-            $COMPOSE restart phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb
+            $COMPOSE restart phpfpm nginx queue telegram-inbound-queue telegram-background-queue venue-schedule-queue reverb
 
             sleep 2
             RUNNING_SERVICES="$($COMPOSE ps --status running --services)"
-            for SERVICE in telegram-inbound-queue telegram-background-queue; do
+            for SERVICE in telegram-inbound-queue telegram-background-queue venue-schedule-queue; do
               if ! printf '%s\n' "$RUNNING_SERVICES" | grep -qx "$SERVICE"; then
                 echo "::error::Telegram queue worker $SERVICE is not running." >&2
                 $COMPOSE ps >&2
