@@ -3,7 +3,7 @@
     data-authenticated="{{ auth()->check() ? '1' : '0' }}"
     data-csrf="{{ csrf_token() }}">
     <header class="app-venue-block__header"><h2>Отзывы</h2></header>
-    @if($venue->statusSlug === 'confirmed')
+    @if($canReviewVenue)
         <div class="app-venue-reviews__scroll mskba-scroll" data-review-scroll tabindex="0" aria-label="Отзывы игроков">
             <div class="app-venue-reviews__list" data-review-list></div>
             <p class="muted" data-review-empty hidden>Пока отзывов нет</p>
