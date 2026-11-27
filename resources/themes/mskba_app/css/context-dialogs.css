@@ -196,8 +196,11 @@
 .app-context-help-launcher.app-context-help-launcher--venue-create { text-decoration: none; color: #fff; }
 .app-context-help-launcher--venue-create .app-context-help-launcher__mark svg { width: 23px; height: 23px; }
 .app-context-help-launcher--venue-create .app-context-help-launcher__label { font-size: 15px; }
-.app-context-help__heading { display:flex; align-items:center; gap:10px; min-width:0; }
-.app-context-help__heading h2 { min-width:0; }
+.app-context-help__navigation { display:flex; align-items:stretch; gap:5px; min-width:0; }
+.app-context-help__navigation .app-context-help__lookup { flex:1 1 0; min-width:0; }
+.app-context-help__back { display:grid; place-items:center; flex:0 0 44px; width:44px; min-height:44px; padding:0; border:1px solid var(--control-line); border-radius:10px; background:var(--field); color:var(--text); cursor:pointer; box-sizing:border-box; }
+.app-context-help__back:hover { color:var(--accent); border-color:var(--accent); }
+.app-context-help__back:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .app-context-help__back[hidden] { display:none!important; }
 .app-context-help__back svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
