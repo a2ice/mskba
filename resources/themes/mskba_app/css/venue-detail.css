@@ -869,3 +869,15 @@ dialog.app-venue-review-dialog{position:fixed;inset:0;margin:auto;transform:none
 .app-venue-review-dialog .app-venue-overlay__actions{width:100%;margin-top:0}
 .app-venue-review-thanks h2{margin-bottom:10px}
 @media(max-width:640px){.app-venue-intro .app-entity-heading{gap:10px}.app-venue-review{grid-template-columns:64px minmax(0,1fr);gap:10px}.app-venue-reviews__actions>.button{flex:1 1 auto}}
+
+/* #1165: preserve the heart and counter on one line in the mobile hero.
+   On very narrow screens wrap the complete CTA, never its label. */
+@media(max-width:640px){
+    .app-venue-intro__actions{align-items:stretch}
+    .app-venue-intro__actions>.button.primary,
+    .app-venue-intro__actions>.button.secondary{flex:1 1 max-content;min-width:0;padding-inline:8px;gap:5px}
+    .app-venue-intro__actions>[data-venue-favorite-main]{white-space:nowrap;min-width:max-content;max-width:100%}
+    .app-venue-intro__actions>[data-venue-favorite-main] .venue-favorite-follow__icon{flex:none}
+    .app-venue-intro__actions>[data-venue-favorite-main-label],
+    .app-venue-intro__actions>[data-venue-favorite-main] [data-venue-favorite-main-label]{white-space:nowrap}
+}
