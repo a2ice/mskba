@@ -135,7 +135,7 @@ final readonly class BookingConversationCards
             }
             $cards->push([
                 'id' => 'pre-request-'.$pre->id,
-                'name' => 'Предзаявка «'.($pre->venue?->name ?? 'Площадка').'»',
+                'name' => 'Запрос на аренду «'.($pre->venue?->name ?? 'Площадка').'»',
                 'preview' => $latest ? ($latest->authorActor?->user?->username ?? 'Участник').': '.($latest->body ?: 'Вложение')
                     : $pre->status->label(),
                 'unread_count' => max($unread, $notices),

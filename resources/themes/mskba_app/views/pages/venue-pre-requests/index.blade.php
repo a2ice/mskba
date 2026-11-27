@@ -1,7 +1,7 @@
-@extends('theme::layouts.app', ['title' => 'Предзаявки на аренду'])
+@extends('theme::layouts.app', ['title' => 'Запросы на аренду'])
 @section('content')
 <section class="container app-rental-inbox">
-    <header class="app-account-overview__intro"><h1>Предзаявки на аренду</h1></header>
+    <header class="app-account-overview__intro"><h1>Запросы на аренду</h1></header>
     <nav class="app-rental-inbox__tabs" aria-label="Заявки на аренду">
         <a class="button secondary" href="{{ route('account.venue-bookings.index') }}">Мои бронирования</a>
         <a class="button secondary" href="{{ route('account.venue-bookings.inbox') }}">Входящие брони</a>
@@ -14,7 +14,7 @@
                 <a class="button primary" href="{{ route('account.venue-pre-requests.show', $pre) }}">Переписка и предложения</a>
             </article>
         @empty
-            <p>Предзаявок пока нет.</p>
+            <p>Запросов на аренду пока нет.</p>
         @endforelse
     </div>
     {{ $preRequests->links() }}
