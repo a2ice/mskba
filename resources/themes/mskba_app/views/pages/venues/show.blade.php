@@ -305,10 +305,10 @@
                         };
                         $properties = [
                             ['sliders', 'Покрытие', $court['surfaceLabel']],
+                            ['sliders', 'Состояние покрытия', $conditionLabel($court['surfaceCondition'])],
                             ['file-description', 'Разметка', $court['markingLabel']],
                             ['ball', 'Количество колец', $court['hoopsCount']],
                             ['ball', 'Состояние колец', $conditionLabel($court['hoopsCondition'])],
-                            ['sliders', 'Состояние покрытия', $conditionLabel($court['surfaceCondition'])],
                             ['arrow', 'Размеры', $court['lengthMeters'] > 0 && $court['widthMeters'] > 0
                                 ? (float) $court['lengthMeters'].' × '.(float) $court['widthMeters'].' м' : null],
                             [$policy['is_open'] ? 'check' : 'close', 'Состояние', $policy['is_open'] ? 'Работает' : 'Временно закрыт'],
@@ -341,7 +341,7 @@
                                 <li>
                                     <a class="app-venue-court-link" href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $court['routeIdentifier']]) }}">{{ $court['name'] }}</a>
                                     <span class="app-venue-court-overview__separator" aria-hidden="true">|</span>
-                                    <span>{{ match ($court['environment']) { 'outdoor' => 'Открытая', 'indoor' => 'Закрытая', default => 'Тип не указан' } }}</span>
+                                    <span>{{ \App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum::tryFrom($court['environment'] ?? '')?->label() ?? 'Тип не указан' }}</span>
                                     <span class="app-venue-court-overview__separator" aria-hidden="true">|</span>
                                     <span class="app-venue-court-overview__status"><svg aria-hidden="true"><use href="#{{ $court['isOpen'] ? 'check' : 'close' }}"/></svg>{{ $court['isOpen'] ? 'Работает' : 'Не работает' }}</span>
                                 </li>
