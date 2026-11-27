@@ -65,4 +65,38 @@ final class PageContextFaqTest extends TestCase
         $this->assertSame(1, substr_count($html, 'data-context-help-dialog'));
         $this->assertSame(1, substr_count($html, 'data-help-launcher'));
     }
+    public function test_venue_pages_replace_only_floating_help_with_create_and_show_real_rating(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->withoutVite();
+
+        $venue = \App\Modules\Venue\Domain\Models\Venue::factory()->create([
+            'status' => \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED,
+        ]);
+        $this->get(route('venues'))->assertOk()
+            ->assertSee('data-venue-floating-create', false)
+            ->assertDontSee('data-help-launcher', false)
+            ->assertDontSee('app-venues-catalog__create', false)
+            ->assertSee('data-context-help-dialog', false);
+
+        $url = route('venues.show', $venue->routeIdentifier());
+        $this->get($url)->assertOk()
+            ->assertSee('data-venue-floating-create', false)
+            ->assertDontSee('data-help-launcher', false)
+            ->assertSee('data-venue-heading-rating', false)
+            ->assertSee('Пока нет оценок игроков');
+
+        foreach ([[5, true], [4, true], [1, false]] as [$rating, $published]) {
+            \App\Modules\Venue\Domain\Models\VenueReview::factory()->for($venue)->create([
+                'rating' => $rating,
+                'is_published' => $published,
+                'published_at' => $published ? now() : null,
+            ]);
+        }
+        $this->get($url)->assertOk()
+            ->assertSee('Рейтинг площадки: 4.5 из 5 · оценок: 2')
+            ->assertSee('data-context-help-dialog', false);
+    }
 }
