@@ -1,3 +1,42 @@
+// Like favorite-action, preserve an explicit guest action across authentication.
+const reviewIntentKey = 'mskba:venue-review:pending:v1';
+const reviewPath = () => location.pathname + location.search + location.hash;
+const clearReviewIntent = () => { try { sessionStorage.removeItem(reviewIntentKey); } catch {} };
+let resumeReviewForm = null;
+function resumeReviewIntent() {
+    if (document.querySelector('meta[name="mskba-authenticated"]')?.content !== '1'
+        || document.querySelector('[data-onboarding-pending]')) return;
+    let intent;
+    try { intent = JSON.parse(sessionStorage.getItem(reviewIntentKey) || 'null'); }
+    catch { clearReviewIntent(); return; }
+    if (!intent) return;
+    if (!Number.isFinite(intent.at) || Date.now() - intent.at > 15 * 60 * 1000
+        || Date.now() < intent.at || typeof intent.path !== 'string'
+        || !/^\/venues\/[^/?#]+(?:\/courts\/[^/?#]+)?(?:[?#].*)?$/.test(intent.path)) {
+        clearReviewIntent(); return;
+    }
+    const target = new URL(intent.path, location.origin);
+    if (target.origin !== location.origin) { clearReviewIntent(); return; }
+    if (target.pathname !== location.pathname || target.search !== location.search) {
+        location.assign(target.href); return;
+    }
+    if (resumeReviewForm) {
+        clearReviewIntent();
+        resumeReviewForm();
+    } else if (document.querySelector('[data-review-auth-start]')) {
+        // An inline login on the old guest document needs the authenticated SSR form.
+        location.reload();
+    } else {
+        clearReviewIntent();
+    }
+}
+window.addEventListener('mskba:auth:cancel', clearReviewIntent);
+window.addEventListener('mskba:auth:success', () => {
+    document.querySelector('meta[name="mskba-authenticated"]')?.setAttribute('content', '1');
+    resumeReviewIntent();
+});
+window.addEventListener('mskba:onboarding-completed', resumeReviewIntent);
+
 const root = document.querySelector('[data-venue-reviews]');
 if (root?.querySelector('[data-review-list]')) {
     const list = root.querySelector('[data-review-list]');
@@ -144,6 +183,27 @@ if (root?.querySelector('[data-review-list]')) {
     }
 
     document.querySelectorAll('[data-venue-review-open]').forEach(button => button.addEventListener('click', () => open()));
+    if (form) resumeReviewForm = () => open();
+    dialog?.querySelector('[data-review-auth-start]')?.addEventListener('click', () => {
+        const authError = dialog.querySelector('[data-review-auth-error]');
+        authError.hidden = true;
+        if (!document.getElementById('mskba-auth-dialog-root')) {
+            authError.textContent = 'Не удалось открыть окно входа. Обновите страницу.';
+            authError.hidden = false;
+            return;
+        }
+        try {
+            sessionStorage.setItem(reviewIntentKey, JSON.stringify({path: reviewPath(), at: Date.now()}));
+        } catch {
+            authError.textContent = 'Не удалось сохранить действие для входа. Попробуйте ещё раз.';
+            authError.hidden = false;
+            return;
+        }
+        dialog.close();
+        // Keep the normal shared login redirect so the authenticated Blade form,
+        // new CSRF token and account actions are rendered together.
+        window.dispatchEvent(new CustomEvent('mskba:auth:open', {detail: {mode: 'login'}}));
+    });
     for (const modal of [dialog, thanks]) {
         modal?.querySelectorAll('[data-review-close]').forEach(button => button.addEventListener('click', () => modal.close()));
     }
@@ -184,3 +244,6 @@ if (root?.querySelector('[data-review-list]')) {
     }, {passive: true});
     load();
 }
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', resumeReviewIntent, {once: true});
+else resumeReviewIntent();
