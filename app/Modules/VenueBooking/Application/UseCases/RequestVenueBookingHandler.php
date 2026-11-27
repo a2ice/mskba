@@ -89,6 +89,13 @@ final readonly class RequestVenueBookingHandler
                         return $existing;
                     }
 
+                    if ($venue->occupancy_requires_confirmation && $preRequest === null) {
+                        throw new VenueBookingTransitionException(
+                            'Занятость уточняется. Отправьте запрос на аренду.',
+                            'RENTAL_REQUEST_REQUIRED',
+                        );
+                    }
+
                     $restriction = $this->restrictions->active(
                         $venue,
                         $user,

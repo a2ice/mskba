@@ -35,7 +35,7 @@ export function eligibleRuns(data, range) {
         run = [];
     };
     for (const slot of slots) {
-        if (!slot.selectable || slot.status !== 'available') { flush(); continue; }
+        if (!slot.selectable || !['available','requestable'].includes(slot.status)) { flush(); continue; }
         if (run.length && run.at(-1).ends_at !== slot.starts_at) flush();
         run.push(slot);
     }
@@ -48,6 +48,11 @@ function prime(date, slot) {
     return minute(slot.starts_at) < to && endMinute(slot.ends_at) > from;
 }
 export function summarizeRental(days, range, incomplete = false) {
+    if (days.some(day => day.occupancy_requires_confirmation)) {
+        return days.some(day => eligibleRuns(day, range).length)
+            ? 'Можно отправить запрос на подходящее время. Занятость уточняется, время не резервируется.'
+            : 'На выбранное время пока нет подходящих интервалов для запроса.';
+    }
     let known = 0, available = 0, primeKnown = 0, primeFree = 0, nightFree = 0, unknown = false, booked = 0;
     for (const day of days) {
         const eligible = new Set(eligibleRuns(day, range));

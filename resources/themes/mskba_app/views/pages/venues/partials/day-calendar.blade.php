@@ -10,6 +10,7 @@
                     fn ($hours) => $hours['startsAt'].'–'.(in_array($hours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $hours['endsAt'])
                 )->implode(', '),
                 'occupancy' => $listed['occupancyPercent'] ?? null,
+                'requestOnly' => $listed['occupancyRequiresConfirmation'] ?? false,
             ];
         }
     } else {
@@ -43,6 +44,7 @@
                     fn ($hours) => $hours['startsAt'].'–'.(in_array($hours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $hours['endsAt'])
                 )->implode(', '),
                 'occupancy' => null,
+                'requestOnly' => (bool) $calendarVenue->occupancy_requires_confirmation,
             ];
         }
         $occupation = app(\App\Modules\Venue\Application\Services\VenueScheduleDayOccupancy::class)
@@ -62,6 +64,8 @@
             @php
                 $dayDetail = $dayCalendarInfo[$dayOption->toDateString()] ?? ['hours' => '', 'occupancy' => null];
                 $dayOccupancy = $dayDetail['occupancy'];
+                $requestOnly = $dayDetail['requestOnly'] ?? false;
+                $occupancyLabel = $requestOnly ? ($dayOccupancy === null ? 'Занятость уточняется' : 'Занято '.$dayOccupancy.'% (остальная занятость уточняется)') : ($dayOccupancy === null ? 'Нет данных о занятости' : 'Занято '.$dayOccupancy.'%');
             @endphp
             <div class="app-venue-day-dialog__date-item" data-day-date="{{ $dayOption->toDateString() }}">
                 <button type="button" class="app-venue-day-dialog__date app-venue-schedule__day app-venue-schedule__day--interactive"
@@ -70,10 +74,10 @@
                     <strong @class(['app-venue-schedule__date', 'is-weekend' => $dayOption->isWeekend()])>{{ $dayOption->locale('ru')->translatedFormat('j M') }}</strong>
                     <span class="app-venue-day-dialog__date-hours">{{ $dayDetail['hours'] ?: 'Не работает' }}</span>
                 </button>
-                <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $dayOccupancy === null])
+                <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $dayOccupancy === null, 'is-request-only' => $requestOnly])
                     data-day-occupancy
                     role="img"
-                    aria-label="{{ $dayOccupancy === null ? 'Нет данных о занятости' : 'Занято '.$dayOccupancy.'%' }}">
+                    aria-label="{{ $occupancyLabel }}">
                     <span class="app-venue-schedule__occupancy-booked" data-day-occupancy-booked
                         style="width:{{ $dayOccupancy ?? 0 }}%"></span>
                 </div>

@@ -40,6 +40,8 @@
                                 @foreach($scheduleGroup['days'] as $day)
                                     @php
                                         $occupancy = $day['occupancyPercent'] ?? null;
+                                        $requestOnly = $day['occupancyRequiresConfirmation'] ?? false;
+                                        $occupancyLabel = $requestOnly ? ($occupancy === null ? 'Занятость уточняется' : 'Занято '.$occupancy.'% (остальная занятость уточняется)') : ($occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%');
                                         $isWeekend = in_array($day['weekday'] ?? '', ['Сб', 'Вс'], true);
                                     @endphp
                                     <div class="app-venue-schedule__entry" data-venue-day-entry data-day-date="{{ $day['date'] }}">
@@ -64,10 +66,10 @@
                                                 <p class="app-venue-schedule__closed">Не работает</p>
                                             @endif
                                         </button>
-                                        <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $occupancy === null])
+                                        <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $occupancy === null, 'is-request-only' => $requestOnly])
                                             data-day-occupancy role="img"
-                                            aria-label="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}"
-                                            title="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}">
+                                            aria-label="{{ $occupancyLabel }}"
+                                            title="{{ $occupancyLabel }}">
                                             <span class="app-venue-schedule__occupancy-booked" data-day-occupancy-booked
                                                 style="width: {{ (int) ($occupancy ?? 0) }}%"></span>
                                         </div>

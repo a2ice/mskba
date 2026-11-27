@@ -76,7 +76,7 @@ final class VenueScheduleDayController extends Controller
                         }
                     }
                     $searchDays[] = array_intersect_key($dayResult, array_flip(['date', 'step_minutes',
-                        'minimum_minutes', 'maximum_minutes', 'booking_enabled', 'stale', 'refresh_state']))
+                        'minimum_minutes', 'maximum_minutes', 'booking_enabled', 'stale', 'refresh_state', 'occupancy_requires_confirmation']))
                         + ['slots' => $slots];
                 }
 

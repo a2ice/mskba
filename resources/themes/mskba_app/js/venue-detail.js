@@ -325,6 +325,7 @@ if (dayBookingDialog) {
     const form = dayBookingDialog.querySelector('[data-venue-day-booking-form]');
     const bookingButton = dayBookingDialog.querySelector('[data-venue-day-book]');
     const eventFreeRental = dayBookingDialog.dataset.eventFree === '1';
+    const defaultBookingLabel = bookingButton.textContent.trim();
     const summary = dayBookingDialog.querySelector('[data-venue-day-summary]');
     const minimum = dayBookingDialog.querySelector('[data-venue-day-minimum]');
     const dateButtons = Array.from(dayBookingDialog.querySelectorAll('[data-venue-day-date]'));
@@ -415,28 +416,37 @@ if (dayBookingDialog) {
             && duration <= (response?.maximum_minutes ?? 0)
             && selectedIndexesAreContiguous();
         const canBook = !rentalSearch?.readOnly && !!response?.booking_enabled && enough;
-        bookingButton.disabled = !canBook;
+        const requestOnly = !!response?.occupancy_requires_confirmation && !!form.dataset.preRequestUrl;
+        bookingButton.textContent = requestOnly ? 'Отправить заявку' : defaultBookingLabel;
+        if (requestOnly && response.viewer_authenticated) bookingButton.setAttribute('formaction', form.dataset.preRequestUrl);
+        else bookingButton.removeAttribute('formaction');
+        bookingButton.disabled = !canBook || (!!response?.occupancy_requires_confirmation && !requestOnly);
         grid.querySelectorAll('button[data-slot-index]').forEach(button => {
             const active = selection.includes(Number(button.dataset.slotIndex));
             button.classList.toggle('is-selected', active);
             button.setAttribute('aria-pressed', String(active));
         });
         if (selection.length === 0) {
-            summary.textContent = 'Выберите свободные интервалы';
+            summary.textContent = requestOnly ? 'Выберите желаемое время' : 'Выберите свободные интервалы';
         } else {
             const start = response.slots[selection[0]];
             const end = response.slots[selection.at(-1)];
             summary.textContent = [displayClock(start.starts_at), '–', displayClock(end.ends_at), '·',
-                duration, 'мин ·', canBook ? 'Рассчитываем стоимость…' : 'Выберите доступное время'].join(' ');
+                duration, 'мин ·', requestOnly ? 'Занятость уточняется' : (canBook ? 'Рассчитываем стоимость…' : 'Выберите доступное время')].join(' ');
         }
         minimum.textContent = response?.booking_enabled
-            ? 'Минимум ' + required + ' мин · непрерывные слоты'
+            ? 'Минимум ' + required + ' мин · непрерывные слоты' + (requestOnly ? ' · время не резервируется' : '')
             : 'Бронирование пока не включено для этого зала';
-        if (canBook) {
+        if (canBook && (!response.occupancy_requires_confirmation || requestOnly)) {
             form.querySelector('[data-venue-day-court]').value = String(response.venue_court_id);
             form.querySelector('[data-venue-day-start]').value =
                 response.date + 'T' + response.slots[selection[0]].starts_at;
             form.querySelector('[data-venue-day-duration]').value = String(duration);
+            if (requestOnly) {
+                ++previewSequence;
+                bookingButton.disabled = false;
+                return;
+            }
             bookingButton.disabled = true;
             // The previous 'start' variable belonged to the summary's else block.
             // Use the selected slot from the current response; otherwise the
@@ -451,6 +461,18 @@ if (dayBookingDialog) {
             ++previewSequence;
         }
     }
+
+    form.addEventListener('submit', event => {
+        if (!response?.occupancy_requires_confirmation || !form.dataset.preRequestPrepareUrl || response.viewer_authenticated) return;
+        event.preventDefault();
+        if (bookingButton.disabled) return;
+        const url = new URL(form.dataset.preRequestPrepareUrl, window.location.href);
+        url.searchParams.set('venue_court_id', form.querySelector('[data-venue-day-court]').value);
+        url.searchParams.set('starts_at', form.querySelector('[data-venue-day-start]').value);
+        url.searchParams.set('duration_minutes', form.querySelector('[data-venue-day-duration]').value);
+        url.searchParams.set('scope', 'whole');
+        window.location.assign(url.href);
+    });
 
     // The selected range is priced as one rental: fixed commissions are charged
     // once, and duration-dependent tariff rules apply to the whole range.
@@ -493,14 +515,14 @@ if (dayBookingDialog) {
     }
 
     // Update the clicked card after its on-demand five-minute refresh.
-    function updateDayOccupancy(date, slots) {
+    function updateDayOccupancy(date, slots, requestOnly = false) {
         const cards = [
             document.querySelector('[data-venue-schedule-court="' + dayBookingDialog.dataset.courtId
                 + '"] [data-venue-day-entry][data-day-date="' + date + '"]'),
             dateButtons.find(button => button.dataset.venueDayDate === date)?.parentElement,
         ];
         const known = slots.filter(slot =>
-            slot.status === 'available' || slot.status === 'booked');
+            slot.status === 'available' || slot.status === 'booked' || slot.status === 'requestable');
         const percentage = known.length
             ? Math.round(100 * known.filter(slot => slot.status === 'booked').length / known.length)
             : null;
@@ -509,7 +531,8 @@ if (dayBookingDialog) {
             const booked = card?.querySelector('[data-day-occupancy-booked]');
             if (!track || !booked) continue;
             track.classList.toggle('is-unknown', percentage === null);
-            const label = percentage === null
+            track.classList.toggle('is-request-only', requestOnly);
+            const label = requestOnly ? (percentage === null ? 'Занятость уточняется' : 'Занято ' + percentage + '% (остальная занятость уточняется)') : percentage === null
                 ? 'Нет данных о занятости' : 'Занято ' + percentage + '%';
             track.setAttribute('aria-label', label);
             track.title = label;
@@ -522,11 +545,11 @@ if (dayBookingDialog) {
             const eligible = new Set(rentalSearch.eligibleSlots(data));
             const unverified = data.stale || data.refresh_state === 'failed';
             data = {...data,slots:rentalSearch.filterSlots(data).map(slot => {
-                if (slot.status === 'unknown' || (unverified && slot.status === 'available')) {
+                if (slot.status === 'unknown' || (unverified && ['available','requestable'].includes(slot.status))) {
                     return {...slot,status:'unknown',selectable:false,price_minor:null};
                 }
                 if (slot.status === 'unavailable') return {...slot,selectable:false,price_minor:null};
-                return !rentalSearch.readOnly && slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot;
+                return !rentalSearch.readOnly && ['available','requestable'].includes(slot.status) && !eligible.has(slot) ? {...slot,selectable:false} : slot;
             })};
         }
         if (eventFreeRental) {
@@ -543,6 +566,7 @@ if (dayBookingDialog) {
         grid.removeAttribute('aria-busy');
         const labels = {
             available: 'Свободно',
+            requestable: 'Уточняется',
             booked: 'Занято',
             unavailable: 'Недоступно',
             unknown: 'Нет данных',
@@ -558,7 +582,7 @@ if (dayBookingDialog) {
                 grid.appendChild(busy);
                 continue;
             }
-            if (rentalSearch && !rentalSearch.readOnly && slot.status === 'available' && !slot.selectable) continue;
+            if (rentalSearch && !rentalSearch.readOnly && ['available','requestable'].includes(slot.status) && !slot.selectable) continue;
             const eventInfo = slot.booking_group?.event || null;
             const cell = document.createElement('button');
             cell.type = 'button';
@@ -760,13 +784,13 @@ if (dayBookingDialog) {
             : (data.refresh_state === 'failed' ? data.refresh_message : null);
         status.textContent = warning || '';
         status.hidden = !warning;
-        if (rentalSearch && !data.slots.some(slot => rentalSearch.readOnly ? slot.status === 'available' : slot.selectable)) {
+        if (rentalSearch && !data.slots.some(slot => rentalSearch.readOnly ? ['available','requestable'].includes(slot.status) : slot.selectable)) {
             status.hidden = false;
             status.textContent = warning || (data.slots.some(slot => slot.status === 'unknown')
                 ? 'На этот день пока нет подтверждённого расписания. Выбери другой день или зал.'
                 : 'На этот день подходящих интервалов нет. Выбери другой день или зал либо вернись к условиям.');
         }
-        if (!rentalSearch) updateDayOccupancy(data.date, data.slots);
+        if (!rentalSearch) updateDayOccupancy(data.date, data.slots, !!data.occupancy_requires_confirmation);
         const selectedDateButton = dateButtons.find(button => button.dataset.venueDayDate === data.date);
         const hours = selectedDateButton?.querySelector('.app-venue-day-dialog__date-hours');
         if (!rentalSearch && hours && data.slots.length) {
@@ -874,6 +898,8 @@ if (dayBookingDialog) {
         response = null;
         selection = [];
         bookingButton.disabled = true;
+        bookingButton.textContent = defaultBookingLabel;
+        bookingButton.removeAttribute('formaction');
         grid.replaceChildren();
         grid.setAttribute('aria-busy', 'true');
         // Reuse the branded UI Kit skeleton, never ad-hoc grey rectangles.
@@ -891,7 +917,9 @@ if (dayBookingDialog) {
         setActiveDate(date);
         const label = dateButtons.find(button => button.dataset.venueDayDate === date)
             ?.querySelector('strong')?.textContent || date;
-        heading.textContent = (rentalSearch?.readOnly ? 'Занятость · ' : rentalSearch ? 'Аренда · ' : 'Расписание · ')
+        heading.textContent = dayBookingDialog.dataset.venueName
+            ? [dayBookingDialog.dataset.venueName, dayBookingDialog.dataset.courtName].filter(Boolean).join(' · ')
+            : (rentalSearch?.readOnly ? 'Занятость · ' : rentalSearch ? 'Аренда · ' : 'Расписание · ')
             + (dayBookingDialog.dataset.courtName ? dayBookingDialog.dataset.courtName + ' · ' : '')
             + label;
         status.hidden = false;
@@ -989,7 +1017,9 @@ if (dayBookingDialog) {
                     || 'Не работает') : 'Время уточняется';
             if (target) {
                 const unknown = !sourceProgress || sourceProgress.classList.contains('is-unknown');
-                const label = unknown ? 'Нет данных о занятости'
+                const requestOnly = !!sourceProgress?.classList.contains('is-request-only');
+                target.classList.toggle('is-request-only', requestOnly);
+                const label = unknown ? (requestOnly ? 'Занятость уточняется' : 'Нет данных о занятости')
                     : (sourceProgress.getAttribute('aria-label') || 'Нет данных о занятости');
                 target.classList.toggle('is-unknown', unknown);
                 target.setAttribute('aria-label', label);

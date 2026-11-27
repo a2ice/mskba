@@ -192,6 +192,7 @@ final class ShowVenueHandler
         );
         foreach ($scheduleDays as &$day) {
             $day['occupancyPercent'] = $percentages[$day['date']] ?? null;
+            $day['occupancyRequiresConfirmation'] = (bool) $venue->occupancy_requires_confirmation;
         }
         unset($day);
         // Venue-level schedules are not court availability. Keep each
@@ -212,6 +213,7 @@ final class ShowVenueHandler
                 );
                 foreach ($courtDays as &$courtDay) {
                     $courtDay['occupancyPercent'] = $courtPercentages[$courtDay['date']] ?? null;
+                    $courtDay['occupancyRequiresConfirmation'] = (bool) $venue->occupancy_requires_confirmation;
                 }
                 unset($courtDay);
             }

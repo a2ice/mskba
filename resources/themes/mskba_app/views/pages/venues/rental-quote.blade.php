@@ -89,24 +89,26 @@
                 <label class="field-group">Промокод <input name="coupon_code" maxlength="32" value="{{ old('coupon_code', $submitted['coupon_code'] ?? '') }}"></label>
             @endif
             <div class="app-rental-pricing__actions">
-                <button class="button primary" type="submit" data-rental-submit>Рассчитать</button>
+                @if(!$venue->occupancy_requires_confirmation || !auth()->check())
+                    <button class="button primary" type="submit" data-rental-submit>{{ $venue->occupancy_requires_confirmation ? 'Отправить заявку' : 'Рассчитать' }}</button>
+                @endif
                 @auth
                     <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
-                    <button class="button secondary" type="submit" formaction="{{ route('venues.pre-requests.store', $venue) }}">Предзаявка</button>
+                    <button class="{{ $venue->occupancy_requires_confirmation ? 'button primary' : 'button secondary' }}" type="submit" @if($venue->occupancy_requires_confirmation) data-rental-submit @endif formaction="{{ route('venues.pre-requests.store', $venue) }}">{{ $venue->occupancy_requires_confirmation ? 'Отправить заявку' : 'Запрос на аренду' }}</button>
                 @else
-                    <a class="button secondary" href="{{ route('login') }}">Предзаявка · войти</a>
+                    <a class="button secondary" href="{{ route('login') }}">Запрос на аренду · войти</a>
                 @endauth
                 <button class="button secondary" type="button" data-rental-open-calendar>Выбрать время</button>
                 <a class="button secondary" href="{{ route('venues.show', $venue->routeIdentifier()) }}">К площадке</a>
             </div>
             @auth
-                <label class="field-group">Комментарий к предзаявке (необязательно)<textarea name="note" maxlength="4000" rows="2">{{ old('note') }}</textarea></label>
-                <p>Предзаявка открывает переписку с площадкой. Время не резервируется, оплата не требуется.</p>
+                <label class="field-group">Комментарий к запросу на аренду (необязательно)<textarea name="note" maxlength="4000" rows="2">{{ old('note') }}</textarea></label>
+                <p>Запрос на аренду открывает переписку с площадкой. Время не резервируется, оплата не требуется.</p>
             @endauth
         </form>
     </section>
 
-    @if($quote)
+    @if($quote && !$venue->occupancy_requires_confirmation)
         <section class="panel app-rental-pricing__panel" aria-labelledby="rental-quote-result-heading"
             data-rental-quote-monitor data-quote-id="{{ $quote->publicId }}"
             data-quote-status-url="{{ route('venues.rental.quote.status', $venue->id) }}"
@@ -144,11 +146,13 @@
 </section>
 
 <dialog class="app-venue-overlay app-venue-day-dialog" data-venue-day-dialog
+    data-venue-name="{{ $venue->name }}"
+    data-court-name="{{ $court->publicName() }}"
     data-day-url="{{ route('venues.schedule.day', $venue->id) }}"
     data-court-id="{{ $court->id }}"
     aria-labelledby="app-venue-day-dialog-title">
     <div class="app-venue-overlay__header">
-        <h2 id="app-venue-day-dialog-title" data-venue-day-title>Выбор времени</h2>
+        <h2 id="app-venue-day-dialog-title" data-venue-day-title>{{ $venue->name }}</h2>
         <button type="button" data-venue-overlay-close aria-label="Закрыть">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
@@ -158,8 +162,11 @@
         data-venue-day-status hidden></p>
     <div class="app-venue-day-dialog__grid" data-venue-day-slots aria-label="Интервалы бронирования"></div>
     <form method="POST" action="{{ route('venues.rental.quote', $venue->id) }}"
-        class="app-venue-day-dialog__footer" data-venue-day-booking-form>
+        class="app-venue-day-dialog__footer" data-venue-day-booking-form
+        data-pre-request-url="{{ route('venues.pre-requests.store', $venue->id) }}"
+        data-pre-request-prepare-url="{{ route('venues.pre-requests.prepare', $venue->id) }}">
         @csrf
+        <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
         <input type="hidden" name="venue_court_id" data-venue-day-court>
         <input type="hidden" name="starts_at" data-venue-day-start>
         <input type="hidden" name="duration_minutes" data-venue-day-duration>
@@ -175,7 +182,7 @@
 @auth
     @include('theme::pages.account.partials.direct-message-dialog')
 @endauth
-@if($quote)
+@if($quote && !$venue->occupancy_requires_confirmation)
     <dialog class="app-venue-overlay app-rental-pricing__conflict-dialog" data-rental-conflict-dialog
         aria-labelledby="rental-conflict-heading">
         <div class="app-venue-overlay__header">
