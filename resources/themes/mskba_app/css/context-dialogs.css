@@ -205,3 +205,10 @@
 .app-context-help-launcher--venue-create .app-context-help-launcher__mark { flex: 0 0 22px; width: 22px; }
 .app-context-help-launcher--venue-create .app-context-help-launcher__mark svg { width: 22px; height: 22px; }
 .app-context-help-launcher--venue-create .app-context-help-launcher__label { padding: 0; font-size: 15px; }
+
+/* Catalogue FAQ invitation: the button is a normal navigation action. */
+.app-context-help__venue-create{display:grid;gap:10px;margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised)}
+.app-context-help__venue-create h4{margin:0;font-size:16px;font-weight:750}
+.app-context-help__venue-create p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.app-context-help__venue-create a.button.primary{justify-self:start;color:var(--on-accent);text-decoration:none}
+@media(max-width:639px){.app-context-help__venue-create a.button.primary{width:100%;justify-content:center}}
