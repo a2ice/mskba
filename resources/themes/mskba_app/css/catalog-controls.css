@@ -112,8 +112,7 @@
 .app-catalog-advanced>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--text);padding:10px 0;border-top:1px solid var(--line)}
 .app-catalog-advanced__fields{display:grid;gap:16px;min-width:0;padding-top:6px}
 .app-venues-catalog__filter-actions>.app-catalog-tools__reset{flex:none;align-self:stretch;height:auto;min-height:42px}
-@media(max-width:850px){.panel.app-category-toolbar--compact{position:static}}
-@media(max-width:768px){html.has-app-mobile-context .app-category-toolbar__search{display:none}.panel.app-category-toolbar--compact{justify-content:space-between}}
+@media(max-width:768px){.panel.app-category-toolbar--compact{justify-content:space-between;flex-wrap:nowrap}}
 @media(max-width:570px){.panel.app-category-toolbar--compact{flex-wrap:nowrap;gap:6px;padding:8px}}
 
 /* Shared compact catalogs retain their native mobile fallback form. */
@@ -125,7 +124,18 @@
   .app-category__sidebar:has(.app-catalog-advanced) .app-category__filter-actions,
   .app-shop__sidebar .app-shop__filter-actions{position:sticky;bottom:-1px;background:var(--surface);border-top:1px solid var(--line);padding-block:12px 0;z-index:2}
 }
-@media(max-width:850px){.app-shop--catalog .app-shop__toolbar.panel.app-category-toolbar--compact{position:static}.app-category-toolbar__search--desktop{display:none}}
+@media(max-width:850px){.app-category-toolbar__search--desktop{display:none}}
+@media(max-width:768px){
+  html.has-app-mobile-context .app-category-toolbar__search--desktop{display:block}
+  .panel.app-category-toolbar--compact .app-category-toolbar__search{font-size:16px;flex:1 1 0;min-width:0}
+  .app-shop--catalog .app-shop__toolbar.panel.app-category-toolbar--compact{gap:6px;padding:8px}
+}
+@media(max-width:360px){
+  .panel.app-category-toolbar--compact .app-category-toolbar__search{padding-inline:7px}
+  .panel.app-category-toolbar--compact .app-catalog-tools{gap:3px}
+  .panel.app-category-toolbar--compact .app-catalog-tools__views{padding:2px;gap:2px}
+  .panel.app-category-toolbar--compact .app-category-toolbar__count{font-size:12px}
+}
 
 /* Match the player workspace tabs: flush against the moving context bar,
  * keeping the ordinary panel corners until the toolbar is actually stuck. */

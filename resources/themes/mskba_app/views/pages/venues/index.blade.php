@@ -61,7 +61,7 @@
 
 @section('category-toolbar-search')
     <input class="app-category-toolbar__search" type="search" name="search" form="venue-catalog-filter-form"
-        value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" aria-label="Поиск площадок">
+        value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" aria-label="Поиск площадок" enterkeyhint="search">
 @endsection
 
 @section('category-sidebar')

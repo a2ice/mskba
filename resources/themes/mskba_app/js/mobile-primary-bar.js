@@ -45,6 +45,11 @@ if (dock) {
     const definition = origins.map(spec => ({ ...spec, source: document.querySelector(spec.selector) }))
         .find(spec => spec.source);
     const original = definition?.source ?? null;
+    const toolbarSearch = definition && !definition.ajax && !definition.navigation
+        ? document.querySelector('.app-category-toolbar--compact .app-category-toolbar__search')
+        : null;
+    const toolbarDesktopForm = toolbarSearch?.getAttribute('form');
+    let replacedSearch = null;
     let placeholder = null;
     let mounted = false;
     let opened = null;
@@ -166,9 +171,18 @@ if (dock) {
                 shell?.classList.add('app-mobile-primary__origin-hidden');
                 activeForm = original.matches('form') ? original : original.querySelector('form');
             }
-            // A compact toolbar may own a search input outside the form via its form attribute.
-            activeSearch = activeForm?.querySelector('input[type="search"]')
-                ?? activeForm?.elements?.namedItem('search') ?? null;
+            // Use one visible catalog search, associated with the real mobile GET form.
+            if (toolbarSearch && activeForm?.id) {
+                replacedSearch = activeForm.querySelector('input[type="search"]');
+                if (replacedSearch && replacedSearch !== toolbarSearch) {
+                    replacedSearch.disabled = true;
+                }
+                toolbarSearch.setAttribute('form', activeForm.id);
+                activeSearch = toolbarSearch;
+            } else {
+                activeSearch = activeForm?.querySelector('input[type="search"]')
+                    ?? activeForm?.elements?.namedItem('search') ?? null;
+            }
         } else {
             filterLabel.textContent = 'Поиск';
             filterTitle.textContent = 'Поиск по MSKBA';
@@ -176,8 +190,15 @@ if (dock) {
             activeForm = globalForm;
             activeSearch = globalSearch;
         }
-        filterPreview.hidden = !activeSearch;
-        if (activeSearch) {
+        const usesToolbarSearch = Boolean(toolbarSearch && activeSearch === toolbarSearch);
+        filterPanel?.classList.toggle('is-toolbar-search', usesToolbarSearch);
+        dock.classList.toggle('has-catalog-toolbar-search', usesToolbarSearch);
+        if (usesToolbarSearch) {
+            filterLabel.textContent = 'Фильтры';
+            contexts.filter.toggle?.setAttribute('aria-label', 'Открыть фильтры');
+        }
+        filterPreview.hidden = usesToolbarSearch || !activeSearch;
+        if (activeSearch && !usesToolbarSearch) {
             quickSearch.value = activeSearch.value;
             quickSearch.placeholder = activeSearch.placeholder || 'Что хотите найти?';
             activeSearch.addEventListener('input', () => {
@@ -185,11 +206,21 @@ if (dock) {
             });
         }
         updateCount();
-        setExpanded(definition ? activeCount > 0 : Boolean(globalSearch?.value));
+        setExpanded(Boolean(toolbarSearch && activeSearch === toolbarSearch) || (definition ? activeCount > 0 : Boolean(globalSearch?.value)));
     };
 
     const unmountFilters = () => {
         if (!mounted) return;
+        if (toolbarSearch && toolbarDesktopForm) {
+            toolbarSearch.setAttribute('form', toolbarDesktopForm);
+            if (replacedSearch && replacedSearch !== toolbarSearch) {
+                replacedSearch.value = toolbarSearch.value;
+                replacedSearch.disabled = false;
+            }
+            replacedSearch = null;
+            filterPanel?.classList.remove('is-toolbar-search');
+            dock.classList.remove('has-catalog-toolbar-search');
+        }
         if (original) {
             if (definition.ajax) {
                 original.classList.remove('app-mobile-primary__origin-hidden');
@@ -210,7 +241,7 @@ if (dock) {
         current.panel.hidden = true;
         current.toggle?.setAttribute('aria-expanded', 'false');
         current.toggle?.setAttribute('aria-label', opened === 'menu' ? 'Открыть меню'
-            : opened === 'play' ? 'Открыть раздел Играть' : 'Открыть поиск');
+            : opened === 'play' ? 'Открыть раздел Играть' : toolbarSearch ? 'Открыть фильтры' : 'Открыть поиск');
         backdrop.hidden = true;
         document.body.classList.remove('app-mobile-primary-open');
         opened = null;
@@ -224,7 +255,7 @@ if (dock) {
         if (name === 'filter') {
             mountFilters();
             updateCount();
-            setExpanded(definition ? activeCount > 0 : Boolean(globalSearch?.value));
+            setExpanded(Boolean(toolbarSearch && activeSearch === toolbarSearch) || (definition ? activeCount > 0 : Boolean(globalSearch?.value)));
         }
         const item = contexts[name];
         if (!item?.panel || !item?.toggle) return;
@@ -284,8 +315,14 @@ if (dock) {
         }
     });
 
+    toolbarSearch?.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' || event.isComposing || !mobile.matches || !mounted) return;
+        event.preventDefault();
+        toolbarSearch.form?.requestSubmit();
+    });
+
     const syncQuickSearch = () => {
-        if (activeSearch && quickSearch && document.activeElement === quickSearch) {
+        if (activeSearch && activeSearch !== toolbarSearch && quickSearch && document.activeElement === quickSearch) {
             activeSearch.value = quickSearch.value;
         }
     };

@@ -53,7 +53,7 @@
                     <input class="app-category-toolbar__search app-category-toolbar__search--desktop" type="search"
                         form="{{ $categoryToolbarSearch['form'] }}" name="{{ $categoryToolbarSearch['name'] }}"
                         value="{{ $categoryToolbarSearch['value'] }}" placeholder="{{ $categoryToolbarSearch['placeholder'] }}"
-                        aria-label="{{ $categoryToolbarSearch['label'] }}" @if(isset($categoryToolbarSearch['maxlength'])) maxlength="{{ $categoryToolbarSearch['maxlength'] }}" @endif>
+                        aria-label="{{ $categoryToolbarSearch['label'] }}" enterkeyhint="search" @if(isset($categoryToolbarSearch['maxlength'])) maxlength="{{ $categoryToolbarSearch['maxlength'] }}" @endif>
                 @endif
                 @yield('category-toolbar-search')
                 @hasSection('category-toolbar-count')
