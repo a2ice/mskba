@@ -760,6 +760,7 @@ final class VenueResource extends Resource
             CommercialMembershipsRelationManager::class,
             CourtCommissionsRelationManager::class,
             PhotosRelationManager::class,
+            \App\Filament\Backoffice\Resources\Venues\RelationManagers\ReviewsRelationManager::class,
         ];
     }
 

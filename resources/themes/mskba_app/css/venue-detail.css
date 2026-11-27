@@ -829,10 +829,43 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-venue-public-contacts .venue-public-contact-list__label{color:var(--muted);font-size:13px}
 @media(max-width:900px){.app-venue-page__side-stack{position:static;max-height:none;overflow:visible}.app-venue-page__side-stack[data-venue-side-empty]{display:none}}
 
-/* The public venue rating is compact, never a creation action. */
-.app-venue-intro .app-entity-heading { align-items: flex-start; }
-.app-venue-intro__rating { display: inline-flex; align-items: center; gap: 5px; flex: none; margin-top: 6px; color: var(--text); font-size: 18px; font-weight: 800; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.app-venue-intro__rating svg { width: 22px; height: 22px; fill: #f5b52e; stroke: #ad7317; stroke-width: 1; }
-.app-venue-intro__rating.is-unrated { color: var(--muted); }
-.app-venue-intro__rating.is-unrated svg { fill: none; stroke: currentColor; stroke-width: 1.5; }
-@media(max-width:640px){.app-venue-intro .app-entity-heading{gap:10px}.app-venue-intro__rating{font-size:16px;margin-top:4px}.app-venue-intro__rating svg{width:20px;height:20px}}
+/* Venue rating is a public action; align it with the H1 baseline area. */
+.app-venue-intro .app-entity-heading{align-items:center}
+.app-venue-intro__rating{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;min-width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--text);font:inherit;font-size:clamp(27px,3.5vw,44px);font-weight:750;line-height:1.12;letter-spacing:-.03em;white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.app-venue-intro__rating svg{width:.9em;height:.9em;stroke:var(--accent);stroke-width:1.3}
+.app-venue-intro__rating.is-unrated svg{stroke:var(--muted)}
+.app-venue-intro__rating [hidden]{display:none!important}
+.app-venue-intro__rating:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
+.app-venue-court-overview__status[data-operational="active"] svg{color:var(--success)}
+.app-venue-court-overview__status[data-operational="inactive"] svg{color:var(--danger)}
+.app-venue-reviews__scroll{width:100%;max-height:250px;overflow-y:auto;overscroll-behavior:contain;min-width:0}
+.app-venue-reviews__list{display:flex;flex-direction:column;gap:10px;width:100%}
+.app-venue-review{display:grid;grid-template-columns:minmax(64px,100px) minmax(0,1fr);align-items:start;gap:16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised)}
+.app-venue-review__author{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;min-width:0;font-size:12px;overflow-wrap:anywhere}
+.app-venue-review__avatar{width:44px;height:44px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:var(--surface);border:1px solid var(--line);font-size:18px}
+.app-venue-review__avatar img{width:100%;height:100%;object-fit:cover}
+.app-venue-review__detail{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}
+.app-venue-review__stars{font-size:19px;letter-spacing:1px;color:var(--accent);line-height:1.15}
+.app-venue-review__body{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+.app-venue-review__edit{font-size:12px;min-height:36px;padding:6px 10px}
+.app-venue-reviews__loading{display:flex;justify-content:center;align-items:center;gap:8px;padding:10px;color:var(--muted);font-size:13px}
+.app-venue-reviews__loading .image-upload-loading__spinner{width:20px;height:20px}
+.app-venue-reviews__actions{display:flex;gap:10px;flex-wrap:wrap;width:100%}
+.app-venue-reviews__scroll [hidden]{display:none!important}
+dialog.app-venue-review-dialog{position:fixed;inset:0;margin:auto;transform:none;width:min(480px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:min(90dvh,720px);height:fit-content;overflow-y:auto;text-align:center;box-sizing:border-box}
+.app-venue-review-dialog .app-venue-overlay__header{position:relative;justify-content:center;padding-inline:38px;min-height:35px}
+.app-venue-review-dialog .app-venue-overlay__header>.icon-button{position:absolute;right:0;top:0}
+.app-venue-review-dialog form{gap:14px;align-items:center}
+.app-venue-review-dialog__value{font-size:64px;font-weight:800;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.app-venue-review-dialog__range{width:100%}
+.app-venue-review-dialog__range input[type="range"]{appearance:none;-webkit-appearance:none;padding:0;margin:6px 0 0;min-height:26px;height:26px;width:100%;border:0;background:transparent;cursor:pointer;accent-color:var(--accent)}
+.app-venue-review-dialog__range input[type="range"]::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:var(--control-line)}
+.app-venue-review-dialog__range input[type="range"]::-moz-range-track{height:6px;border-radius:999px;background:var(--control-line)}
+.app-venue-review-dialog__range input[type="range"]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--accent)}
+.app-venue-review-dialog__range input[type="range"]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--accent)}
+.app-venue-review-dialog__range-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.app-venue-review-dialog .field-group label{font-weight:400}
+.app-venue-review-dialog textarea{text-align:left}
+.app-venue-review-dialog .app-venue-overlay__actions{width:100%;margin-top:0}
+.app-venue-review-thanks h2{margin-bottom:10px}
+@media(max-width:640px){.app-venue-intro .app-entity-heading{gap:10px}.app-venue-review{grid-template-columns:64px minmax(0,1fr);gap:10px}.app-venue-reviews__actions>.button{flex:1 1 auto}}
