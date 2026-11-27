@@ -65,4 +65,41 @@ final class PageContextFaqTest extends TestCase
         $this->assertSame(1, substr_count($html, 'data-context-help-dialog'));
         $this->assertSame(1, substr_count($html, 'data-help-launcher'));
     }
+    public function test_venue_catalog_keeps_help_and_detail_shows_floating_create_and_rating(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->withoutVite();
+
+        $venue = \App\Modules\Venue\Domain\Models\Venue::factory()->create([
+            'status' => \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED,
+        ]);
+        $this->get(route('venues'))->assertOk()
+            ->assertDontSee('data-venue-floating-create', false)
+            ->assertSee('data-help-launcher', false)
+            ->assertSee('app-venues-catalog__create', false)
+            ->assertSee('data-help-venue-create-template', false)
+            ->assertSee('Мы приветствуем вклад каждого участника')
+            ->assertSee('data-context-help-dialog', false);
+
+        $url = route('venues.show', $venue->routeIdentifier());
+        $this->get($url)->assertOk()
+            ->assertSee('data-venue-floating-create', false)
+            ->assertDontSee('data-help-launcher', false)
+            ->assertSee('data-venue-heading-rating', false)
+            ->assertDontSee('data-help-venue-create-template', false)
+            ->assertSee('Пока нет оценок игроков');
+
+        foreach ([[5, true], [4, true], [1, false]] as [$rating, $published]) {
+            \App\Modules\Venue\Domain\Models\VenueReview::factory()->for($venue)->create([
+                'rating' => $rating,
+                'is_published' => $published,
+                'published_at' => $published ? now() : null,
+            ]);
+        }
+        $this->get($url)->assertOk()
+            ->assertSee('Рейтинг площадки: 4.5 из 5 · оценок: 2')
+            ->assertSee('data-context-help-dialog', false);
+    }
 }

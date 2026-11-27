@@ -822,3 +822,11 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-venue-public-contacts .venue-public-contact-list a{color:var(--accent);font-weight:650}
 .app-venue-public-contacts .venue-public-contact-list__label{color:var(--muted);font-size:13px}
 @media(max-width:900px){.app-venue-page__side-stack{position:static;max-height:none;overflow:visible}.app-venue-page__side-stack[data-venue-side-empty]{display:none}}
+
+/* The public venue rating is compact, never a creation action. */
+.app-venue-intro .app-entity-heading { align-items: flex-start; }
+.app-venue-intro__rating { display: inline-flex; align-items: center; gap: 5px; flex: none; margin-top: 6px; color: var(--text); font-size: 18px; font-weight: 800; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.app-venue-intro__rating svg { width: 22px; height: 22px; fill: #f5b52e; stroke: #ad7317; stroke-width: 1; }
+.app-venue-intro__rating.is-unrated { color: var(--muted); }
+.app-venue-intro__rating.is-unrated svg { fill: none; stroke: currentColor; stroke-width: 1.5; }
+@media(max-width:640px){.app-venue-intro .app-entity-heading{gap:10px}.app-venue-intro__rating{font-size:16px;margin-top:4px}.app-venue-intro__rating svg{width:20px;height:20px}}
