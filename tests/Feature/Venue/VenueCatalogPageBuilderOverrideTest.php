@@ -45,7 +45,8 @@ final class VenueCatalogPageBuilderOverrideTest extends TestCase
         $this->get('/venues')->assertOk()
             ->assertSee('data-venue-infinite-catalog')
             ->assertSee('app-catalog-tools__views')
-            ->assertSee('class="button primary app-venues-catalog__create"', false)
+            ->assertSee('data-venue-floating-create', false)
+            ->assertDontSee('class="button primary app-venues-catalog__create"', false)
             ->assertSee('aria-label="Добавить площадку"', false)
             ->assertDontSee('CMS VENUES LEGACY');
         $this->assertDatabaseHas('page_builder_revisions', [
