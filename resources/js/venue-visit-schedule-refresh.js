@@ -1,5 +1,4 @@
 import { subscribePublic } from './realtime.js';
-
 import { markVisitRefreshFailed } from './venue-visit-schedule-state.js';
 
 // Only a page that actually queued (or joined) a refresh subscribes/polls.
@@ -25,13 +24,23 @@ function initVisitScheduleRefresh() {
     let checking = false;
     let stopped = false;
     let timer;
+    let deadlineTimer;
     let unsubscribe = () => {};
+    const controller = new AbortController();
     const deadline = Date.now() + 125_000;
 
     const stop = () => {
+        if (stopped) return;
         stopped = true;
         window.clearTimeout(timer);
+        window.clearTimeout(deadlineTimer);
+        controller.abort();
         unsubscribe();
+    };
+    const failPending = () => {
+        if (stopped) return;
+        markVisitRefreshFailed(section, pending);
+        stop();
     };
     const plan = () => {
         window.clearTimeout(timer);
@@ -41,14 +50,14 @@ function initVisitScheduleRefresh() {
     async function check() {
         if (stopped || checking) return;
         if (Date.now() > deadline) {
-            markVisitRefreshFailed(section, pending);
-            stop();
+            failPending();
             return;
         }
         checking = true;
         try {
             const response = await fetch(url, {
                 credentials: 'same-origin', cache: 'no-store',
+                signal: controller.signal,
                 headers: { Accept: 'application/json' },
             });
             if (!response.ok || stopped) throw new Error('Refresh status unavailable');
@@ -59,6 +68,7 @@ function initVisitScheduleRefresh() {
                 // reconstructed prices, time intervals or stale booking buttons.
                 const fragment = await fetch(fragmentUrl, {
                     credentials: 'same-origin', cache: 'no-store',
+                    signal: controller.signal,
                     headers: { Accept: 'text/html' },
                 });
                 if (!fragment.ok || stopped) throw new Error('Refresh fragment unavailable');
@@ -76,6 +86,9 @@ function initVisitScheduleRefresh() {
                 // The fragment can observe a newer state than the status
                 // request (another visitor may have started a refresh).
                 const rendered = JSON.parse(section.dataset.refreshStates || '{}');
+                // A pending marker can expire without a worker completing.
+                // Treat a still-stale snapshot as a failed refresh, not success.
+                markVisitRefreshFailed(section, new Set(settled.filter(id => rendered[id]?.state === 'stale')));
                 for (const id of settled) {
                     if (rendered[id]?.state !== 'updating') pending.delete(id);
                 }
@@ -99,6 +112,8 @@ function initVisitScheduleRefresh() {
         // A missing public Reverb configuration is not fatal.
     }
     window.addEventListener('pagehide', stop, { once: true });
+    // Independent deadline also releases the UI if a fetch hangs.
+    deadlineTimer = window.setTimeout(failPending, Math.max(0, deadline - Date.now()));
     plan();
 }
 

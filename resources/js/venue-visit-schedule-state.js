@@ -4,7 +4,7 @@ export function markVisitRefreshFailed(section, pending) {
     for (const scope of section.querySelectorAll('[data-venue-refresh-scope]')) {
         if (!pending.has(scope.dataset.venueRefreshScope)) continue;
         const message = scope.querySelector('[data-venue-refresh-message]');
-        if (message?.dataset.refreshState === 'updating') {
+        if (['updating', 'stale'].includes(message?.dataset.refreshState)) {
             message.dataset.refreshState = 'failed';
             const observed = message.dataset.refreshObserved;
             message.title = 'Не удалось обновить расписание. Показаны последние сохранённые данные.'

@@ -765,6 +765,58 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         Bus::assertDispatchedTimes(RefreshVisitedCourtSchedule::class, 1);
     }
 
+    public function test_app_schedule_locks_only_updating_court_days_and_renders_inline_status(): void
+    {
+        $day = [
+            'date' => '2026-11-13',
+            'label' => '13 ноя',
+            'weekday' => 'Пт',
+            'intervals' => [['startsAt' => '07:00', 'endsAt' => '23:00']],
+            'occupancyPercent' => 50,
+        ];
+        $venue = new class($day)
+        {
+            public int $id = 1;
+
+            public bool $isCourtPage = false;
+
+            public array $selectedCourt = ['environment' => 'indoor'];
+
+            public array $courtSchedules;
+
+            public function __construct(array $day)
+            {
+                $this->courtSchedules = array_map(fn ($id) => [
+                    'id' => $id,
+                    'name' => 'Игровая зона '.$id,
+                    'routeIdentifier' => $id.'-court',
+                    'bookingEnabled' => true,
+                    'days' => [$day],
+                ], [1, 2, 3]);
+            }
+
+            public function routeIdentifier(): string
+            {
+                return '1-venue';
+            }
+        };
+        $html = view()->file(resource_path('themes/mskba_app/views/pages/venues/schedule-fragment.blade.php'), [
+            'venue' => $venue,
+            'scheduleRefresh' => [
+                1 => ['state' => 'updating', 'observed_at' => null],
+                2 => ['state' => 'failed', 'observed_at' => null],
+                3 => ['state' => 'cached', 'observed_at' => null],
+            ],
+        ])->render();
+
+        $this->assertMatchesRegularExpression('/data-venue-day-open data-court-id="1"\s+disabled data-venue-refresh-disabled/', $html);
+        $this->assertDoesNotMatchRegularExpression('/data-venue-day-open data-court-id="[23]"\s+disabled/', $html);
+        $this->assertStringContainsString('Обновляем…', $html);
+        $this->assertStringContainsString('Не удалось обновить', $html);
+        $this->assertStringContainsString('Расписание актуально', $html);
+        $this->assertSame(1, substr_count($html, 'disabled data-venue-refresh-disabled'));
+    }
+
     public function test_visit_worker_applies_a_new_snapshot_and_broadcasts_public_invalidation(): void
     {
         config()->set('venue_integrations.apply_findsport_native_enabled', true);

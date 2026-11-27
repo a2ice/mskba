@@ -42,3 +42,11 @@ test('timeout switches only pending zones to error and unlocks refresh-disabled 
     assert.equal(unrelated.message.dataset.refreshState, 'cached');
     assert.equal(unrelated.button.disabled, true);
 });
+
+test('expired pending marker renders stale snapshot as a failed refresh', () => {
+    const expired = scope('4', 'stale');
+    markVisitRefreshFailed({ querySelectorAll: () => [expired] }, new Set(['4']));
+    assert.equal(expired.message.dataset.refreshState, 'failed');
+    assert.equal(expired.error.hidden, false);
+    assert.equal(expired.button.disabled, false);
+});
