@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\PortalCommissionPolicy;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
+use App\Modules\Venue\Domain\Models\VenueAgentAgreement;
 use App\Modules\Venue\Domain\Models\VenueCommissionPolicy;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueCourtCommissionPolicy;
@@ -81,6 +82,10 @@ final readonly class VenueCommissionManager
             $venue, $actor, $currency, $mode, $value, $selectedAgentId, $disableAllCommissions,
         ): VenueCommissionPolicy {
             Venue::query()->whereKey($venue->id)->lockForUpdate()->firstOrFail();
+            $agreement = VenueAgentAgreement::query()->where('venue_id', $venue->id)->where('active_marker', true)->first();
+            if ($agreement !== null && (int) $agreement->commission_agent_id !== (int) $selectedAgentId) {
+                throw ValidationException::withMessages(['selected_agent_id' => 'Смена агента требует отдельной процедуры агентского договора.']);
+            }
             if ($selectedAgentId !== null) {
                 $agent = VenueCommissionAgent::query()->where('venue_id', $venue->id)
                     ->where('is_active', true)->findOrFail($selectedAgentId);
@@ -163,6 +168,10 @@ final readonly class VenueCommissionManager
             $venue, $actor, $candidate, $mode, $value, $currency, $active,
         ): VenueCommissionAgent {
             Venue::query()->whereKey($venue->id)->lockForUpdate()->firstOrFail();
+            if (VenueAgentAgreement::query()->where('venue_id', $venue->id)
+                ->whereIn('user_id', $candidate->identityIds())->where('active_marker', true)->exists()) {
+                throw ValidationException::withMessages(['user_id' => 'Условия активного агентского договора изменяются отдельным согласованием.']);
+            }
             $agent = VenueCommissionAgent::query()
                 ->where('venue_id', $venue->id)->where('user_id', $candidate->id)
                 ->lockForUpdate()->first() ?? new VenueCommissionAgent([

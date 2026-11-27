@@ -22,7 +22,8 @@ final class BackofficeContractVerificationController extends Controller
         $user = $request->user()->canonical();
         $membership = $contract->membership;
         abort_if($membership !== null && in_array((int) $membership->user_id, $user->identityIds(), true), 403);
-        abort_unless($contract->verification_requirement === 'required', 422);
+        abort_unless($contract->verification_requirement === 'required'
+            && $contract->comment !== \App\Modules\Venue\Domain\Models\VenueAgentAgreement::CONTRACT_MARKER, 422);
         abort_if($data['decision'] === 'verified' && ! $contract->evidenceDocuments()->exists()
             && ! $contract->verification?->source_id, 422, 'Для подтверждения нужен документ или проверенное основание.');
 

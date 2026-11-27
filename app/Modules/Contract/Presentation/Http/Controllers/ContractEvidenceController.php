@@ -22,7 +22,8 @@ final class ContractEvidenceController extends Controller
         $user = $request->user()?->canonical();
         abort_unless($user !== null && $this->isParticipant($user, $contract)
             && $contract->status === ContractStatusEnum::ACTIVE
-            && $contract->verification_requirement === 'required', 403);
+            && $contract->verification_requirement === 'required'
+            && $contract->comment !== \App\Modules\Venue\Domain\Models\VenueAgentAgreement::CONTRACT_MARKER, 403);
 
         $request->validate([
             'document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],

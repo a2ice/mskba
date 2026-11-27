@@ -63,6 +63,54 @@ final class VenueAgentAgreementTest extends TestCase
         $this->assertNotNull($closed->closed_at);
     }
 
+    public function test_review_and_initial_activation_are_separate_and_protect_agreed_terms(): void
+    {
+        config()->set('features.venue_rental.rental_flow', true);
+        $venue = Venue::factory()->create();
+        $admin = $this->user(Role::SUPERADMIN);
+        $agent = $this->user();
+        $service = app(VenueAgentAgreementService::class);
+        $record = $service->propose($venue, $agent, $admin, 'percent', '5,25',
+            [Permission::VIEW, Permission::PROPOSE_EVENT_BOOKING], 'Согласованные условия сотрудничества.');
+        $record = $service->accept($venue, $record, $agent, $record->terms_hash);
+        try {
+            $service->activate($venue, $record, $admin);
+            $this->fail('Activation before review must fail.');
+        } catch (HttpException $e) {
+            $this->assertSame(409, $e->getStatusCode());
+        }
+        $record = $service->verify($venue, $record, $admin, 'Тестовый договор №123',
+            'Проверены условия и договорное основание.');
+        $this->assertSame('verified', $record->status);
+        $this->assertDatabaseMissing('venue_commission_agents', ['venue_id' => $venue->id]);
+        $this->assertDatabaseMissing('contract_memberships', ['scope_id' => $venue->id, 'scope_type' => 'venue', 'user_id' => $agent->id]);
+
+        $record = $service->activate($venue, $record, $admin);
+        $this->assertSame('active', $record->status);
+        $this->assertTrue($record->active_marker);
+        $this->assertSame($record->contract_id, $service->activate($venue, $record, $admin)->contract_id);
+        $this->assertSame(525, $record->commissionAgent->value);
+        $this->assertEquals($record->commission_agent_id, $venue->commissionPolicy()->first()->selected_agent_id);
+        $this->assertTrue($record->contract->verification->isValid());
+        $this->assertTrue(app(\App\Modules\Venue\Application\Services\VenueMembershipAccess::class)->allows($agent, $venue, Permission::PROPOSE_EVENT_BOOKING));
+        $this->assertFalse(app(\App\Modules\Venue\Application\Services\VenueMembershipAccess::class)->allows($agent, $venue, Permission::CONFIRM_PAYMENTS));
+
+        $commission = app(\App\Modules\VenueBooking\Application\Services\VenueCommissionManager::class);
+        try {
+            $commission->saveAgent($venue, $admin, $agent, 'percent', '10');
+            $this->fail('Legacy rate editor must not overwrite agreed terms.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('user_id', $e->errors());
+        }
+        try {
+            $commission->setVenue($venue, $admin, 'inherit', '0', null);
+            $this->fail('Legacy selection must not remove active agreement.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('selected_agent_id', $e->errors());
+        }
+        $this->assertSame(525, $record->commissionAgent()->first()->value);
+    }
+
     public function test_proposal_does_not_infer_financial_authority_or_allow_unsafe_permissions(): void
     {
         $venue = Venue::factory()->create();

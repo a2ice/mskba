@@ -110,6 +110,9 @@ final readonly class ManageVenueMembershipHandler
             $membership = ContractMembership::query()->with('contract')->lockForUpdate()->findOrFail($membership->id);
             $court = $this->courtFromMembership($membership, $venue);
             $this->authorize($issuer, $venue, $court);
+            if ($membership->contract?->comment === \App\Modules\Venue\Domain\Models\VenueAgentAgreement::CONTRACT_MARKER) {
+                throw new VenueMembershipException('Агентский договор изменяется только через отдельный процесс согласования.');
+            }
 
             if (in_array($membership->access_level, [VenueMembershipAccessLevelEnum::OWNER->value, 'primary_manager'], true)) {
                 throw new VenueMembershipException('Владелец и основной управляющий изменяются только отдельным процессом передачи полномочий.');
@@ -140,6 +143,9 @@ final readonly class ManageVenueMembershipHandler
             $membership = ContractMembership::query()->with('contract')->lockForUpdate()->findOrFail($membership->id);
             $court = $this->courtFromMembership($membership, $venue);
             $this->authorize($issuer, $venue, $court);
+            if ($membership->contract?->comment === \App\Modules\Venue\Domain\Models\VenueAgentAgreement::CONTRACT_MARKER) {
+                throw new VenueMembershipException('Агентский договор отзывается только через отдельный процесс.');
+            }
 
             if (in_array($membership->access_level, [VenueMembershipAccessLevelEnum::OWNER->value, 'primary_manager'], true)) {
                 throw new VenueMembershipException('Нельзя отозвать владельца или основного управляющего без передачи полномочий.');
