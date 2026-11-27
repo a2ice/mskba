@@ -76,6 +76,7 @@
 @endphp
 @php
     $bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
+    $canReviewVenue = $bannerVenue?->isPubliclyVisible() ?? false;
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     @include('components.entity-public-banner', [
@@ -133,7 +134,7 @@
                     $venueRating = $venue->about->rating;
                     $venueRatingLabel = $venueRating === null ? 'Пока нет оценок игроков' : 'Рейтинг площадки: '.number_format($venueRating, 1, '.', '').' из 5 · оценок: '.($venue->about->ratingCount ?? 0);
                 @endphp
-                <button type="button" class="app-venue-intro__rating{{ $venueRating === null ? ' is-unrated' : '' }}" data-venue-heading-rating data-venue-review-open
+                <button type="button" class="app-venue-intro__rating{{ $venueRating === null ? ' is-unrated' : '' }}" data-venue-heading-rating @if($canReviewVenue) data-venue-review-open @else disabled @endif
                       title="{{ $venueRatingLabel }}" aria-label="Оценить площадку. {{ $venueRatingLabel }}" aria-haspopup="dialog">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <defs><linearGradient id="venue-rating-fill"><stop data-review-fill offset="{{ ($venueRating ?? 0) * 20 }}%" stop-color="var(--accent)"/><stop data-review-fill offset="{{ ($venueRating ?? 0) * 20 }}%" stop-color="transparent"/></linearGradient></defs>
