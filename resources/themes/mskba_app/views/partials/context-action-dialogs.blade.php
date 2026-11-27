@@ -12,12 +12,23 @@
         data-help-url="{{ route('faq.help-content') }}"
         data-question-url="{{ route('faq.questions.store') }}"
         data-help-page-key="{{ app(\App\Presentation\Navigation\PageFaqContextResolver::class)->pageKey() }}"
+        data-help-context="{{ app(\App\Presentation\Navigation\FaqContextResolver::class)->context() }}"
+        @if(request()->routeIs('venues', 'venues.collections.show', 'venues.show', 'venues.courts.show')) data-help-initial-section="venues" @endif
         aria-labelledby="context-help-title">
     <header class="mskba-modal__header app-context-dialog__header">
         <h2 id="context-help-title">Помощь и FAQ</h2>
         <button type="button" data-context-help-close aria-label="Закрыть">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll app-context-help__body">
+        @if(request()->routeIs('venues', 'venues.collections.show', 'venues.show', 'venues.courts.show'))
+            <template data-help-venue-create-template>
+                <div class="app-context-help__venue-create" data-help-venue-create>
+                    <h4>Много площадок не бывает!</h4>
+                    <p>Знаете баскетбольный зал или уличную площадку, которой еще нет на портале?</p>
+                    <a class="button primary" href="{{ route('venues.create') }}">Добавить площадку</a>
+                </div>
+            </template>
+        @endif
         <section class="app-context-help__page" data-help-page hidden aria-label="Справка по текущей странице">
             <h3 class="app-context-help__page-heading" data-help-page-title></h3>
             <div class="app-context-help__tabs" data-help-page-tabs aria-label="Разделы справки">
@@ -30,6 +41,10 @@
             <button type="button" class="app-context-help__catalog-link" data-help-page-catalog>Перейти ко всем вопросам FAQ</button>
         </section>
         <div data-help-catalog>
+        <div class="app-context-help__navigation">
+            <button type="button" class="app-context-help__back" data-help-back aria-label="Назад" title="Назад" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+            </button>
         <div class="app-context-help__lookup" data-help-combobox>
             <input type="text" id="context-help-section" data-help-search
                    role="combobox" aria-label="Выбрать раздел FAQ" aria-autocomplete="list"
@@ -42,6 +57,7 @@
             <button type="button" class="app-context-help__clear" data-help-clear aria-label="Сбросить раздел FAQ" hidden>×</button>
             <div id="context-help-options" class="app-context-help__options" data-help-options
                  role="listbox" aria-label="Разделы FAQ" hidden></div>
+        </div>
         </div>
         <nav class="app-context-help__breadcrumbs" aria-label="Навигация внутри FAQ" data-help-breadcrumbs></nav>
         <div class="app-context-help__articles" data-help-articles role="status" aria-live="polite">Загружаем ответы…</div>
@@ -72,7 +88,9 @@
                     <p role="status" aria-live="polite" data-help-form-status></p>
                     <button type="submit" class="button primary">Отправить вопрос</button>
                 </form>
-                <p class="app-context-help__mail">Также можно написать на <a href="mailto:{{ config('support.email') }}">{{ config('support.email') }}</a>.</p>
+                @if($publicEmail = app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicEmail())
+                    <p class="app-context-help__mail">Также можно написать на <a href="{{ $publicEmail['href'] }}">{{ $publicEmail['value'] }}</a>.</p>
+                @endif
             </div>
         </details>
     </div>

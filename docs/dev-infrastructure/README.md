@@ -125,3 +125,16 @@ production-конфигурации не меняются. Серверный AP
 test_emulate_ и meta.is_emulated нельзя переносить в production.
 Подробные сценарии в docs/specification/identity-account-confirmation.md.
 Незакрыто: реальный Telegram webhook/proxy и VK ID OAuth для dev.
+
+### Аудит публичных контактов MSKBA (#1060)
+
+Все обнаруженные системные выводы email/телефона/сообществ используют PortalContactSettings: футеры, help/support, оба письма приглашения, экран приглашения и SEO schema.org sameAs в mskba_app/mskba_dark. SocialIntegrationSettings::publicCommunityUrls читает сохранённые значения также без HTTP middleware; seo.same_as с дублями удалён. Скрытые/пустые каналы не публикуются и не возвращаются к config fallback после сохранения. Юридический privacy_email, SMTP и внутренние адреса/боты/шаринг, контакты площадок и людей не подменяются. Для Page Builder добавлен системный <mskba-component name="portal-contacts"></mskba-component> (опционально source="email"/"phone"/"telegram"/"vk"), который читает актуальные контакты при рендере без повторной публикации. Read-only команда php artisan portal:contact-audit --json сканирует текущие draft/published HTML/CSS/JS и описания Content, сообщает таблицу/ID/поле/типы без самих значений. Совпадения проверяются вручную, не заменять контакты третьих лиц и исторический контент автоматически. Проверка реальных DB-данных DEV/PROD пока не проведена. Статический Nginx fallback public/maintenance.html при остановленном PHP/DB больше не показывает зашитые контакты: offline snapshot требует отдельной безопасной настройки; приоритет — не публиковать устаревшие/скрытые данные. Конфигурация Nginx не меняется.
+
+
+### Единый дизайн HTTP-ошибок и offline fallback (#1138, 27.11.2026)
+
+- Laravel `resources/views/errors/page.blade.php` и автономная `public/maintenance.html` имеют одинаковые стили и встроенный фирменный логотип. Код HTTP выводится компактно; сообщение и действие соответствуют типу ошибки. Ответы приложения сохраняют HTTP-статус; 5xx предлагают повторить GET-навигацию по текущему URL.
+- Динамическая страница читает только публичные каналы через PortalContactSettings. При исключении контакты скрываются. Статический fallback не подключается к БД и не содержит зашитых контактов (это заменяет старое описание выше).
+- DEV host fallback остаётся в существующей конфигурации. Подготовлен независимый `ops/nginx/mskba-prod-maintenance.inc` для канонического HTTPS vhost mskba.ru. Он возвращает HTTP 503 для 502/503/504 с Retry-After, no-store и noindex; не перехватывает 500 или 4xx. Никакой автоматической установки в CI/deploy.
+- При отдельно согласованном production-релизе: проверить фактический vhost и абсолютный путь к читаемому HTML, сделать резервную копию конфигурации, установить snippet в /etc/nginx/snippets/mskba-prod-maintenance.conf, добавить include только в HTTPS server mskba.ru, выполнить nginx -t и лишь затем reload. При ошибке восстановить резервную копию и проверить конфигурацию. Не останавливать production ради теста: проверять поведение на изолированном стенде. Проверить обычные ответы и редиректы www/HTTP после активации.
+- CI проверяет паритет CSS и логотипа, изоляцию Nginx-конфигураций и offline-независимость. Визуальная приёмка и проверка живого Nginx остаются отдельными этапами.

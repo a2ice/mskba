@@ -128,6 +128,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\BackofficeVenuePhotoOriginal
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueCatalogDistanceController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueScheduleDayController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueMetroStationController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
@@ -597,6 +598,9 @@ Route::prefix('leagues')->group(function () {
 });
 
 Route::prefix('venues')->group(function () {
+    Route::post('/distance-location', VenueCatalogDistanceController::class)
+        ->middleware('throttle:30,1')
+        ->name('venues.distance-location');
     Route::get('/', [VenueController::class, 'index'])
         ->name('venues')
         ->defaults('breadcrumb', 'Площадки');
@@ -639,6 +643,8 @@ Route::prefix('venues')->group(function () {
             ->whereNumber('venue')
             ->name('venues.rental.availability');
     });
+    Route::get('/{venue}/schedule/refresh-status', \App\Modules\Venue\Presentation\Http\Controllers\VenueScheduleRefreshStatusController::class)
+        ->whereNumber('venue')->middleware('throttle:30,1')->name('venues.schedule.refresh-status');
     Route::get('/{venue}/schedule/day', VenueScheduleDayController::class)
         ->whereNumber('venue')
         ->middleware('throttle:30,1')
@@ -1572,6 +1578,9 @@ Route::post('/invites/continue/register', [\App\Modules\Invitation\Presentation\
 Route::post('/invites/continue/accept', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'accept'])
     ->middleware(['auth', 'throttle:10,1'])->name('account-invitations.accept');
 
+
+Route::post('/backoffice/portal-contacts/save', \App\Http\Controllers\Backoffice\PortalContactSettingsController::class)
+    ->middleware(['auth:web', 'throttle:10,1'])->name('backoffice.portal-contacts.save');
 
 Route::post('/backoffice/social-integrations/{provider}/save', [\App\Http\Controllers\Backoffice\SocialIntegrationSettingsController::class, 'save'])
     ->whereIn('provider', ['telegram', 'vk'])->middleware(['auth:web', 'throttle:10,1'])

@@ -39,6 +39,7 @@
             <div><code>[image id="17"]</code> — изображение из блока «Изображения материала»; <code>view="wide"</code> растягивает его по ширине контента.</div>
             <div><code>[popup type="venue" id="7" view="short"]Название площадки[/popup]</code> — кликабельная краткая карточка площадки.</div>
             <div><code>[creation_requirements topic="venues"]</code> — актуальные системные условия создания сущности. Темы: <code>venues, events, teams, tournaments, coordination, sections</code>.</div>
+            <div><code>[portal-contact-email]</code> — публичный email портала из Filament (с предлогом «на»); <code>[portal-contact-email partnership]</code> — с темой письма о сотрудничестве. Если email скрыт, ссылка ведёт в раздел помощи.</div>
             <div><code>[anchor id="contact-confirmation"]</code> — якорь внутри статьи для прямой ссылки на конкретный раздел.</div>
         </div>
     </section>

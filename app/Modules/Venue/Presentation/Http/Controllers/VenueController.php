@@ -19,6 +19,7 @@ use App\Modules\Venue\Application\Services\AccountVenueEditorAccess;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler;
+use App\Modules\Venue\Application\Services\VenueCatalogDistancePreference;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowEditableVenueHandler;
@@ -101,7 +102,7 @@ class VenueController extends Controller
             'longitude' => ['nullable', 'required_with:latitude,radius_km', 'numeric', 'between:-180,180'],
             'radius_km' => ['nullable', 'required_with:latitude,longitude', 'integer', 'between:1,10'],
             'view' => ['nullable', Rule::in(['list', 'map'])],
-            'sort' => ['nullable', Rule::in(['new', 'name_asc', 'name_desc'])],
+            'sort' => ['nullable', Rule::in(['new', 'name_asc', 'name_desc', 'distance'])],
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'fragment' => ['nullable', Rule::in(['items'])],
         ]);
@@ -140,11 +141,16 @@ class VenueController extends Controller
         $matchingInterests = $request->boolean('my_interests')
             ? ($chosenInterest !== null ? $myInterests->where('id', $chosenInterest)->values() : $myInterests)
             : null;
+        $distancePreference = app(VenueCatalogDistancePreference::class);
+        $distanceOrigin = $isLandingPreview ? null : $distancePreference->coordinates($request);
+        $venueDistanceAvailable = $distanceOrigin !== null;
+        $venueDistanceAnswered = $isLandingPreview || $distancePreference->answered($request);
         $venues = $useCase->handle(
             $landing === null ? $request->user() : null,
             $landing === null ? $actors->resolveForRequest($request) : null,
             $filters, $matchingInterests,
             configuredRentalOnly: $request->boolean('rental_configured'),
+            distanceOrigin: $distanceOrigin,
         );
         $landingData = [];
         if ($landing !== null) {
@@ -239,12 +245,17 @@ class VenueController extends Controller
 
         $response = ThemeResolver::page('venues.index', $landingData + compact(
             'venues', 'filters', 'total', 'page', 'hasMore', 'currentView', 'mapPoints',
+            'venueDistanceAvailable', 'venueDistanceAnswered',
         ) + [
             'types' => VenueTypeEnum::cases(),
             'operationalStatuses' => VenueOperationalStatusEnum::cases(),
             'myInterests' => $myInterests,
             'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
         ]);
+
+        if ($venueDistanceAvailable || ($filters['sort'] ?? null) === 'distance') {
+            $response->header('Cache-Control', 'private, no-store');
+        }
 
         return $isLandingPreview ? $this->privateLandingPreview($response) : $response;
     }
@@ -530,6 +541,14 @@ class VenueController extends Controller
             ]])->setStatusCode($status);
         }
 
+        $refreshFragment = $request->boolean('schedule_refresh_fragment');
+        $scheduleRefresh = app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class)
+            ->forVenue($venue->id, enqueue: ! $refreshFragment && $request->isMethod('GET'));
+        if ($refreshFragment) {
+            return response()->view('theme::pages.venues.schedule-fragment', compact('venue', 'scheduleRefresh'))
+                ->header('Cache-Control', 'no-store');
+        }
+
         $nearbyVenues = $venue->address?->latitude !== null && $venue->address?->longitude !== null
             ? $findNearbyVenues->handle(
                 $venue->id,
@@ -547,6 +566,7 @@ class VenueController extends Controller
         return ThemeResolver::page('venues.show', [
             'venue' => $venue,
             'nearbyVenues' => $nearbyVenues,
+            'scheduleRefresh' => $scheduleRefresh,
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::VENUE,
                 $venue->id,

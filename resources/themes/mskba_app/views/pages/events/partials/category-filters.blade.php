@@ -1,8 +1,15 @@
 <form id="events-category-filter-{{ $scope ?? 'desktop' }}" class="app-category__filters" method="GET" action="{{ route('events.index') }}">
     @if(($categoryView ?? 'cards') === 'list')<input type="hidden" name="view" value="list">@endif
+    @if(($scope ?? 'desktop') === 'mobile')
     <label><span>Поиск мероприятия</span>
         <input name="q" type="search" value="{{ $search }}" maxlength="100" placeholder="Название, описание, площадка">
     </label>
+    @endif
+    <label class="app-category__toggle"><input type="checkbox" name="has_mini_games" value="1" @checked($hasMiniGames)><span>С мини-играми</span></label>
+
+    <details class="app-catalog-advanced" @if(filled($typeFilter) || $period !== 'upcoming' || filled($dateFrom) || filled($dateTo) || (int) $venueId > 0 || $statusFilter !== 'not_cancelled' || ($period === 'past' && filled($outcome))) open @endif>
+        <summary>Расширенные фильтры</summary>
+        <div class="app-catalog-advanced__fields">
     <label><span>Тип мероприятия</span>
         <span class="select-control"><select name="type">
             <option value="">Все виды</option>
@@ -45,8 +52,10 @@
             </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
         </label>
     @endif
-    <label class="app-category__toggle"><input type="checkbox" name="has_mini_games" value="1" @checked($hasMiniGames)><span>С мини-играми</span></label>
+        </div>
+    </details>
     <div class="app-category__filter-actions">
+        @include('theme::components.catalog-reset', ['resetUrl' => $categoryResetUrl])
         <button class="button primary" type="submit">Применить</button>
     </div>
 </form>

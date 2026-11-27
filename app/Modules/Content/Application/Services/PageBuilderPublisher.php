@@ -288,6 +288,10 @@ final class PageBuilderPublisher
                 }
                 continue;
             }
+            if ($name === 'portal-contacts') {
+                // A server-owned component, not a separately published CMS record.
+                continue;
+            }
             if ($name === 'games-list') {
                 preg_match('/\bsource="([^"]*)"/', $match['attrs'], $sourceMatch);
                 if (! $this->sources->isRegistered((string) ($sourceMatch[1] ?? ''))) {

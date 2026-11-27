@@ -23,6 +23,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
+Artisan::command('portal:contact-audit {--json}', function (\App\Modules\Portal\Application\Services\PortalContactContentAudit $audit) {
+    $matches = $audit->scan();
+    if ($this->option('json')) {
+        $this->line(json_encode($matches, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+    } else {
+        $this->table(['Table', 'ID', 'Field', 'Types'], $matches);
+        $this->info('Потенциальных совпадений: '.count($matches).'. Проверить вручную: контакты площадок/партнёров не подменять.');
+    }
+})->purpose('Read-only audit of hardcoded contacts in editor content; no values or credentials printed');
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

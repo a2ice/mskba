@@ -11,10 +11,9 @@
     ];
 @endphp
 <div class="app-catalog-tools" aria-label="Управление каталогом">
-    <a class="app-catalog-tools__icon app-catalog-tools__reset"
-       href="{{ $resetUrl }}" title="Сбросить фильтры" aria-label="Сбросить фильтры">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v8h8"/><path d="M3.6 11A9 9 0 1 1 6 18.3"/></svg>
-    </a>
+    @if($showReset ?? true)
+        @include('theme::components.catalog-reset', ['resetUrl' => $resetUrl])
+    @endif
     @if($enableSorting ?? false)
         <details class="app-catalog-tools__sort">
             <summary @class(['app-catalog-tools__icon', 'is-active' => filled($sortValue ?? '')])
@@ -31,6 +30,7 @@
                         $url = $baseUrl.(count($query) ? '?'.http_build_query($query) : '');
                     @endphp
                     <a href="{{ $url }}" @class(['is-selected' => ($sortValue ?? '') === $value])
+                       @if($value === 'distance' && isset($venueDistanceAvailable)) data-venue-distance-option @endif
                        @if(($sortValue ?? '') === $value) aria-current="true" @endif>
                         {{ $caption }}
                         @if(($sortValue ?? '') === $value)<span aria-hidden="true">✓</span>@endif

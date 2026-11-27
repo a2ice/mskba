@@ -124,7 +124,8 @@ final class EditBackofficeUser extends EditRecord
                         ->password()->required()->maxLength(PasswordVO::MAX_LENGTH),
                     TextInput::make('new_password')
                         ->label('Новый пароль пользователя')
-                        ->password()->required()->minLength(PasswordVO::MIN_LENGTH)->maxLength(PasswordVO::MAX_LENGTH),
+                        ->password()->required()->minLength(PasswordVO::MIN_LENGTH)->maxLength(PasswordVO::MAX_LENGTH)
+                        ->helperText('От 6 до 255 символов: заглавная и строчная латинские буквы, цифра и спецсимвол. Без пробелов в начале и конце.'),
                     TextInput::make('new_password_confirmation')
                         ->label('Подтверждение нового пароля')
                         ->password()->required()->maxLength(PasswordVO::MAX_LENGTH),
@@ -132,13 +133,20 @@ final class EditBackofficeUser extends EditRecord
                         ->label('Основание установки')
                         ->required()->minLength(10)->maxLength(500),
                 ])
-                ->action(function (array $data): void {
+                ->action(function (array $data, Action $action): void {
                     $actor = auth('web')->user()?->canonical();
                     $target = $this->getRecord();
                     abort_unless($actor !== null
                         && $actor->isConfirmed()
                         && $actor->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
                         && BackofficeUserResource::canEdit($target), 403);
+
+                    // Domain errors do not use the mounted action's field state paths.
+                    // Always show a visible failure and keep this modal open.
+                    $fail = static function (string $message) use ($action): void {
+                        Notification::make()->danger()->title('Пароль не установлен')->body($message)->send();
+                        $action->halt();
+                    };
 
                     $validAdminCredential = User::query()
                         ->whereIn('id', $actor->identityIds())
@@ -147,11 +155,13 @@ final class EditBackofficeUser extends EditRecord
                             && Hash::check((string) ($data['admin_password'] ?? ''), $identity->password));
 
                     if (! $validAdminCredential) {
-                        throw ValidationException::withMessages(['admin_password' => 'Текущий пароль superadmin неверен.']);
+                        $fail('Текущий пароль superadmin неверен.');
+                        return;
                     }
 
                     if ((string) ($data['new_password'] ?? '') !== (string) ($data['new_password_confirmation'] ?? '')) {
-                        throw ValidationException::withMessages(['new_password_confirmation' => 'Пароли не совпадают.']);
+                        $fail('Пароли не совпадают.');
+                        return;
                     }
 
                     try {
@@ -172,7 +182,14 @@ final class EditBackofficeUser extends EditRecord
                             ]);
                         });
                     } catch (InvalidIdentityValueException $exception) {
-                        throw ValidationException::withMessages(['new_password' => $exception->getMessage()]);
+                        $fail($exception->getMessage());
+                        return;
+                    } catch (ValidationException $exception) {
+                        $fail('Не удалось изменить пароль: проверьте состояние аккаунта и повторите попытку.');
+                        return;
+                    } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+                        $fail('Установка пароля для этого аккаунта недоступна. Проверьте статус пользователя и права доступа.');
+                        return;
                     }
 
                     $target->refresh();

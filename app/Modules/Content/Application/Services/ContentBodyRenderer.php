@@ -12,6 +12,7 @@ final readonly class ContentBodyRenderer
         private ContentBodySanitizer $sanitizer,
         private ContentShortcodeRenderer $shortcodes,
         private EmbeddedEntityShortcodeRenderer $entityShortcodes,
+        private PortalContactShortcodeRenderer $portalContacts,
     ) {}
 
     public function render(ContentItem $content): string
@@ -19,13 +20,13 @@ final readonly class ContentBodyRenderer
         $source = $this->shortcodes->extract($content, $content->full_description);
 
         if ($content->content_format === ContentFormatEnum::SAFE_HTML) {
-            return $this->shortcodes->restore($this->sanitizer->sanitize($source));
+            return $this->portalContacts->render($this->shortcodes->restore($this->sanitizer->sanitize($source)));
         }
 
-        return $this->shortcodes->restore(Str::markdown($source, [
+        return $this->portalContacts->render($this->shortcodes->restore(Str::markdown($source, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
-        ]));
+        ])));
     }
 
     public function renderPlainText(?string $text): string

@@ -14,6 +14,9 @@
     $paginationPrevUrl = $sections->previousPageUrl();
     $paginationNextUrl = $sections->nextPageUrl();
     $catalogItems = app(\App\Modules\SportsSection\Presentation\Catalog\SportsSectionCatalogPresenter::class)->present($sections->getCollection());
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'sections-category-filter-desktop', 'name' => 'q', 'value' => $filters['q'] ?? '', 'placeholder' => 'Название или описание', 'label' => 'Поиск секций', 'maxlength' => 120];
+    $categoryVisibleCount = $sections->count();
     $categoryResultTotal = $sections->total();
 @endphp
 @extends('theme::layouts.category')

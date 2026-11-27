@@ -13,6 +13,9 @@
     $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
     $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
     $categoryToolbarCount = 'Найдено '.$events->total().' мероприятий';
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'events-category-filter-desktop', 'name' => 'q', 'value' => $search, 'placeholder' => 'Название, описание, площадка', 'label' => 'Поиск мероприятий', 'maxlength' => 100];
+    $categoryVisibleCount = $events->count();
     $categoryResultTotal = $events->total();
 @endphp
 @extends('theme::layouts.category')

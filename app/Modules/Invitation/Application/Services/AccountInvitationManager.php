@@ -6,6 +6,7 @@ use App\Modules\Contact\Application\DTO\CreateContactDTO;
 use App\Modules\Contact\Application\Services\ContactOwnership;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Venue\Application\UseCases\AdminManageVenueContactsHandler;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\ValueObjects\ContactValue;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum as VenueRole;
@@ -19,6 +20,7 @@ use App\Modules\Venue\Application\UseCases\ManageVenueMembershipHandler;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Invitation\Presentation\Mail\AccountInvitationMail;
+use App\Modules\Invitation\Presentation\Mail\AccountInvitationAcceptedMail;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -37,7 +39,7 @@ final class AccountInvitationManager
 
     public function create(
         User $issuer, string $email, string $scopeType, int $scopeId,
-        string $role, string $title, ?string $description, int $days
+        string $role, string $title, ?string $description, int $days, ?int $venueContactId = null
     ): array {
         abort_unless(app(AccountInvitationAccess::class)->canIssueAny($issuer), 403);
         if ($scopeType !== 'venue' || ! in_array($role, ['owner', 'staff', 'manager', 'booking_operator'], true)) {
@@ -48,10 +50,17 @@ final class AccountInvitationManager
             throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
         }
         $token = bin2hex(random_bytes(32));
-        $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token) {
+        $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token, $venueContactId) {
             $venue = Venue::query()->whereKey($scopeId)->lockForUpdate()->firstOrFail();
             $issuer = $this->authorizeActor($issuer);
             abort_unless(app(AccountInvitationAccess::class)->canIssue($issuer, $venue, $role), 403);
+            if ($venueContactId !== null) {
+                abort_unless(app(AdminManageVenueContactsHandler::class)->canManage($issuer, $venue), 403);
+                $contact = $venue->contacts()->whereKey($venueContactId)->lockForUpdate()->firstOrFail();
+                if ($contact->type !== ContactTypeEnum::EMAIL || ! $contact->hasBeenVerified() || $contact->value !== $email) {
+                    throw ValidationException::withMessages(['email' => 'Контакт изменился или не подтверждён. Обновите редактор площадки.']);
+                }
+            }
             $this->assertTarget($scopeType, $scopeId, $role);
             $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
             $this->assertNoActiveDuplicate($email, $scopeType, $scopeId, $role);
@@ -71,7 +80,10 @@ final class AccountInvitationManager
                 'expires_at' => now()->addDays($days),
                 'created_by_user_id' => $issuer->id,
             ]);
-            $this->event($record, 'created', ['issuer_id' => $issuer->id]);
+            $this->event($record, 'created', [
+                'issuer_id' => $issuer->id,
+                ...($venueContactId !== null ? ['venue_contact_id' => $venueContactId] : []),
+            ]);
             return $record;
         }, 3);
         $this->send($invitation, $token);
@@ -468,6 +480,53 @@ final class AccountInvitationManager
         if ($role === 'owner' && app(VenueMembershipAccess::class)->hasActiveOwner($venue)) {
             throw ValidationException::withMessages(['role' => 'У площадки уже есть подтверждённый владелец. Нужна отдельная передача владения.']);
         }
+    }
+
+    /** Public contacts only; no access to transport credentials or private venue contacts. */
+    public function publicPortalContacts(): array
+    {
+        return app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicContacts();
+    }
+
+    /**
+     * Called once by the acceptance HTTP flow, after the account transaction.
+     * Never queue, serialize, persist or report the generated secret.
+     * Delivery failure leaves the valid account intact and recovery available.
+     */
+    public function sendAcceptanceNotice(AccountInvitation $invitation, User $user, ?string $generatedPassword = null): bool
+    {
+        $invitation->refresh();
+        $user = $user->canonical();
+        if ($invitation->accepted_user_id === null || ! $user->isSameIdentity((int) $invitation->accepted_user_id)
+            || $user->isBlocked() || $user->trashed()
+            || ($generatedPassword !== null && ($invitation->registered_at === null || ! $user->is_temporary_password))
+            || ! $user->identityContactsQuery()->where('type', ContactTypeEnum::EMAIL->value)
+                ->where('value', $invitation->contact_value)->whereNotNull('verified_at')->exists()) {
+            return false;
+        }
+
+        try {
+            if ($this->containsNonDeliveringTransport((string) config('mail.default', 'log'))) {
+                $this->event($invitation, 'acceptance_mail_failed');
+                return false;
+            }
+            Mail::to($invitation->contact_value)->send(new AccountInvitationAcceptedMail(
+                $invitation->targetName(),
+                $invitation->role,
+                $invitation->contact_value,
+                $user->username,
+                $generatedPassword,
+                route('login'),
+                $this->publicPortalContacts(),
+            ));
+        } catch (\Throwable) {
+            // Mail exceptions may contain a rendered message. Do not report them.
+            $this->event($invitation, 'acceptance_mail_failed');
+            return false;
+        }
+        $this->event($invitation, 'acceptance_mail_sent');
+
+        return true;
     }
 
     private function send(AccountInvitation $invitation, string $token): void

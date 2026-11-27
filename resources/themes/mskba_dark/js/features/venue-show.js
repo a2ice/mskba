@@ -477,13 +477,15 @@ function initVenueGalleryModal() {
     });
 }
 
+const boundLegacyDayModals = new WeakSet();
 function initVenueDayModal() {
     const modal = document.querySelector('[data-venue-day-modal]');
     const cards = Array.from(document.querySelectorAll('[data-venue-day-card]'));
 
-    if (!modal || cards.length === 0) {
+    if (!modal || cards.length === 0 || boundLegacyDayModals.has(modal)) {
         return;
     }
+    boundLegacyDayModals.add(modal);
 
     const title = modal.querySelector('[data-venue-day-modal-title]');
     const weekday = modal.querySelector('[data-venue-day-modal-weekday]');
@@ -509,8 +511,9 @@ function initVenueDayModal() {
         document.body.style.overflow = 'hidden';
     };
 
-    cards.forEach((card) => {
-        card.addEventListener('click', () => open(card));
+    document.addEventListener('click', event => {
+        const card = event.target.closest?.('[data-venue-day-card]');
+        if (modal.isConnected && card && !card.disabled) open(card);
     });
 
     closeButtons.forEach((button) => {
@@ -518,11 +521,13 @@ function initVenueDayModal() {
     });
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !modal.hidden) {
+        if (event.key === 'Escape' && modal.isConnected && !modal.hidden) {
             close();
         }
     });
 }
+
+document.addEventListener('mskba:venue-schedule-replaced', initVenueDayModal);
 
 function initVenueOccupancyModal() {
     const content = document.querySelector('[data-venue-occupancy-modal]');

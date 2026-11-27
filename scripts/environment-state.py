@@ -73,6 +73,26 @@ def compare(left, right):
             "all_tracked_equal": not any(differences.values()), "differences": differences}
 
 
+def sync_plan(verified_sha, main_ref, dev_ref):
+    """Only align history of identical trees after the exact production release."""
+    main = git("rev-parse", "--verify", main_ref + "^{commit}").decode().strip()
+    dev = git("rev-parse", "--verify", dev_ref + "^{commit}").decode().strip()
+    result = {"main_sha": main, "dev_sha": dev, "verified_sha": verified_sha}
+    if main != verified_sha:
+        return dict(result, action="skip", reason="production SHA is no longer main")
+    if main == dev:
+        return dict(result, action="equal", reason="already aligned")
+    ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", dev, main],
+                              check=False).returncode
+    if ancestor == 1:
+        return dict(result, action="skip", reason="dev has independent history")
+    if ancestor != 0:
+        raise RuntimeError("Unable to verify ancestry")
+    if git("rev-parse", main + "^{tree}") != git("rev-parse", dev + "^{tree}"):
+        return dict(result, action="skip", reason="tracked trees differ; review a PR")
+    return dict(result, action="fast-forward", reason="identical trees, dev is ancestor")
+
+
 def worktree_drift(entries):
     # Verify tracked bytes, symlinks and executable bit directly; don't trust mtime/index.
     algo = git("rev-parse", "--show-object-format").decode().strip()
@@ -173,6 +193,10 @@ def main():
     c.add_argument("left")
     c.add_argument("right")
     commands.add_parser("inspect")
+    s = commands.add_parser("sync-plan")
+    s.add_argument("verified_sha")
+    s.add_argument("main_ref")
+    s.add_argument("dev_ref")
     r = commands.add_parser("record")
     r.add_argument("environment", choices=("production", "development"))
     r.add_argument("expected_sha")
@@ -180,6 +204,8 @@ def main():
     args = parser.parse_args()
     if args.command == "compare":
         result = compare(args.left, args.right)
+    elif args.command == "sync-plan":
+        result = sync_plan(args.verified_sha, args.main_ref, args.dev_ref)
     elif args.command == "inspect":
         result = inspect()
     else:

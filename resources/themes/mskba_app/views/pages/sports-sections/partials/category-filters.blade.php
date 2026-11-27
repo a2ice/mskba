@@ -1,8 +1,16 @@
 <form id="sections-category-filter-{{ $scope ?? 'desktop' }}" class="app-category__filters" method="GET" action="{{ route('sports-sections.index') }}">
     @if(($categoryView ?? 'cards') === 'list')<input type="hidden" name="view" value="list">@endif
+    @if(($scope ?? 'desktop') === 'mobile')
     <label><span>Поиск секции</span>
         <input type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Название или описание" maxlength="120">
     </label>
+    @endif
+    <label class="app-category__toggle"><input type="checkbox" name="accepts_requests" value="1" @checked($filters['accepts_requests'] ?? false)><span>Принимают заявки</span></label>
+    <label class="app-category__toggle"><input type="checkbox" name="recruiting" value="1" @checked($filters['recruiting'] ?? false)><span>Идёт набор</span></label>
+
+    <details class="app-catalog-advanced" @if(collect(['training_mode', 'game_format', 'pricing_type'])->contains(fn ($key) => filled($filters[$key] ?? null)) || (int) ($filters['venue_id'] ?? 0) > 0 || (int) ($filters['team_id'] ?? 0) > 0) open @endif>
+        <summary>Расширенные фильтры</summary>
+        <div class="app-catalog-advanced__fields">
     <label><span>Режим тренировок</span>
         <span class="select-control"><select name="training_mode">
             <option value="">Все режимы</option>
@@ -43,9 +51,10 @@
             @endforeach
         </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
     </label>
-    <label class="app-category__toggle"><input type="checkbox" name="accepts_requests" value="1" @checked($filters['accepts_requests'] ?? false)><span>Принимают заявки</span></label>
-    <label class="app-category__toggle"><input type="checkbox" name="recruiting" value="1" @checked($filters['recruiting'] ?? false)><span>Идёт набор</span></label>
+        </div>
+    </details>
     <div class="app-category__filter-actions">
+        @include('theme::components.catalog-reset', ['resetUrl' => $categoryResetUrl])
         <button class="button primary" type="submit">Применить</button>
     </div>
 </form>

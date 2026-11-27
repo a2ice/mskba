@@ -6,6 +6,7 @@ use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
 use App\Modules\VenueIntegration\Domain\Models\VenueIntegration;
 use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -242,7 +243,15 @@ final readonly class VenueIntegrationManager
             throw ValidationException::withMessages(['enabled' => 'Доступ к этому источнику запрещён.']);
         }
         if ($source->adapter_key !== 'manual') {
-            if (! config('venue_integrations.live_source_execution_enabled', false)) {
+            // The narrow FindSport visit pilot may activate an already applied
+            // reviewed test source without enabling the generic execution engine.
+            $visitPilot = $mode === 'test' && VisitScheduleRefresh::eligibleSource($source)
+                && VenueCourtExternalScheduleImport::query()
+                    ->where('venue_integration_source_id', $source->id)
+                    ->where('venue_id', $source->integration->venue_id)
+                    ->where('venue_court_id', $source->courtMappings()->value('venue_court_id'))
+                    ->exists();
+            if (! config('venue_integrations.live_source_execution_enabled', false) && ! $visitPilot) {
                 throw ValidationException::withMessages([
                     'enabled' => 'Внешние запросы отключены до проверки адаптеров и разрешений.',
                 ]);

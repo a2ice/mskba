@@ -16,7 +16,7 @@ final readonly class VenueCatalogLandingSelectionAudit
      * An editorial guideline, not an indexing or activation rule.
      * Counts public venues, not individual courts or available slots.
      *
-     * @return array{matching:int, city_matching:?int, missing_district:?int, district_count:?int}
+     * @return array{matching:int, city_matching:?int, missing_district:?int, district_count:?int, districts:list<array{id:int,name:string,matching:int}>}
      */
     public function inspect(VenueCatalogLanding $landing): array
     {
@@ -28,6 +28,7 @@ final readonly class VenueCatalogLandingSelectionAudit
             'city_matching' => null,
             'missing_district' => null,
             'district_count' => null,
+            'districts' => [],
         ];
 
         if (! isset($criteria['city_id'])) {
@@ -41,12 +42,29 @@ final readonly class VenueCatalogLandingSelectionAudit
         }
 
         $result['city_matching'] = count($matches);
-        $result['district_count'] = District::query()->where('city_id', $cityId)->count();
+        $districts = District::query()->where('city_id', $cityId)
+            ->orderBy('name')->orderBy('id')->get(['id', 'name'])->keyBy('id');
+        $counts = array_fill_keys($districts->keys()->all(), 0);
+        $result['district_count'] = $districts->count();
         $result['missing_district'] = 0;
         foreach (array_chunk(array_column($matches, 'id'), 500) as $ids) {
-            $result['missing_district'] += Venue::query()->whereIn('id', $ids)
-                ->whereDoesntHave('location.address.district', fn ($district) => $district->where('city_id', $cityId))
-                ->count();
+            // Reuse the public city baseline; never count hidden venues or
+            // infer districts from address text. No query per district.
+            foreach (Venue::query()->whereIn('id', $ids)->with('location.address')->get() as $venue) {
+                $districtId = $venue->location?->address?->district_id;
+                if ($districtId === null || ! array_key_exists($districtId, $counts)) {
+                    $result['missing_district']++;
+                } else {
+                    $counts[$districtId]++;
+                }
+            }
+        }
+        foreach ($districts as $district) {
+            $result['districts'][] = [
+                'id' => (int) $district->id,
+                'name' => $district->name,
+                'matching' => $counts[$district->id],
+            ];
         }
 
         return $result;

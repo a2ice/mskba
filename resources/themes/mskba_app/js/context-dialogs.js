@@ -47,6 +47,33 @@ if (help) {
     const pageTitle = help.querySelector('[data-help-page-title]');
     const pageContent = help.querySelector('[data-help-page-content]');
     const pageTabs = [...help.querySelectorAll('[data-help-page-tab]')];
+    const venueCreateTemplate = help.querySelector('[data-help-venue-create-template]');
+    const back = help.querySelector('[data-help-back]');
+    const initialSection = help.dataset.helpInitialSection || null;
+    let returnToPageHelp = false;
+
+    function syncBack() {
+        if (back) back.hidden = Boolean(pageHelp) || !(faqSection || returnToPageHelp);
+    }
+
+    back?.addEventListener('click', () => {
+        if (faqArticle) return load(faqSection);
+        if (faqSection) return load();
+        if (returnToPageHelp) {
+            returnToPageHelp = false;
+            return load(null, null, true);
+        }
+    });
+
+    function openContextHelp(trigger) {
+        helpContext = trigger.dataset.helpContext || help.dataset.helpContext || '';
+        waitingForAuth = false;
+        returnToPageHelp = false;
+        showDialog(help, trigger);
+        // Venue pages use the existing editorial FAQ section, not the generic root
+        // or a duplicate page-help article.
+        return initialSection ? load(initialSection) : load(null, null, true);
+    }
     const lookup = help.querySelector('[data-help-search]');
     const options = help.querySelector('[data-help-options]');
     const toggle = help.querySelector('[data-help-toggle]');
@@ -122,6 +149,7 @@ if (help) {
     }
     function renderPageHelp() {
         if (!pageHelp) return;
+        syncBack();
         pagePanel.hidden = false;
         pagePanel.querySelector('[data-help-page-tabs]')?.setAttribute('role', 'tablist');
         catalogPanel.hidden = true;
@@ -164,10 +192,14 @@ if (help) {
             next.focus();
         });
     }
-    pagePanel.querySelector('[data-help-page-catalog]')?.addEventListener('click', () => load());
+    pagePanel.querySelector('[data-help-page-catalog]')?.addEventListener('click', () => {
+        returnToPageHelp = true;
+        load();
+    });
 
     function render() {
         if (!faq) return;
+        syncBack();
         pagePanel.hidden = true;
         catalogPanel.hidden = false;
         const groups = faq.sections || [];
@@ -194,6 +226,9 @@ if (help) {
             }
         }
         articleList.replaceChildren();
+        const showVenueInvitation = venueCreateTemplate && faqSection === 'venues'
+            && (!faq.article || faq.article.is_venue_creation_guide);
+        if (showVenueInvitation) articleList.append(venueCreateTemplate.content.cloneNode(true));
         if (faq.article) {
             articleList.append(node('h3', faq.article.title));
             const content = node('div', null, 'app-context-help__rendered');
@@ -238,12 +273,18 @@ if (help) {
             articleList.append(node('p', 'По данному разделу пока нет информации. Вы можете задать вопрос ниже.'));
             return;
         }
-        for (const item of section.articles) {
+        const items = showVenueInvitation
+            ? [...section.articles].sort((a, b) => Number(Boolean(b.is_venue_creation_guide)) - Number(Boolean(a.is_venue_creation_guide)))
+            : section.articles;
+        for (const item of items) {
             articleList.append(linkButton(item.title, () => load(faqSection, item.alias)));
         }
     }
     async function load(section = null, article = null, usePageContext = false) {
         const id = ++requestId;
+        pagePanel.hidden = true;
+        catalogPanel.hidden = false;
+        if (back) back.hidden = true;
         articleList.replaceChildren(node('p', 'Загружаем ответы…'));
         const url = new URL(help.dataset.helpUrl, location.origin);
         if (usePageContext && helpContext) url.searchParams.set('context', helpContext);
@@ -267,7 +308,10 @@ if (help) {
                 render();
             }
         } catch {
-            if (id === requestId) articleList.replaceChildren(node('p', 'Не удалось загрузить FAQ. Попробуйте ещё раз.'));
+            if (id === requestId) {
+                articleList.replaceChildren(node('p', 'Не удалось загрузить FAQ. Попробуйте ещё раз.'));
+                syncBack();
+            }
         }
     }
     function chooseSection() {
@@ -310,22 +354,17 @@ if (help) {
         if (!options.hidden && !event.target.closest('[data-help-combobox]')) closeOptions();
     });
     document.querySelector('[data-help-launcher]')?.addEventListener('click', (event) => {
-        helpContext = '';
-        waitingForAuth = false;
-        showDialog(help, event.currentTarget);
-        load(null, null, true);
+        openContextHelp(event.currentTarget);
     });
     actions?.querySelector('[data-context-help]')?.addEventListener('click', (event) => {
-        helpContext = event.currentTarget.dataset.helpContext || '';
-        waitingForAuth = false;
-        showDialog(help, event.currentTarget);
-        load(null, null, true);
+        openContextHelp(event.currentTarget);
     });
     // Shared declarative API for Page Builder and other server-rendered content.
     // The Page Builder sanitizer explicitly allows only these safe data attributes.
     function openFaq({ section = null, article = null, context = '' } = {}, trigger = null) {
         helpContext = context;
         waitingForAuth = false;
+        returnToPageHelp = false;
         showDialog(help, trigger);
         void load(section, article);
     }

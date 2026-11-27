@@ -201,6 +201,7 @@ jobs:
           DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet
           services="$(DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --services)"
           printf '%s\n' "$services" | grep -qx queue || { echo "Dev main queue must be enabled by default"; exit 1; }
+          printf '%s\n' "$services" | grep -qx venue-schedule-queue || { echo "Venue schedule queue must be available"; exit 1; }
           if printf '%s\n' "$services" | grep -qx scheduler; then
             echo "Dev scheduler must remain optional"
             exit 1
@@ -222,7 +223,7 @@ jobs:
 
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
         if: steps.change_scope.outputs.full_suite == 'true'
-        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-day-booking.test.mjs tests/JavaScript/venue-rental-review.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/mobile-dock-context.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/help-launcher-intro.test.mjs tests/JavaScript/cookie-consent.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
+        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-day-booking.test.mjs tests/JavaScript/venue-visit-schedule-state.test.mjs tests/JavaScript/venue-rental-review.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/mobile-dock-context.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/help-launcher-intro.test.mjs tests/JavaScript/cookie-consent.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
 
       - name: Verify venue favorite follow state, event action and synchronized dialogs
         if: steps.change_scope.outputs.full_suite == 'true'
@@ -462,9 +463,14 @@ jobs:
                   if [ -e vendor ]; then mv vendor "vendor.failed.$VERIFIED_SHA"; fi
                   mv "vendor.rollback.$VERIFIED_SHA" vendor
                 fi
+                $COMPOSE stop venue-schedule-queue || true
+                $COMPOSE rm -f venue-schedule-queue || true
                 git reset --hard "$PREVIOUS_SHA" || true
                 if [ -f "$MANIFEST_BACKUP" ]; then mv "$MANIFEST_BACKUP" public/build/manifest.json; fi
                 $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue || true
+                if $COMPOSE config --services | grep -qx venue-schedule-queue; then
+                  $COMPOSE up -d --no-build venue-schedule-queue || true
+                fi
               fi
               exit "$code"
             }
@@ -604,7 +610,13 @@ jobs:
             tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
             cp "$ASSET_STAGE/manifest.json" public/build/manifest.json.pending
             mv -f public/build/manifest.json.pending public/build/manifest.json
-            $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue
+            # DEV has no capacity to build a new PHP image. Reuse the image
+            # already running the isolated DEV main queue; no production DB or env.
+            QUEUE_CONTAINER="$($COMPOSE ps -q queue)"
+            test -n "$QUEUE_CONTAINER"
+            export VENUE_SCHEDULE_WORKER_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$QUEUE_CONTAINER")"
+            docker image inspect "$VENUE_SCHEDULE_WORKER_IMAGE" >/dev/null
+            $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue venue-schedule-queue
             ready=0
             for attempt in $(seq 1 20); do
               if curl --fail --silent --show-error --max-time 5 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ > /dev/null 2>&1; then
@@ -653,6 +665,11 @@ jobs:
             # a missing route or server error is a release failure.
             BACKOFFICE_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/backoffice)"
             case "$BACKOFFICE_HTTP" in 200|302|303) ;; *) echo "Backoffice smoke HTTP: $BACKOFFICE_HTTP"; exit 1;; esac
+            if ! $COMPOSE ps --status running --services | grep -qx venue-schedule-queue; then
+              echo 'Dev venue schedule queue worker is not running'
+              $COMPOSE logs --tail=50 venue-schedule-queue
+              exit 1
+            fi
             if ! $COMPOSE ps --status running --services | grep -qx queue; then
               echo 'Dev main queue worker is not running'
               $COMPOSE logs --tail=50 queue

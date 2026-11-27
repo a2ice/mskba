@@ -59,6 +59,7 @@ class User extends Authenticatable implements FilamentUser, HasName
             'password' => 'hashed',
             'is_temporary_password' => 'boolean',
             'is_test_account' => 'boolean',
+            'venue_distance_sort_prompt_answered' => 'boolean',
             'test_account_number' => 'integer',
             'password_updated_at' => 'datetime',
             'first_logged_in_at' => 'datetime',

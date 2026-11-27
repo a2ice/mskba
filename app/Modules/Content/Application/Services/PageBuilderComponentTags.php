@@ -33,6 +33,14 @@ final class PageBuilderComponentTags
                 ]);
             }
 
+            if ($name[1] === 'portal-contacts'
+                && preg_match('/\bsource\s*=/', $match['attrs'])
+                && ! preg_match('/\bsource="(?:email|phone|telegram|vk)"/', $match['attrs'])) {
+                throw ValidationException::withMessages([
+                    'draft_html' => 'Для portal-contacts укажи email, phone, telegram или vk либо не указывай source.',
+                ]);
+            }
+
             if (trim($match['slot']) !== '' && $name[1] !== 'hero-slider') {
                 throw ValidationException::withMessages([
                     'draft_html' => 'Вложенный HTML сейчас поддерживает только Hero Slider. Остальные компоненты должны быть пустыми.',

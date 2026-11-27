@@ -1,0 +1,79 @@
+name: Synchronize environments after production
+
+on:
+  workflow_run:
+    workflows: ["Deploy to production"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: environment-history-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.head_branch == 'main'
+          && github.event.workflow_run.head_repository.full_name == github.repository
+          && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Checkout trusted default-branch automation
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Test synchronization guard
+        run: python3 -m unittest discover -s scripts -p test_environment_state.py
+
+      - name: Align DEV history only after verified production
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main refs/heads/dev:refs/remotes/origin/dev
+          plan="$(python3 scripts/environment-state.py sync-plan "$RELEASE_SHA" origin/main origin/dev)"
+          echo "$plan"
+          action="$(jq -er .action <<< "$plan")"
+          old_dev="$(jq -er .dev_sha <<< "$plan")"
+          {
+            echo '## Environment synchronization'
+            echo 'Verified production release:'
+            echo "\`$RELEASE_SHA\`"
+            echo 'Decision:'
+            echo "\`$action\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$action" == skip ]]; then
+            echo "::warning::$(jq -r .reason <<< "$plan"). No branch changes. Review MAIN → DEV manually."
+            exit 0
+          fi
+          if [[ "$action" == equal && "$GITHUB_RUN_ATTEMPT" == 1 ]]; then
+            echo 'Already aligned; no duplicate deployment.'
+            exit 0
+          fi
+
+          # Check both refs again. The non-forced push also rejects a concurrent
+          # divergent DEV change. Never bypass repository branch protection.
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$RELEASE_SHA"
+          test "$(git ls-remote origin refs/heads/dev | cut -f1)" = "$old_dev"
+          if [[ "$action" == fast-forward ]]; then
+            git push origin "$RELEASE_SHA:refs/heads/dev"
+          fi
+          test "$(git ls-remote origin refs/heads/dev | cut -f1)" = "$RELEASE_SHA"
+
+          # GITHUB_TOKEN pushes do not trigger ordinary push workflows.
+          # Dispatch the existing test + deploy pipeline and comparison explicitly.
+          # A rerun after partial failure may repeat these idempotent dispatches.
+          gh workflow run ci.yml --ref dev -f deploy_dev_now=true
+          gh workflow run environment-checkpoints.yml --ref dev
+          echo 'DEV aligned. CI/deploy and comparison requested; their results are separate.' >> "$GITHUB_STEP_SUMMARY"

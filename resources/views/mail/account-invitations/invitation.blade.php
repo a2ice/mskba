@@ -10,3 +10,11 @@
 <p>Ссылка действует до {{ $invitation->expires_at->copy()->setTimezone('Europe/Moscow')->format('d.m.Y H:i') }} (МСК).</p>
 <p>После вашего согласия адрес этого письма будет отмечен как подтверждённый контакт MSKBA. Подтверждение владения площадкой выполняется отдельно после проверки.</p>
 <p>Если вы не ожидаете приглашения, просто проигнорируйте письмо. Никому не пересылайте персональную ссылку.</p>
+
+@php($portalContacts = app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicContacts())
+@if($portalContacts !== [])
+<p>Контакты MSKBA:</p>
+@foreach($portalContacts as $contact)
+<p><a href="{{ $contact['href'] }}">{{ $contact['value'] }}</a></p>
+@endforeach
+@endif

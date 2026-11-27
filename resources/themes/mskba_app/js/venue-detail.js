@@ -260,7 +260,7 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
 
 // Follow the actual sticky navigation rather than a hard-coded height:
 // navigation can wrap and theme/header dimensions can change independently.
-const venueSidebar = document.querySelector('.app-venue-page__aside');
+const venueSidebar = document.querySelector('.app-venue-page__side-stack') || document.querySelector('.app-venue-page__aside');
 const venueAnchors = document.querySelector('.app-venue-page__anchors');
 if (venueSidebar && venueAnchors) {
     let pending = false;
@@ -930,18 +930,31 @@ if (dayBookingDialog) {
         }
     }
 
-    document.querySelectorAll('[data-venue-day-open]').forEach(button => {
-        button.addEventListener('click', () => {
-            const courtId = Number(button.dataset.courtId);
-            if (Number.isSafeInteger(courtId) && courtId > 0) {
-                dayBookingDialog.dispatchEvent(new CustomEvent('mskba:choose-court', {
-                    detail: {courtId, date: button.dataset.dayDate},
-                }));
-            } else {
-                // Preserve the Promise for callers (including booking tests).
-                return showDay(button.dataset.dayDate);
-            }
+    const boundDayOpenButtons = new WeakSet();
+    function bindDayOpenButtons() {
+        document.querySelectorAll('[data-venue-day-open]').forEach(button => {
+            if (boundDayOpenButtons.has(button)) return;
+            boundDayOpenButtons.add(button);
+            button.addEventListener('click', () => {
+                if (button.disabled) return;
+                const courtId = Number(button.dataset.courtId);
+                if (Number.isSafeInteger(courtId) && courtId > 0) {
+                    dayBookingDialog.dispatchEvent(new CustomEvent('mskba:choose-court', {
+                        detail: {courtId, date: button.dataset.dayDate},
+                    }));
+                } else {
+                    // Preserve the Promise for callers (including booking tests).
+                    return showDay(button.dataset.dayDate);
+                }
+            });
         });
+    }
+    bindDayOpenButtons();
+    document.addEventListener('mskba:venue-schedule-replaced', () => {
+        bindDayOpenButtons();
+        if (!dayBookingDialog.open && dayBookingDialog.dataset.courtId) {
+            syncCourtDates(dayBookingDialog.dataset.courtId);
+        }
     });
     dateButtons.forEach(button => {
         button.addEventListener('click', () => void showDay(button.dataset.venueDayDate));

@@ -62,3 +62,9 @@
 @media(max-width:590px){.app-category{padding-top:24px}.app-category__header{align-items:start}.app-category__items{grid-template-columns:minmax(0,1fr)}.app-category__items--list .app-category__card-cover{width:35%;flex-basis:35%}.app-category__card-body{padding:14px}.app-category__toolbar{flex-wrap:wrap}.app-category__count{flex:1}}
 @media(forced-colors:active){.app-category__filters .select-control select{appearance:auto}.app-category__filters .select-control>svg{display:none}}
 @media(prefers-reduced-motion:reduce){.app-category__toggle input[type=checkbox],.app-category__toggle input[type=checkbox]:before{transition:none}}
+
+/* Compact catalog presentation uses the venue grid and shared panel spacing. */
+.app-category__layout:has(.app-category-toolbar--compact) .app-category__sidebar h2{color:var(--text);font-size:21px;font-weight:800}
+.app-category__layout:has(.app-category-toolbar--compact) .app-category__sidebar .app-category__filter-actions{gap:8px}
+.app-category__layout:has(.app-category-toolbar--compact) .app-category__sidebar .app-category__filter-actions>.button{min-width:0}
+.app-category__layout:has(.app-category-toolbar--compact) .app-category__filters .app-category__toggle{min-height:28px}

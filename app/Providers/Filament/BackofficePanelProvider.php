@@ -7,6 +7,7 @@ use App\Filament\Backoffice\Pages\GraphQLExplorer;
 use App\Filament\Backoffice\Pages\PageBuilderAgentAccess;
 use App\Filament\Backoffice\Pages\EditorialNewsAgentAccess;
 use App\Filament\Backoffice\Pages\SocialIntegrationSettingsPage;
+use App\Filament\Backoffice\Pages\PortalContactSettingsPage;
 use App\Filament\Backoffice\Pages\UiStudioPage;
 use App\Filament\Backoffice\Pages\EnvironmentStatePage;
 use App\Filament\Backoffice\Pages\ProjectUpdatesAgentAccess;
@@ -260,7 +261,7 @@ final class BackofficePanelProvider extends PanelProvider
 })();
 </script>
 HTML))
-            ->pages([BackofficeDashboard::class, Commissions::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class, ProjectUpdatesAgentAccess::class, EditorialNewsAgentAccess::class, SocialIntegrationSettingsPage::class, UiStudioPage::class, EnvironmentStatePage::class])
+            ->pages([BackofficeDashboard::class, Commissions::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class, ProjectUpdatesAgentAccess::class, EditorialNewsAgentAccess::class, SocialIntegrationSettingsPage::class, PortalContactSettingsPage::class, UiStudioPage::class, EnvironmentStatePage::class])
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
                 StartSession::class, AuthenticateSession::class,

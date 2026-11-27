@@ -65,9 +65,9 @@ final class VenueIntegrationsRelationManager extends RelationManager
                 ->options(['test' => 'Тестирование', 'production' => 'Production'])
                 ->default('test'),
             Toggle::make('refresh_on_visit')->label('Обновлять при посещении')->default(false)
-                ->helperText('Пока только настройка: задачи 306–308 ещё не запускают запросы.'),
+                ->helperText('FindSport: после ручного применения и активации проверенного источника и конфигурации. Не чаще одного обновления в 5 минут; при открытии страницы запрос уходит в очередь.'),
             Toggle::make('scheduled_refresh')->label('Обновлять по расписанию')->default(false)
-                ->helperText('Планировщик появится в задаче 308.'),
+                ->helperText('Периодический опрос пока не выполняется.'),
             Toggle::make('enabled')->label('Включить конфигурацию')->default(false)
                 ->helperText('Требуется хотя бы один разрешённый активный источник и привязка зала.'),
         ];

@@ -32,7 +32,7 @@
             'name' => (string) config('seo.site_name', 'MSKBA'),
             'url' => route('welcome'),
             'logo' => asset((string) config('seo.organization_logo', 'images/logo.png')),
-            'sameAs' => array_values(array_filter((array) config('seo.same_as', []))),
+            'sameAs' => app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicSocialUrls(),
         ];
         $seoStructuredDataItems[] = [
             '@context' => 'https://schema.org',

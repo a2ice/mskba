@@ -13,6 +13,9 @@
     $canonicalUrl = $tournaments->currentPage() > 1 ? route('tournaments.index', ['page' => $tournaments->currentPage()]) : route('tournaments.index');
     $paginationPrevUrl = $tournaments->previousPageUrl();
     $paginationNextUrl = $tournaments->nextPageUrl();
+    $categoryCompactToolbar = true;
+    $categoryToolbarSearch = ['form' => 'tournaments-category-filter-desktop', 'name' => 'query', 'value' => $query ?? '', 'placeholder' => 'Найти турнир', 'label' => 'Поиск турниров', 'maxlength' => 120];
+    $categoryVisibleCount = $tournaments->count();
     $categoryResultTotal = $tournaments->total();
 @endphp
 @extends('theme::layouts.category')

@@ -10,17 +10,19 @@ const coordinates = (latitude, longitude) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-nearby-filter]').forEach(root => {
-        const find = selector => root.querySelector(selector);
+        const dialog = root.querySelector('[data-nearby-dialog]');
+        const find = selector => root.querySelector(selector) || dialog?.querySelector(selector);
         const toggle = find('[data-nearby-toggle]'), options = find('[data-nearby-options]');
         const lat = find('[data-nearby-lat]'), lon = find('[data-nearby-lon]');
         const radius = find('[data-nearby-radius]'), radiusValue = find('[data-nearby-radius-value]');
-        const status = find('[data-nearby-status]'), dialog = find('[data-nearby-dialog]');
+        const status = find('[data-nearby-status]');
         const addressPanel = find('[data-nearby-address-panel]'), mapPanel = find('[data-nearby-map-panel]');
         const addressInput = find('[data-address-suggest-input]'), clearAddress = find('[data-address-clear]');
         const canvas = find('[data-nearby-map]'), dialogStatus = find('[data-nearby-dialog-status]');
         const confirm = find('[data-nearby-confirm]');
         let point = toggle.checked ? coordinates(lat.value, lon.value) : null;
         let draft = null, mode = 'address', map = null, marker = null, loading = false, generation = 0;
+        let externalSelection = null;
 
         const message = (node, text = '') => { node.textContent = text; node.hidden = !text; };
         const sync = () => {
@@ -81,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mode = next;
             addressPanel.hidden = mode !== 'address';
             mapPanel.hidden = mode !== 'map';
-            root.querySelectorAll('[data-nearby-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.nearbyMode === mode)));
+            dialog.querySelectorAll('[data-nearby-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.nearbyMode === mode)));
             message(dialogStatus);
             if (mode === 'map') void initializeMap();
         };
@@ -96,6 +98,17 @@ document.addEventListener('DOMContentLoaded', () => {
             message(dialogStatus, reason);
             find('[data-nearby-close]').focus();
         };
+        // Reuse this exact address/map picker for distance sorting without
+        // changing the nearby filter, radius, or draft form values.
+        root.addEventListener('mskba:venue-distance-select-point', event => {
+            if (!event.detail?.select) return;
+            if (dialog.open) { event.detail.cancel?.(); return; }
+            externalSelection = event.detail;
+            // The filter dock/sidebar can be display:none on mobile. Move the
+            // actual dialog out of that hidden subtree, not a second copy.
+            document.body.append(dialog);
+            open('Не удалось получить местоположение. Выберите адрес или точку на карте.');
+        });
         toggle.addEventListener('change', async () => {
             if (!toggle.checked) { point = null; sync(); message(status); return; }
             sync();
@@ -111,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!selected) throw new Error('coordinates');
                 point = selected;
                 sync();
+                document.dispatchEvent(new CustomEvent('mskba:venue-geolocation', { detail: { latitude: selected[0], longitude: selected[1] } }));
             } catch {
                 open('Не удалось получить местоположение. Выберите адрес или точку на карте.');
             } finally { clearTimeout(timer); toggle.disabled = false; message(status); }
@@ -118,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         radius.addEventListener('input', () => { radiusValue.textContent = radius.value; });
         find('[data-nearby-change]').addEventListener('click', () => open());
         find('[data-nearby-close]').addEventListener('click', () => dialog.close());
-        root.querySelectorAll('[data-nearby-mode]').forEach(button => button.addEventListener('click', () => setMode(button.dataset.nearbyMode)));
+        dialog.querySelectorAll('[data-nearby-mode]').forEach(button => button.addEventListener('click', () => setMode(button.dataset.nearbyMode)));
         addressPanel.addEventListener('address-suggest:selected', () => {
             if (mode !== 'address') return;
             updateDraft(coordinates(find('[data-address-latitude]').value, find('[data-address-longitude]').value));
@@ -128,6 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
         addressInput.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); });
         confirm.addEventListener('click', () => {
             if (!draft) return;
+            if (externalSelection) {
+                const selection = externalSelection;
+                const selected = draft;
+                externalSelection = null;
+                dialog.close();
+                selection.select({ latitude: selected[0], longitude: selected[1] });
+                return;
+            }
             point = draft;
             sync();
             dialog.close();
@@ -139,7 +161,16 @@ document.addEventListener('DOMContentLoaded', () => {
             pressedOutside = false;
         });
         dialog.addEventListener('pointercancel', () => { pressedOutside = false; });
-        dialog.addEventListener('close', () => { ++generation; destroyMap(); updateDraft(null); sync(); });
+        dialog.addEventListener('close', () => {
+            const selection = externalSelection;
+            externalSelection = null;
+            ++generation;
+            destroyMap();
+            updateDraft(null);
+            if (dialog.parentNode !== root) root.append(dialog);
+            sync();
+            selection?.cancel?.();
+        });
         window.addEventListener('pageshow', sync);
         sync();
     });

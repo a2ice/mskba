@@ -140,6 +140,17 @@ final class PageBuilderRenderer
                     return $token;
                 }
 
+                // Server-owned contacts: no stored copies of address values.
+                if ($name === 'portal-contacts') {
+                    $contacts = app(\App\Modules\Portal\Application\Services\PortalContactSettings::class)->publicByChannel();
+                    if ($source !== '') {
+                        $contacts = array_intersect_key($contacts, [$source => true]);
+                    }
+                    $replacements[$token] = view('components.portal-public-contacts', ['contacts' => $contacts])->render();
+
+                    return $token;
+                }
+
                 // Phase 1 of the classic homepage migration. Keep its live
                 // Laravel data queries while the body is moved to Page Builder.
                 // This is a server-owned typed component, never editor PHP.

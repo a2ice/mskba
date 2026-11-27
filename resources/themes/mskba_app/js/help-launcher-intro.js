@@ -1,10 +1,10 @@
-// One-time attention animation for the global MSKBA App FAQ button.
+// One-time attention animation for the global MSKBA App floating action.
 // A right-anchored, overflow-clipped pill reveals the word from right to left.
 // The help button remains usable as a simple circle if JavaScript is unavailable.
 export const HELP_LAUNCHER_DELAY_MS = 2000;
 
 export function initHelpLauncherIntro(doc = document, host = window) {
-    const launcher = doc.querySelector('[data-help-launcher]');
+    const launcher = doc.querySelector('[data-help-launcher]') ?? doc.querySelector('[data-venue-floating-create]');
     const label = launcher?.querySelector('[data-help-intro-label]');
     if (!launcher || !label) return null;
 

@@ -211,3 +211,42 @@ test('a home page without contextual controls never traps a stored pin', () => {
     page.scrollTo(300);
     assert.equal(page.classes.has('is-scroll-revealed'), true);
 });
+
+test('compact toolbar follows sticky top and squares corners only when stuck', () => {
+    const script = readFileSync(new URL('../../resources/themes/mskba_app/js/catalog-sticky-toolbar.js', import.meta.url), 'utf8')
+        .replace('import.meta.hot', 'false').replace('import.meta.hot.dispose', '(() => {})');
+    const css = readFileSync(new URL('../../resources/themes/mskba_app/css/catalog-controls.css', import.meta.url), 'utf8');
+    assert.match(css, /\.panel\.app-category-toolbar--compact\{[^}]*top:var\(--app-sticky-offset,136px\)/);
+    assert.match(css, /\.panel\.app-category-toolbar--compact\.is-stuck\{border-top-left-radius:0;border-top-right-radius:0\}/);
+    assert.match(css, /\.app-venues-catalog__sidebar,\.app-category__sidebar,\.app-shop--catalog \.app-shop__sidebar\{\s*transition:top \.28s cubic-bezier\(\.22,\.61,\.36,1\),max-height/);
+
+    const events = new Map(), frames = [], classes = new Set();
+    let top = 40, rectTop = 100, position = 'sticky';
+    const toolbar = {
+        classList: { toggle: (name, value) => value ? classes.add(name) : classes.delete(name) },
+        getClientRects: () => [1],
+        getBoundingClientRect: () => ({ top: rectTop }),
+        addEventListener: () => {},
+    };
+    const window = {
+        scrollY: 100,
+        getComputedStyle: () => ({ top: top + 'px', position }),
+        addEventListener: (name, cb) => events.set(name, cb),
+        requestAnimationFrame: cb => { frames.push(cb); return frames.length; },
+    };
+    runInNewContext(script, { window, document: { querySelector: () => toolbar }, AbortController });
+    const flush = () => { while (frames.length) frames.shift()(); };
+    const scroll = () => { events.get('scroll')(); flush(); };
+    flush();
+    assert.equal(classes.has('is-stuck'), false);
+    rectTop = 40;
+    scroll();
+    assert.equal(classes.has('is-stuck'), true);
+    top = rectTop = 120;
+    scroll();
+    assert.equal(classes.has('is-stuck'), true);
+    position = 'static';
+    events.get('resize')();
+    flush();
+    assert.equal(classes.has('is-stuck'), false);
+});
