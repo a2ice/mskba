@@ -47,6 +47,7 @@ if (help) {
     const pageTitle = help.querySelector('[data-help-page-title]');
     const pageContent = help.querySelector('[data-help-page-content]');
     const pageTabs = [...help.querySelectorAll('[data-help-page-tab]')];
+    const venueCreateTemplate = help.querySelector('[data-help-venue-create-template]');
     const lookup = help.querySelector('[data-help-search]');
     const options = help.querySelector('[data-help-options]');
     const toggle = help.querySelector('[data-help-toggle]');
@@ -134,6 +135,7 @@ if (help) {
         }
         if (activeHelpTab === 'about') {
             pageContent.append(node('p', pageHelp.about));
+            if (venueCreateTemplate) pageContent.append(venueCreateTemplate.content.cloneNode(true));
             return;
         }
         // HTML is sanitized by ContentBodyRenderer on the server.
@@ -265,6 +267,8 @@ if (help) {
                 renderPageHelp();
             } else {
                 render();
+                // Keep the catalogue invitation available even before editorial page help is published.
+                if (usePageContext && venueCreateTemplate) articleList.prepend(venueCreateTemplate.content.cloneNode(true));
             }
         } catch {
             if (id === requestId) articleList.replaceChildren(node('p', 'Не удалось загрузить FAQ. Попробуйте ещё раз.'));
