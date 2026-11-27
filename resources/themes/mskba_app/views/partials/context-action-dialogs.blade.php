@@ -18,6 +18,15 @@
         <button type="button" data-context-help-close aria-label="Закрыть">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll app-context-help__body">
+        @if(request()->routeIs('venues', 'venues.collections.show'))
+            <template data-help-venue-create-template>
+                <div class="app-context-help__venue-create" data-help-venue-create>
+                    <h4>Помогите пополнить каталог площадок</h4>
+                    <p>Знаете баскетбольный зал или уличную площадку, которой ещё нет в каталоге MSKBA? Добавляйте её! Мы приветствуем вклад каждого участника: так другим игрокам будет проще найти место для игры. После проверки новая площадка сможет появиться в каталоге.</p>
+                    <a class="button primary" href="{{ route('venues.create') }}">Добавить площадку</a>
+                </div>
+            </template>
+        @endif
         <section class="app-context-help__page" data-help-page hidden aria-label="Справка по текущей странице">
             <h3 class="app-context-help__page-heading" data-help-page-title></h3>
             <div class="app-context-help__tabs" data-help-page-tabs aria-label="Разделы справки">
