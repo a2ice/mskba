@@ -19,6 +19,9 @@ use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapsh
 use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use Illuminate\Support\Facades\Cache;
+use App\Modules\VenueIntegration\Application\Jobs\RefreshVisitedCourtSchedule;
+use App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh;
+use Illuminate\Support\Facades\Bus;
 use App\Modules\VenueIntegration\Application\Services\ApplyFindSportSnapshotToNativeSchedule;
 use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
 use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
@@ -711,6 +714,49 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             $lock->release();
         }
         $this->assertDatabaseCount('external_availability_snapshots', 1);
+    }
+
+    public function test_public_page_enqueues_one_refresh_for_stale_applied_source(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', true);
+        config()->set('venue_integrations.findsport_preview_enabled', true);
+        config()->set('venue_integrations.visit_schedule_refresh_enabled', true);
+        Bus::fake([RefreshVisitedCourtSchedule::class]);
+
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED, 'is_published' => true]);
+        $source = $this->source($actor, $venue);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record($source, $actor, $this->report($source));
+        $import = app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+        $court = $venue->courts()->firstOrFail();
+        $source->update(['enabled' => true]);
+        $source->integration()->update(['enabled' => true, 'refresh_on_visit' => true]);
+
+        $refresh = app(VisitScheduleRefresh::class);
+        $this->assertSame('cached', $refresh->forVenue($venue->id, enqueue: true)[$court->id]['state']);
+        Bus::assertNotDispatched(RefreshVisitedCourtSchedule::class);
+
+        $this->travel(6)->minutes();
+        $this->assertSame('stale', $refresh->forVenue($venue->id)[$court->id]['state']);
+        Bus::assertNotDispatched(RefreshVisitedCourtSchedule::class);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->assertSame('updating', $refresh->forVenue($venue->id, enqueue: true)[$court->id]['state']);
+        }
+        Bus::assertDispatchedTimes(RefreshVisitedCourtSchedule::class, 1);
+        $this->getJson(route('venues.schedule.refresh-status', $venue->id))
+            ->assertOk()->assertJsonPath("courts.{$court->id}.state", 'updating');
+        $this->assertDatabaseCount('external_availability_snapshots', 1);
+
+        $source->update(['enabled' => false]);
+        $this->assertSame([], $refresh->forVenue($venue->id, enqueue: true));
+        $job = new RefreshVisitedCourtSchedule((int) $import->id, (int) $source->id,
+            Cache::get(VisitScheduleRefresh::pendingKey($source->id)));
+        $job->handle($refresh, app(FindSportOnDemandRefresh::class));
+        $this->assertFalse(Cache::has(VisitScheduleRefresh::pendingKey($source->id)));
+        $this->assertDatabaseCount('external_availability_snapshots', 1);
+        Bus::assertDispatchedTimes(RefreshVisitedCourtSchedule::class, 1);
     }
 
     public function test_public_refresh_can_save_and_apply_without_admin_actor(): void

@@ -36,6 +36,14 @@ final class VenueCourtPublicController extends Controller
             ]]);
         }
 
+        $refreshFragment = $request->boolean('schedule_refresh_fragment');
+        $scheduleRefresh = app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class)
+            ->forVenue($details->id, (int) $details->selectedCourt['id'], ! $refreshFragment && $request->isMethod('GET'));
+        if ($refreshFragment) {
+            return response()->view('theme::pages.venues.schedule-fragment', ['venue' => $details, 'scheduleRefresh' => $scheduleRefresh])
+                ->header('Cache-Control', 'no-store');
+        }
+
         $canonicalUrl = route('venues.courts.show', [
             $details->routeIdentifier(),
             $details->selectedCourt['routeIdentifier'],
@@ -50,8 +58,7 @@ final class VenueCourtPublicController extends Controller
 
         return ThemeResolver::page('venues.show', [
             'venue' => $details,
-            'scheduleRefresh' => app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class)
-                ->forVenue($details->id, (int) $details->selectedCourt['id'], $request->isMethod('GET')),
+            'scheduleRefresh' => $scheduleRefresh,
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::VENUE,
                 $details->id,

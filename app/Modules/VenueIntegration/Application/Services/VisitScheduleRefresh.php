@@ -61,7 +61,6 @@ final class VisitScheduleRefresh
     {
         return $import->snapshot !== null
             && $import->snapshot->complete
-            && ! $import->snapshot->isStale()
             && $import->snapshot->observed_at->greaterThan(
                 now()->subSeconds(FindSportOnDemandRefresh::REFRESH_AFTER_SECONDS),
             );

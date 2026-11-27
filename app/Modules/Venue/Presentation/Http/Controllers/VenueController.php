@@ -541,6 +541,14 @@ class VenueController extends Controller
             ]])->setStatusCode($status);
         }
 
+        $refreshFragment = $request->boolean('schedule_refresh_fragment');
+        $scheduleRefresh = app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class)
+            ->forVenue($venue->id, enqueue: ! $refreshFragment && $request->isMethod('GET'));
+        if ($refreshFragment) {
+            return response()->view('theme::pages.venues.schedule-fragment', compact('venue', 'scheduleRefresh'))
+                ->header('Cache-Control', 'no-store');
+        }
+
         $nearbyVenues = $venue->address?->latitude !== null && $venue->address?->longitude !== null
             ? $findNearbyVenues->handle(
                 $venue->id,
@@ -558,8 +566,7 @@ class VenueController extends Controller
         return ThemeResolver::page('venues.show', [
             'venue' => $venue,
             'nearbyVenues' => $nearbyVenues,
-            'scheduleRefresh' => app(\App\Modules\VenueIntegration\Application\Services\VisitScheduleRefresh::class)
-                ->forVenue($venue->id, enqueue: $request->isMethod('GET')),
+            'scheduleRefresh' => $scheduleRefresh,
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::VENUE,
                 $venue->id,
