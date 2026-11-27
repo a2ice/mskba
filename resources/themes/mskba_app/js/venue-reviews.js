@@ -129,7 +129,7 @@ if (root?.querySelector('[data-review-list]')) {
     }
 
     function open(review = null) {
-        if (!dialog || dialog.open) return;
+        if (!dialog || dialog.open || submit?.disabled) return;
         editing = review?.id ?? null;
         if (form) {
             form.reset();
@@ -154,8 +154,9 @@ if (root?.querySelector('[data-review-list]')) {
         submit.disabled = true;
         error.hidden = true;
         try {
-            const endpoint = editing ? root.dataset.reviewsUrl + '/' + editing : root.dataset.reviewsUrl;
-            const response = await fetch(endpoint, {method: editing ? 'PATCH' : 'POST', credentials: 'same-origin',
+            const editingId = editing;
+            const endpoint = editingId ? root.dataset.reviewsUrl + '/' + editingId : root.dataset.reviewsUrl;
+            const response = await fetch(endpoint, {method: editingId ? 'PATCH' : 'POST', credentials: 'same-origin',
                 headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': root.dataset.csrf},
                 body: JSON.stringify({rating: Number(range.value), body: body.value})});
             const data = await response.json();
@@ -164,9 +165,9 @@ if (root?.querySelector('[data-review-list]')) {
                 throw new Error(message || 'Не удалось сохранить оценку. Попробуй ещё раз.');
             }
             updateRating(data.rating);
-            dialog.close();
+            if (dialog.open) dialog.close();
             thanks.querySelector('[data-review-thanks-note]').hidden = data.published;
-            thanks.querySelector('h2').textContent = editing ? 'Спасибо! Отзыв сохранён.' : 'Спасибо за оценку!';
+            thanks.querySelector('h2').textContent = editingId ? 'Спасибо! Отзыв сохранён.' : 'Спасибо за оценку!';
             thanks.showModal();
             reset();
         } catch (e) {
