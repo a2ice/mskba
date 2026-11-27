@@ -40,6 +40,8 @@
 .app-category__card{display:flex;flex-direction:column;position:relative;min-width:0;overflow:hidden}
 .app-category__card-cover{display:block;position:relative;width:100%;aspect-ratio:1.58;overflow:hidden;background:var(--surface-raised)}
 .app-category__card-cover img{display:block;width:100%;height:100%;object-fit:cover}
+/* Preserve the upper-left text and logo on editorial covers without changing other catalogs. */
+#news-catalog .app-category__card-cover img{object-position:0 0}
 .app-category__cover-placeholder{display:grid;place-items:center;height:100%;font-size:13px;color:var(--muted);font-weight:700}
 .app-category__card-body{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;gap:12px;padding:18px}
 .app-category__badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
