@@ -1,3 +1,4 @@
+import '../../../js/components/venue-cover-parallax.js';
 import './venue-catalog-nearby.js';
 import './venue-catalog-distance.js';
 import './venue-catalog-distance-on-demand.js';

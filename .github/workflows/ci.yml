@@ -227,7 +227,7 @@ jobs:
 
       - name: Verify venue favorite follow state, event action and synchronized dialogs
         if: steps.change_scope.outputs.full_suite == 'true'
-        run: node --test tests/JavaScript/venue-favorite-follow-dialogs.test.mjs
+        run: node --test tests/JavaScript/venue-favorite-follow-dialogs.test.mjs tests/JavaScript/venue-cover-parallax.test.mjs
 
       - name: Validate dynamic Page Builder and theme-owned JavaScript syntax
         if: steps.change_scope.outputs.full_suite == 'true'
