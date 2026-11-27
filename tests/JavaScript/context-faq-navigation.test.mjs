@@ -41,3 +41,12 @@ test('invitation is scoped to the venues section and the existing creation guide
     assert.equal(show(template, 'venues', { article: { is_venue_creation_guide: false } }, list), false);
     assert.deepEqual(rendered, ['banner', 'banner']);
 });
+
+test('back is beside the section selector with a 5px gap, not in the title', () => {
+    const blade = readFileSync(new URL('../../resources/themes/mskba_app/views/partials/context-action-dialogs.blade.php', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../../resources/themes/mskba_app/css/context-dialogs.css', import.meta.url), 'utf8');
+    assert.match(blade, /<div class="app-context-help__navigation">\s*<button[^>]*data-help-back[\s\S]*?<\/button>\s*<div class="app-context-help__lookup" data-help-combobox>/);
+    assert.match(css, /\.app-context-help__navigation\s*\{[^}]*gap:5px;/);
+    assert.match(blade, /<h4>Много площадок не бывает!<\/h4>/);
+    assert.match(blade, /<p>Знаете баскетбольный зал или уличную площадку, которой еще нет на портале\?<\/p>/);
+});
