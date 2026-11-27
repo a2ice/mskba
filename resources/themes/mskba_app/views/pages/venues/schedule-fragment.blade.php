@@ -26,17 +26,13 @@
                             <div class="app-venue-schedule__court-header">
                                 <div class="venue-schedule-refresh-heading">
                                     @unless($venue->isCourtPage)
-                                        <h3>{{ $scheduleGroup['name'] }}</h3>
+                                        <h3><a class="app-venue-court-link" href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">{{ $scheduleGroup['name'] }}</a></h3>
                                     @endunless
                                     @include('components.venue-schedule-refresh-status', ['refreshState' => $refreshState])
                                 </div>
-                                @unless($venue->isCourtPage)
-                                    <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">Подробнее</a>
-                                @endunless
                             </div>
                         @endif
                         @if(!($scheduleGroup['bookingEnabled'] ?? false))
-                            <p class="muted">Онлайн-бронирование недоступно.</p>
                             @include('venues.partials.informational-hours', ['scheduleGroup' => $scheduleGroup])
                         @elseif(count($scheduleGroup['days']))
                             <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}"

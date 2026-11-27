@@ -48,7 +48,7 @@ final class VenueCourtDetailInheritanceTest extends TestCase
             ->assertSee($common, false)
             ->assertSee($primaryPhoto, false)
             ->assertSee($otherPhoto, false)
-            ->assertSee('Все залы и корты · общая страница')
+            ->assertSee('Вся площадка')
             ->assertSee(route('venues.courts.show', [$venue->routeIdentifier(), $primary->routeIdentifier()]), false)
             ->assertSee(route('venues.courts.show', [$venue->routeIdentifier(), $other->routeIdentifier()]), false);
 

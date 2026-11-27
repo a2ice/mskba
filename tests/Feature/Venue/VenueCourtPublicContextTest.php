@@ -177,7 +177,7 @@ final class VenueCourtPublicContextTest extends TestCase
         ]);
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
-            ->assertOk()->assertSee('Все залы и корты · общая страница')
+            ->assertOk()->assertSee('Вся площадка')
             ->assertSee('data-venue-court-dropdown', false);
 
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $primary->routeIdentifier()]))
@@ -248,11 +248,13 @@ final class VenueCourtPublicContextTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Школа: крытый зал и уличный корт');
+            ->assertSee('Школа: крытый зал и уличный корт')
+            ->assertSee('Крытая площадка')
+            ->assertSee('Уличная площадка');
 
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]))
             ->assertOk()
-            ->assertSee('<h1 id="app-venue-title">Школа тестовая</h1>', false)
+            ->assertSee('<h1 id="app-venue-title"><a class="app-venue-parent-link" href="'.route('venues.show', $venue->routeIdentifier()).'">Школа тестовая</a></h1>', false)
             ->assertDontSee('app-venue-intro__court-name');
 
         $second->delete();

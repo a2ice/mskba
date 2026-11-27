@@ -16,7 +16,7 @@ export function validatePlan(plan) {
     for (const [key, max] of [['meta_title', 255], ['meta_description', 320], ['meta_keywords', 1000]]) {
         if (plan[key] !== undefined && (typeof plan[key] !== 'string' || plan[key].length > max)) throw new Error('Invalid ' + key);
     }
-    if (typeof plan.cover !== 'string' || !/^ops\/editorial-news\/covers\/[a-z0-9][a-z0-9.-]*\.(?:jpg|jpeg|png|webp)$/.test(plan.cover)) throw new Error('Invalid cover path.');
+    if (plan.cover !== undefined && (typeof plan.cover !== 'string' || !/^ops\/editorial-news\/covers\/[a-z0-9][a-z0-9.-]*\.(?:jpg|jpeg|png|webp)$/.test(plan.cover))) throw new Error('Invalid cover path.');
     const names = plan.telegram_chat_titles;
     if (!Array.isArray(names) || names.length > 100 || names.some(n => typeof n !== 'string' || !n.trim() || n.length > 255)) throw new Error('Invalid Telegram targets.');
     if (new Set(names.map(normalize)).size !== names.length) throw new Error('Duplicate Telegram targets.');
@@ -28,7 +28,7 @@ export function validatePlan(plan) {
 
 function normalize(name) { return name.trim().toLowerCase(); }
 
-export function selectDestinations(plan, registry) {
+export function selectDestinations(plan, registry, hasCover = plan.cover !== undefined) {
     const ids = plan.telegram_chat_titles.map(name => {
         const matches = (registry.telegram ?? []).filter(chat => typeof chat.title === 'string' && normalize(chat.title) === normalize(name));
         if (matches.length !== 1 || !Number.isSafeInteger(matches[0].id) || matches[0].id <= 0) throw new Error('Telegram target missing or ambiguous.');
@@ -36,7 +36,8 @@ export function selectDestinations(plan, registry) {
     });
     if (new Set(ids).size !== ids.length) throw new Error('Duplicate target IDs.');
     const vk = plan.vk_group_id;
-    if (vk !== null && (registry.vk?.group_id !== vk || (registry.vk?.available !== true && !(plan.allow_vk_wait === true && registry.vk?.can_defer === true)))) throw new Error('Requested VK group is unavailable; no publication sent.');
+    const vkReady = hasCover ? registry.vk?.available === true || (plan.allow_vk_wait === true && registry.vk?.can_defer === true) : registry.vk?.text_available === true;
+    if (vk !== null && (registry.vk?.group_id !== vk || !vkReady)) throw new Error('Requested VK group is unavailable; no publication sent.');
     return { telegram_chat_ids: ids, publish_in_vk: vk !== null, ...(vk === null ? {} : { vk_group_id: vk }), ...(plan.allow_vk_wait === true ? { defer_vk_until_authorized: true } : {}) };
 }
 
@@ -62,10 +63,14 @@ async function main(requestPath, token) {
     const requestReal = await realpath(requestPath);
     if (requestReal !== path.resolve(requestPath)) throw new Error('Request path must not contain symlinks.');
     const plan = validatePlan(JSON.parse(await readFile(requestReal, 'utf8')));
-    const coverReal = await realpath(plan.cover);
-    if (coverReal !== path.resolve(plan.cover)) throw new Error('Cover path must not contain symlinks.');
-    const meta = await stat(coverReal);
-    if (!meta.isFile() || meta.size <= 0 || meta.size > 5 * 1024 * 1024) throw new Error('Cover must be a regular file up to 5 MiB.');
+    let coverReal;
+    if (plan.cover !== undefined) {
+        coverReal = await realpath(plan.cover);
+        if (coverReal !== path.resolve(plan.cover)) throw new Error('Cover path must not contain symlinks.');
+        const meta = await stat(coverReal);
+        if (!meta.isFile() || meta.size <= 0 || meta.size > 5 * 1024 * 1024) throw new Error('Cover must be a regular file up to 5 MiB.');
+    }
+    const siteOnly = plan.telegram_chat_titles.length === 0 && plan.vk_group_id === null;
     const endpoint = '/' + plan.alias;
     async function api(method, suffix, body, allow404 = false) {
         let response;
@@ -87,7 +92,7 @@ async function main(requestPath, token) {
     }
     // An existing published item is read-only. Do not require live VK photo auth just to inspect it.
     let item = await api('GET', endpoint, undefined, true);
-    if (item && (item.title !== plan.title || item.has_cover !== true)) throw new Error('Existing alias does not match reviewed material.');
+    if (item && (item.title !== plan.title || (plan.cover !== undefined && item.has_cover !== true))) throw new Error('Existing alias does not match reviewed material.');
     let selection;
     if (item?.status === 'published') {
         const existing = item.telegram_publications ?? [];
@@ -96,20 +101,24 @@ async function main(requestPath, token) {
         console.log(JSON.stringify({ alias: plan.alias, url: item.url, status: item.status, telegram: existing, vk: item.vk_publication }));
         throw new Error('Alias already published; inspect reported destinations and status. No mutation performed.');
     }
-    selection = selectDestinations(plan, await api('GET', '/destinations/list'));
+    selection = siteOnly ? { telegram_chat_ids: [], publish_in_vk: false }
+        : selectDestinations(plan, await api('GET', '/destinations/list'), item ? item.has_cover === true : plan.cover !== undefined);
     if (item && (item.status !== 'draft' || plan.resume_existing_draft !== true)) throw new Error('Existing draft: review in admin before explicitly resuming.');
     if (!item) {
         const form = new FormData();
         for (const key of ['alias', 'title', 'summary', 'content', 'meta_title', 'meta_description', 'meta_keywords']) {
             if (plan[key] !== undefined) form.set(key, plan[key]);
         }
-        const ext = path.extname(plan.cover);
-        const mime = ['.jpeg', '.jpg'].includes(ext) ? 'image/jpeg' : 'image/' + ext.slice(1);
-        form.set('cover', new Blob([await readFile(coverReal)], { type: mime }), path.basename(plan.cover));
+        if (coverReal !== undefined) {
+            const ext = path.extname(plan.cover);
+            const mime = ['.jpeg', '.jpg'].includes(ext) ? 'image/jpeg' : 'image/' + ext.slice(1);
+            form.set('cover', new Blob([await readFile(coverReal)], { type: mime }), path.basename(plan.cover));
+        }
         item = await api('POST', '', form);
-        if (item.title !== plan.title || item.status !== 'draft' || !item.has_cover) throw new Error('Draft was not confirmed.');
+        if (item.title !== plan.title || item.status !== 'draft' || (plan.cover !== undefined && item.has_cover !== true)) throw new Error('Draft was not confirmed.');
     }
-    item = await api('POST', endpoint + '/publish', JSON.stringify(selection));
+    // Site-only requests do not need a social permission or destination registry.
+    item = await api('POST', endpoint + '/publish', siteOnly ? undefined : JSON.stringify(selection));
     for (let attempt = 0; attempt < 25; attempt++) {
         const result = delivery(item, selection);
         if (result !== 'pending') {
