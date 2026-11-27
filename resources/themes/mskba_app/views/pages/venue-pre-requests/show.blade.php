@@ -1,5 +1,5 @@
 @php
-    $title = 'Предзаявка на аренду';
+    $title = 'Запрос на аренду';
     $timezone = $pre->venue->schedule()->value('timezone') ?: config('app.timezone');
     $active = $pre->status === \App\Modules\VenueBooking\Domain\Enums\VenueRentalPreRequestStatus::ACTIVE;
 @endphp
@@ -8,7 +8,7 @@
 <section class="app-account-section">
     <div class="container app-account-section__inner app-rental-pricing">
         <header class="app-account-section__heading">
-            <a href="{{ route('account.venue-pre-requests.index') }}">Предзаявки</a>
+            <a href="{{ route('account.venue-pre-requests.index') }}">Запросы на аренду</a>
             <h1>{{ $title }}</h1>
             <p>{{ $pre->venue->name }} · {{ $pre->court->publicName() }}</p>
         </header>
@@ -18,7 +18,7 @@
             <h2>{{ $pre->status->label() }}</h2>
             <p>{{ $pre->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $pre->ends_at->setTimezone($timezone)->format('d.m.Y H:i') }} · {{ (int) $pre->starts_at->diffInMinutes($pre->ends_at) }} мин · {{ $pre->scope->label() }}</p>
             <p>Заявитель: {{ $pre->requester->username }} · {{ $pre->created_at->setTimezone($timezone)->format('d.m.Y H:i') }}</p>
-            <p>Предзаявка не удерживает время и не требует оплаты. Для аренды нужно согласовать отдельное предложение.</p>
+            <p>Запрос на аренду не удерживает время и не требует оплаты. Для аренды нужно согласовать отдельное предложение.</p>
             @if($pre->resolved_at)<p>Согласована: {{ $pre->resolved_at->setTimezone($timezone)->format('d.m.Y H:i') }}</p>@endif
             @if($pre->withdrawn_at)<p>Отозвана: {{ $pre->withdrawn_at->setTimezone($timezone)->format('d.m.Y H:i') }}</p>@endif
             <div class="app-rental-pricing__actions">
@@ -29,7 +29,7 @@
                 @endif
                 @if($active && $isCustomer)
                     <form method="POST" action="{{ route('account.venue-pre-requests.withdraw', $pre) }}">@csrf
-                        <button class="button secondary" type="submit">Отозвать предзаявку</button>
+                        <button class="button secondary" type="submit">Отозвать запрос</button>
                     </form>
                 @endif
             </div>

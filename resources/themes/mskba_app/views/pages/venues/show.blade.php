@@ -543,12 +543,13 @@
 </dialog>
 @include('components.venue-main-favorite-dialog')
 <dialog class="app-venue-overlay app-venue-day-dialog" data-venue-day-dialog
+    data-venue-name="{{ $venue->name }}"
     data-day-url="{{ route('venues.schedule.day', $venue->id) }}"
     data-court-id="{{ count($rentalSearchCourts) === 1 ? $rentalSearchCourts[0]['id'] : '' }}"
     data-court-name="{{ count($rentalSearchCourts) === 1 ? $rentalSearchCourts[0]['name'] : '' }}"
     aria-labelledby="app-venue-day-dialog-title">
     <div class="app-venue-overlay__header">
-        <h2 id="app-venue-day-dialog-title" data-venue-day-title>Расписание дня</h2>
+        <h2 id="app-venue-day-dialog-title" data-venue-day-title>{{ $venue->name }}</h2>
         <button type="button" class="icon-button" data-venue-overlay-close aria-label="Закрыть">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
         </button>
@@ -563,8 +564,11 @@
         data-venue-day-status hidden></p>
     <div class="app-venue-day-dialog__grid" data-venue-day-slots aria-label="Интервалы бронирования"></div>
     <form method="POST" action="{{ route('venues.rental.quote', $venue->id) }}"
-        class="app-venue-day-dialog__footer" data-venue-day-booking-form>
+        class="app-venue-day-dialog__footer" data-venue-day-booking-form
+        data-pre-request-url="{{ route('venues.pre-requests.store', $venue->id) }}"
+        data-pre-request-prepare-url="{{ route('venues.pre-requests.prepare', $venue->id) }}">
         @csrf
+        <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
         <input type="hidden" name="venue_court_id" data-venue-day-court>
         <input type="hidden" name="starts_at" data-venue-day-start>
         <input type="hidden" name="duration_minutes" data-venue-day-duration>

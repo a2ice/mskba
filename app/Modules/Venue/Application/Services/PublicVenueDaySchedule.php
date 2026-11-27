@@ -264,6 +264,11 @@ final readonly class PublicVenueDaySchedule
             $selectable = $rentalEnabled && ! $stale && $inFuture && $start->lessThanOrEqualTo($latestStart)
                 && $status === 'available' && $priceMinor !== null;
 
+            if ($venue->occupancy_requires_confirmation && $status === 'available') {
+                // Not booked in MSKBA does not mean externally confirmed free.
+                $status = 'requestable';
+            }
+
             // Source tariffs remain untouched; public prices include the
             // effective commission and tariffs for one individual interval.
             // A multi-interval selection gets its own server-side preview:
@@ -494,6 +499,7 @@ final readonly class PublicVenueDaySchedule
             'minimum_minutes' => $minimum,
             'maximum_minutes' => $maximum,
             'booking_enabled' => $rentalEnabled,
+            'occupancy_requires_confirmation' => (bool) $venue->occupancy_requires_confirmation,
             'last_updated_at' => $snapshot?->observed_at?->setTimezone('Europe/Moscow')->format('d.m.Y H:i:s'),
             'refresh_interval_seconds' => FindSportOnDemandRefresh::REFRESH_AFTER_SECONDS,
             'refresh_state' => $refresh['state'],

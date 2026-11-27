@@ -678,6 +678,8 @@ Route::prefix('account/venue-ownership-claims')
 
 Route::middleware(['venue-rental-feature:rental_flow', 'auth'])->group(function (): void {
     $controller = \App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalPreRequestController::class;
+    Route::get('/venues/{venue}/pre-requests/prepare', [\App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController::class, 'prepareRequest'])
+        ->whereNumber('venue')->name('venues.pre-requests.prepare');
     Route::post('/venues/{venue}/pre-requests', [$controller, 'store'])->middleware('throttle:20,1')->name('venues.pre-requests.store');
     Route::get('/account/venue-pre-requests', [$controller, 'index'])->name('account.venue-pre-requests.index');
     Route::get('/account/venue-pre-requests/{preRequest}', [$controller, 'show'])->name('account.venue-pre-requests.show');

@@ -50,19 +50,21 @@
                 @if(config('features.venue_rental.special_terms'))
                     <label class="form-label">Промокод <input class="form-control" name="coupon_code" maxlength="32" value="{{ old('coupon_code', $submitted['coupon_code'] ?? '') }}"></label>
                 @endif
-                <button class="btn btn--primary btn--sm mt-3" type="submit" data-venue-rental-submit>Рассчитать</button>
+                @if(!$venue->occupancy_requires_confirmation || !auth()->check())
+                     <button class="btn btn--primary btn--sm mt-3" type="submit" data-venue-rental-submit>{{ $venue->occupancy_requires_confirmation ? 'Отправить заявку' : 'Рассчитать' }}</button>
+                 @endif
                 @auth
                     <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
-                    <label class="form-label">Комментарий к предзаявке (необязательно)<textarea class="form-control" name="note" maxlength="4000" rows="2">{{ old('note') }}</textarea></label>
-                    <button class="btn btn--secondary btn--sm" type="submit" formaction="{{ route('venues.pre-requests.store', $venue) }}">Предзаявка</button>
-                    <p>Предзаявка открывает переписку. Время не резервируется, оплата не требуется.</p>
+                    <label class="form-label">Комментарий к запросу на аренду (необязательно)<textarea class="form-control" name="note" maxlength="4000" rows="2">{{ old('note') }}</textarea></label>
+                    <button class="{{ $venue->occupancy_requires_confirmation ? 'btn btn--primary btn--sm' : 'btn btn--secondary btn--sm' }}" type="submit" formaction="{{ route('venues.pre-requests.store', $venue) }}">{{ $venue->occupancy_requires_confirmation ? 'Отправить заявку' : 'Запрос на аренду' }}</button>
+                    <p>Запрос на аренду открывает переписку. Время не резервируется, оплата не требуется.</p>
                 @else
-                    <a class="btn btn--secondary btn--sm" href="{{ route('login') }}">Предзаявка · войти</a>
+                    <a class="btn btn--secondary btn--sm" href="{{ route('login') }}">Запрос на аренду · войти</a>
                 @endauth
             </form>
         </div></div>
 
-        @if($quote)
+        @if($quote && !$venue->occupancy_requires_confirmation)
             <div class="card"><div class="card-body">
                 <h2 class="h4">Итог предложения</h2>
                 <p><strong>{{ $court->name }}</strong></p>

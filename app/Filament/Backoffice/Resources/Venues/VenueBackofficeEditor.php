@@ -56,6 +56,7 @@ final class VenueBackofficeEditor
         return [
             ...app(VenueRentalCashbackSettings::class)->formFields($venue),
             ...app(VenueRentalPolicyEditor::class)->fields($venue),
+            'occupancy_requires_confirmation' => $venue->occupancy_requires_confirmation,
             'access_type' => $venue->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'),
             'banner_display_mode' => $venue->banner_display_mode ?: 'top',
             'banner_overlay_color' => $venue->bannerOverlayCss(),
@@ -179,6 +180,7 @@ final class VenueBackofficeEditor
                     'paid' => true, 'free' => false, default => null,
                 },
                 'requires_booking_approval' => (bool) ($data['requires_booking_approval'] ?? false),
+                'occupancy_requires_confirmation' => (bool) ($data['occupancy_requires_confirmation'] ?? $venue?->occupancy_requires_confirmation ?? false),
                 'short_description' => $data['short_description'] ?? null,
                 'full_description' => $data['full_description'] ?? null,
                 'raw_address' => $rawAddress !== '' ? $rawAddress : null,

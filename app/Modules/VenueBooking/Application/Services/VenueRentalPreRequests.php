@@ -109,7 +109,7 @@ final readonly class VenueRentalPreRequests
                 'status' => VenueRentalPreRequestStatus::ACTIVE,
             ]);
             $pre->conversation()->create(['public_id' => (string) Str::uuid()]);
-            $this->message($pre, $actor, 'Предзаявка создана. Время ещё не забронировано.'.($note ? "\n".$note : ''), 'system');
+            $this->message($pre, $actor, 'Запрос на аренду отправлен. Время ещё не забронировано.'.($note ? "\n".$note : ''), 'system');
             return $pre;
         });
     }
@@ -118,7 +118,7 @@ final readonly class VenueRentalPreRequests
     {
         return $this->locked($reference, function (VenueRentalPreRequest $pre) use ($actor): VenueBooking {
             $this->assertCan($actor, $pre, 'offer');
-            abort_unless($pre->status === VenueRentalPreRequestStatus::ACTIVE, 409, 'Предзаявка закрыта.');
+            abort_unless($pre->status === VenueRentalPreRequestStatus::ACTIVE, 409, 'Запрос на аренду закрыт.');
             $existing = $pre->bookings()->whereIn('status', [VenueBookingStatusEnum::REQUESTED->value, VenueBookingStatusEnum::HELD->value, VenueBookingStatusEnum::CONFIRMED->value])->latest('id')->first();
             if ($existing !== null) {
                 if ($existing->status !== VenueBookingStatusEnum::REQUESTED || $existing->proposal_expires_at->isFuture()) {
@@ -153,7 +153,7 @@ final readonly class VenueRentalPreRequests
             abort_unless($pre->status === VenueRentalPreRequestStatus::ACTIVE && $booking->status === VenueBookingStatusEnum::REQUESTED, 409, 'Предложение уже обработано.');
             if (! $accept) {
                 $booking = app(CancelVenueBookingHandler::class)->handle($booking->id, $actor, 'Клиент отклонил предложение.');
-                $this->message($pre, $actor, 'Предложение отклонено. Предзаявка остаётся активной.', 'system');
+                $this->message($pre, $actor, 'Предложение отклонено. Запрос на аренду остаётся активным.', 'system');
                 return $booking;
             }
             abort_unless($booking->proposal_expires_at->isFuture(), 409, 'Срок предложения истёк. Запроси новое предложение.');
@@ -190,10 +190,10 @@ final readonly class VenueRentalPreRequests
             if ($pre->status === VenueRentalPreRequestStatus::WITHDRAWN) { return; }
             abort_unless($pre->status === VenueRentalPreRequestStatus::ACTIVE, 409, 'Используй отмену связанной брони.');
             foreach ($pre->bookings()->where('status', VenueBookingStatusEnum::REQUESTED->value)->get() as $booking) {
-                app(CancelVenueBookingHandler::class)->handle($booking->id, $actor, 'Предзаявка отозвана.');
+                app(CancelVenueBookingHandler::class)->handle($booking->id, $actor, 'Запрос на аренду отозван.');
             }
             $pre->forceFill(['status' => VenueRentalPreRequestStatus::WITHDRAWN, 'withdrawn_at' => now()])->save();
-            $this->message($pre, $actor, 'Предзаявка отозвана.', 'system');
+            $this->message($pre, $actor, 'Запрос на аренду отозван.', 'system');
         });
     }
 
@@ -287,7 +287,7 @@ final readonly class VenueRentalPreRequests
                     if (! $inserted) { return; }
                     app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
                         userId: $user->id, type: UserNotificationTypeEnum::MESSAGE,
-                        title: 'Предзаявка на аренду', body: 'Обновление переписки по площадке «'.$pre->venue->name.'».',
+                        title: 'Запрос на аренду', body: 'Обновление переписки по площадке «'.$pre->venue->name.'».',
                         actionUrl: route('account.notifications.threads.pre-request', $pre, false), actionText: 'Переписка',
                         payload: ['source' => 'venue.rental.pre-request', 'delivery_category' => 'request', 'pre_request_id' => $pre->id, 'venue_id' => $pre->venue_id],
                     ));

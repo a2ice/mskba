@@ -74,11 +74,38 @@ final class VenueRentalPreRequestTest extends TestCase
         $this->assertTrue(app(VenueRentalPreRequests::class)->can($owner, $pre, 'offer'));
         $this->assertHttpFailure(409, fn () => app(VenueRentalPreRequests::class)->create($actor, $venue,
             $venue->primaryCourt()->firstOrFail(), $pre->starts_at, 120, VenueBookingScopeEnum::WHOLE, $key));
-        $this->assertDatabaseHas('user_notifications', ['user_id' => $owner->id, 'title' => 'Предзаявка на аренду']);
+        $this->assertDatabaseHas('user_notifications', ['user_id' => $owner->id, 'title' => 'Запрос на аренду']);
         $notificationCount = \App\Modules\Notification\Domain\Models\UserNotification::query()->count();
         app(VenueRentalPreRequests::class)->notifyMessage($pre->conversation->messages()->firstOrFail()->id);
         $this->assertSame($notificationCount, \App\Modules\Notification\Domain\Models\UserNotification::query()->count());
         $this->actingAs($customer)->get(route('account.venue-pre-requests.show', $pre))->assertOk();
+    }
+
+    public function test_unknown_occupancy_mode_uses_non_occupying_request_and_preserves_proposal_flow(): void
+    {
+        [, $representative, $venue] = $this->venue();
+        [$customer, $actor] = $this->person();
+        $venue->update(['occupancy_requires_confirmation' => true]);
+        $quote = app(\App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler::class)->handle(
+            $venue->refresh(), CarbonImmutable::parse('2026-11-18 18:00', 'Europe/Moscow'), 60,
+            VenueBookingScopeEnum::WHOLE, $customer, $venue->primaryCourt()->firstOrFail(),
+        );
+        try {
+            app(\App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler::class)
+                ->handle($actor, $quote->publicId, (string) Str::uuid());
+            $this->fail('Direct booking must not bypass unknown occupancy mode.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('RENTAL_REQUEST_REQUIRED', $exception->errorCode);
+        }
+        $pre = $this->pre($venue->refresh(), $actor);
+        $this->assertDatabaseCount('venue_bookings', 0);
+        $this->assertDatabaseCount('venue_booking_payment_attempts', 0);
+        $this->assertDatabaseCount('events', 0);
+        $service = app(VenueRentalPreRequests::class);
+        $booking = $service->offer($pre, $representative);
+        $this->assertNull($booking->hold_expires_at);
+        $this->assertSame(VenueBookingStatusEnum::REQUESTED, $booking->status);
+        $this->assertSame(VenueBookingStatusEnum::HELD, $service->respond($pre, $actor, $booking->id, true)->status);
     }
 
     public function test_owner_proposal_is_an_ordinary_booking_with_provenance_and_requires_customer_consent(): void

@@ -12,6 +12,7 @@
         $shortMonths = [1 => 'янв', 2 => 'фев', 3 => 'мар', 4 => 'апр', 5 => 'мая', 6 => 'июн', 7 => 'июл', 8 => 'авг', 9 => 'сен', 10 => 'окт', 11 => 'ноя', 12 => 'дек'];
         $placeholderDateLabel = static fn ($date) => $date->format('d') . ' ' . $shortMonths[(int) $date->month];
         $placeholderWeekdayLabel = static fn ($date) => $shortWeekdays[(int) $date->dayOfWeekIso];
+        $requestOnly = (bool) ($venue->rental['occupancyRequiresConfirmation'] ?? false);
         $legacyBookableCourtIds = collect($venue->courtSchedules)->where('bookingEnabled', true)->pluck('id')->all();
         // On a multi-zone venue the aggregate occupancy calendar would mix
         // independent areas. Show that calendar only on an individual court,
@@ -223,7 +224,7 @@
                 </span>
             </div>
             @if($legacyBookableCourtIds !== [])
-                <a href="#schedule" class="btn btn--primary btn--sm venue-booking-action">
+                <a href="{{ $requestOnly ? route('venues.rental.show', ['venue' => $venue->id, 'court' => $venue->selectedCourt['routeIdentifier']]) : '#schedule' }}" class="btn btn--primary btn--sm venue-booking-action">
                     <i class="ti ti-player-play venue-booking-action__icon" aria-hidden="true"></i>
                     <span class="venue-booking-action__label">{{ $venue->isCourtPage
                         ? ($venue->selectedCourt['environment'] === 'outdoor' ? 'Арендовать корт' : 'Арендовать зал')
@@ -330,7 +331,7 @@
                                         $dayStateLabel = match ($day['state']) {
                                             'confirmed' => 'есть подтверждённые бронирования',
                                             'tentative' => 'есть неподтверждённые бронирования',
-                                            default => 'свободно',
+                                            default => $requestOnly ? 'занятость уточняется' : 'свободно',
                                         };
                                     @endphp
                                     <button
@@ -340,7 +341,7 @@
                                             'is-today' => $day['isToday'],
                                             'is-confirmed' => $day['state'] === 'confirmed',
                                             'is-tentative' => $day['state'] === 'tentative',
-                                            'is-free' => $day['state'] === 'free',
+                                            'is-free' => !$requestOnly && $day['state'] === 'free',
                                         ])
                                         aria-label="{{ $day['label'] }}, {{ $day['weekday'] }}: {{ $dayStateLabel }}"
                                         data-venue-occupancy-day
@@ -410,6 +411,16 @@
                                                         </span>
                                                     </span>
                                                 @endforeach
+                                            </div>
+                                        </article>
+                                    @elseif($requestOnly)
+                                        <article class="venue-occupancy-slot">
+                                            <time>{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] === '24:00' ? '00:00' : $timelineItem['endsAt'] }}</time>
+                                            <div>
+                                                <span>Уточняется</span>
+                                                @if($timelineItem['bookable'] && in_array('whole', array_column($venue->rental['scopes'], 'value'), true))
+                                                    <a class="fc-link" href="{{ route('venues.pre-requests.prepare', ['venue' => $venue->id, 'venue_court_id' => $venue->rental['courtId'], 'starts_at' => $day['date'].'T'.$timelineItem['startsAt'], 'duration_minutes' => $venue->rental['minimumDurationMinutes'], 'scope' => 'whole']) }}">Отправить заявку</a>
+                                                @endif
                                             </div>
                                         </article>
                                     @else

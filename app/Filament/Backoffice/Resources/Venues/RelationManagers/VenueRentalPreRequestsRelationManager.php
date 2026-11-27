@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueRentalPreRequestsRelationManager extends RelationManager
 {
     protected static string $relationship = 'rentalPreRequests';
-    protected static ?string $title = 'Предзаявки без мероприятия';
+    protected static ?string $title = 'Запросы на аренду';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {

@@ -46,6 +46,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'type',
     'requires_payment',
     'requires_booking_approval',
+    'occupancy_requires_confirmation',
     'requires_booking',
     'status',
     'operational_status',
@@ -69,6 +70,7 @@ class Venue extends Model
     protected $attributes = [
         'requires_payment' => null,
         'requires_booking_approval' => false,
+        'occupancy_requires_confirmation' => false,
         'content_version' => 0,
         'is_published' => true,
         'banner_display_mode' => 'top',
@@ -446,6 +448,7 @@ class Venue extends Model
             'type' => VenueTypeEnum::class,
             'requires_payment' => 'boolean',
             'requires_booking_approval' => 'boolean',
+            'occupancy_requires_confirmation' => 'boolean',
             'requires_booking' => 'boolean',
             'status' => VenueStatusEnum::class,
             'operational_status' => VenueOperationalStatusEnum::class,

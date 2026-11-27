@@ -313,6 +313,10 @@ final class VenueResource extends Resource
                                     ->label('Принимать заявки на аренду')
                                     ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Включает приём заявок на аренду всех залов площадки, если разрешён общий механизм аренды. Выключение площадки имеет приоритет над залами.')
                                     ->default(false)->live(),
+                                Toggle::make('occupancy_requires_confirmation')
+                                    ->label('Занятость уточняется')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Нет достоверных данных о внешней занятости. Для остальных интервалов принимаются запросы на аренду без резервирования времени.')
+                                    ->default(false),
                                 Toggle::make('rental_policy_requires_payment')
                                     ->label('Платная аренда')
                                     ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Если включено, для каждого оплачиваемого слота применяется тариф. Зал может иметь собственное условие оплаты.')

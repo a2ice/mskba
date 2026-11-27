@@ -103,3 +103,11 @@ test('event date requires explicit opt-in; disabling clears preferences and rest
     assert.match(js,/scheduleEnabled.checked=slots.length>0/);
     assert.match(js,/if\(step===1&&scheduleEnabled.checked&&\(!slots.length\|\|scheduleEdited\)\)/);
 });
+
+test('unverified venue time can be requested without announcing confirmed availability',()=>{
+    const data=day([slot('18:00','18:30','requestable',true),slot('18:30','19:00','requestable',true),slot('19:00','19:30','booked')],{occupancy_requires_confirmation:true});
+    assert.equal(eligibleRuns(data,range).length,2);
+    assert.match(summarizeRental([data],range),/Занятость уточняется/);
+    assert.equal(eligibleRuns({...data,stale:true},range).length,0);
+    assert.equal(eligibleRuns(day([slot('18:00','18:30','unknown',true),slot('18:30','19:00','unknown',true)]),range).length,0);
+});

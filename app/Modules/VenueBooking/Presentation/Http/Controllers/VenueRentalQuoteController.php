@@ -17,6 +17,7 @@ use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
@@ -41,12 +42,34 @@ final class VenueRentalQuoteController extends Controller
         ]);
     }
 
+    /** Resume a non-occupying request after authentication without posting a booking. */
+    public function prepareRequest(Request $request, Venue $venue): Response
+    {
+        abort_unless($venue->isPubliclyVisible() && $venue->occupancy_requires_confirmation, 404);
+        $submitted = $request->validate([
+            'venue_court_id' => ['required', 'integer', Rule::exists('venue_courts', 'id')->where('venue_id', $venue->id)->whereNull('deleted_at')],
+            'starts_at' => ['required', 'date'],
+            'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+            'scope' => ['required', Rule::enum(VenueBookingScopeEnum::class)],
+        ]);
+        $policy = VenueBookingPolicy::query()->where('venue_id', $venue->id)
+            ->where('active_marker', true)->where('is_enabled', true)->firstOrFail();
+        return ThemeResolver::page('venues.rental-quote', [
+            'venue' => $venue,
+            'policy' => $policy,
+            'court' => $venue->courts()->findOrFail($submitted['venue_court_id']),
+            'courts' => $venue->courts()->get(),
+            'quote' => null,
+            'submitted' => $submitted,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     public function quote(
         Request $request,
         Venue $venue,
         QuoteVenueBookingHandler $quotes,
         FindSportOnDemandRefresh $refresh,
-    ): JsonResponse|Response {
+    ): JsonResponse|Response|RedirectResponse {
         abort_unless($venue->isPubliclyVisible(), 404);
         $validated = $request->validate([
             'venue_court_id' => [
@@ -64,6 +87,19 @@ final class VenueRentalQuoteController extends Controller
         $court = isset($validated['venue_court_id'])
             ? VenueCourt::query()->where('venue_id', $venue->id)->findOrFail((int) $validated['venue_court_id'])
             : $this->resolveCourt($venue, '');
+
+        if ($venue->occupancy_requires_confirmation) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Занятость уточняется. Отправьте запрос на аренду.', 'code' => 'RENTAL_REQUEST_REQUIRED'], 422);
+            }
+            return redirect()->route('venues.pre-requests.prepare', [
+                'venue' => $venue->id,
+                'venue_court_id' => $court->id,
+                'starts_at' => $validated['starts_at'],
+                'duration_minutes' => $validated['duration_minutes'],
+                'scope' => $validated['scope'],
+            ]);
+        }
 
         try {
             // An open day dialog can cross FindSport's 5-minute freshness
