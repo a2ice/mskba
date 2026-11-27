@@ -1,5 +1,5 @@
-{{-- Venue discovery uses the same fixed action position as contextual help. --}}
-@if(request()->routeIs('venues', 'venues.collections.show', 'venues.show', 'venues.courts.show'))
+{{-- Venue detail uses the same fixed action position as contextual help. --}}
+@if(request()->routeIs('venues.show', 'venues.courts.show'))
     <a class="app-context-help-launcher app-context-help-launcher--venue-create"
        href="{{ route('venues.create') }}" data-venue-floating-create
        aria-label="Добавить площадку" title="Добавить площадку">
