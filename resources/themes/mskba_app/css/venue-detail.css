@@ -829,9 +829,10 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-venue-public-contacts .venue-public-contact-list__label{color:var(--muted);font-size:13px}
 @media(max-width:900px){.app-venue-page__side-stack{position:static;max-height:none;overflow:visible}.app-venue-page__side-stack[data-venue-side-empty]{display:none}}
 
-/* Venue rating is a public action; align it with the H1 baseline area. */
-.app-venue-intro .app-entity-heading{align-items:center}
-.app-venue-intro__rating{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;min-width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--text);font:inherit;font-size:clamp(27px,3.5vw,44px);font-weight:750;line-height:1.12;letter-spacing:-.03em;white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+/* Center the rating against the first H1 line, not the entire wrapped title. */
+.app-venue-intro .app-entity-heading{align-items:flex-start;--venue-title-size:clamp(27px,3.5vw,44px);--venue-title-line:calc(var(--venue-title-size) * 1.12)}
+.app-venue-intro .app-entity-heading>h1{font-size:var(--venue-title-size);line-height:1.12}
+.app-venue-intro__rating{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;min-width:44px;min-height:44px;height:var(--venue-title-line);margin-block-start:min(0px,calc((var(--venue-title-line) - 44px) / 2));padding:0;border:0;background:transparent;color:var(--text);font:inherit;font-size:calc(var(--venue-title-size) * .75);font-weight:750;line-height:1.12;letter-spacing:-.03em;white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
 .app-venue-intro__rating svg{width:.9em;height:.9em;stroke:var(--accent);stroke-width:1.3}
 .app-venue-intro__rating.is-unrated svg{stroke:var(--muted)}
 .app-venue-intro__rating [hidden]{display:none!important}
