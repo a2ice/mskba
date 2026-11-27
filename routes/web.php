@@ -1286,6 +1286,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.contacts.verification.confirm');
         Route::post('/backoffice-contracts/{contract}/verification', [BackofficeContractVerificationController::class, 'review'])
             ->whereNumber('contract')->middleware('throttle:10,1')->name('backoffice.contracts.verification.review');
+        Route::post('/contracts/agent-agreements/{agreement}/accept', [\App\Modules\Contract\Presentation\Http\Controllers\AccountAgentAgreementController::class, 'accept'])
+            ->whereNumber('agreement')->middleware('throttle:10,1')->name('account.agent-agreements.accept');
+        Route::post('/contracts/agent-agreements/{agreement}/decline', [\App\Modules\Contract\Presentation\Http\Controllers\AccountAgentAgreementController::class, 'decline'])
+            ->whereNumber('agreement')->middleware('throttle:10,1')->name('account.agent-agreements.decline');
         Route::get('/contracts', [AccountContractsWorkspaceController::class, 'index'])
             ->name('account.contracts')->defaults('breadcrumb', 'Мои контракты');
         // Must precede /contracts/{number}; this is the canonical venue collection.

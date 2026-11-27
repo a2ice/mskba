@@ -113,6 +113,27 @@ final readonly class RequestVenueBookingHandler
                         throw new VenueBookingTransitionException('Срок действия расчёта истёк.', 'QUOTE_EXPIRED');
                     }
 
+                    // A previously issued quote stays immutable. If its managed
+                    // agent agreement was retired or superseded before submission,
+                    // request a fresh quote rather than create a new obligation
+                    // for an agent who no longer has the relevant contract.
+                    $agentSnapshot = data_get($quote->snapshot, 'pricing.commissions.agent');
+                    if (is_array($agentSnapshot) && isset($agentSnapshot['assignment_id'])) {
+                        $assignmentId = (int) $agentSnapshot['assignment_id'];
+                        $agreements = \App\Modules\Venue\Domain\Models\VenueAgentAgreement::query()
+                            ->where('venue_id', $venue->id)->where('commission_agent_id', $assignmentId);
+                        if ($agreements->exists()) {
+                            $assignment = \App\Modules\Venue\Domain\Models\VenueCommissionAgent::query()
+                                ->where('venue_id', $venue->id)->find($assignmentId);
+                            if (! (clone $agreements)->where('active_marker', true)->exists()
+                                || $assignment === null || ! $assignment->is_active
+                                || (int) $assignment->version !== (int) ($agentSnapshot['version'] ?? 0)
+                                || (int) $venue->commissionPolicy()->value('selected_agent_id') !== $assignmentId) {
+                                throw new VenueBookingTransitionException('Агент по этому расчёту изменился. Получите актуальный расчёт стоимости.', 'QUOTE_AGENT_CHANGED');
+                            }
+                        }
+                    }
+
                     if ($quote->quoted_for_user_id !== null && $quote->quoted_for_user_id !== $user->id) {
                         throw new VenueBookingTransitionException('Расчёт принадлежит другому пользователю.', 'QUOTE_FORBIDDEN');
                     }

@@ -110,9 +110,12 @@ final readonly class ManageVenueMembershipHandler
             $membership = ContractMembership::query()->with('contract')->lockForUpdate()->findOrFail($membership->id);
             $court = $this->courtFromMembership($membership, $venue);
             $this->authorize($issuer, $venue, $court);
+            if ($membership->contract?->comment === \App\Modules\Venue\Domain\Models\VenueAgentAgreement::CONTRACT_MARKER) {
+                throw new VenueMembershipException('Агентский договор изменяется только через отдельный процесс согласования.');
+            }
 
-            if ($membership->access_level === VenueMembershipAccessLevelEnum::OWNER->value) {
-                throw new VenueMembershipException('Последний владелец не может быть изменён без передачи владения.');
+            if (in_array($membership->access_level, [VenueMembershipAccessLevelEnum::OWNER->value, 'primary_manager'], true)) {
+                throw new VenueMembershipException('Владелец и основной управляющий изменяются только отдельным процессом передачи полномочий.');
             }
 
             if ($this->activeMemberships($venue, $court)
@@ -140,9 +143,12 @@ final readonly class ManageVenueMembershipHandler
             $membership = ContractMembership::query()->with('contract')->lockForUpdate()->findOrFail($membership->id);
             $court = $this->courtFromMembership($membership, $venue);
             $this->authorize($issuer, $venue, $court);
+            if ($membership->contract?->comment === \App\Modules\Venue\Domain\Models\VenueAgentAgreement::CONTRACT_MARKER) {
+                throw new VenueMembershipException('Агентский договор отзывается только через отдельный процесс.');
+            }
 
-            if ($membership->access_level === VenueMembershipAccessLevelEnum::OWNER->value) {
-                throw new VenueMembershipException('Нельзя отозвать последнего владельца без передачи владения.');
+            if (in_array($membership->access_level, [VenueMembershipAccessLevelEnum::OWNER->value, 'primary_manager'], true)) {
+                throw new VenueMembershipException('Нельзя отозвать владельца или основного управляющего без передачи полномочий.');
             }
 
             $membership->contract->forceFill([

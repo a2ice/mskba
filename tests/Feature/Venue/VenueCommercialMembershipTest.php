@@ -149,6 +149,28 @@ final class VenueCommercialMembershipTest extends TestCase
         );
     }
 
+    public function test_commercial_handler_cannot_change_or_revoke_primary_manager(): void
+    {
+        $admin = User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::SUPERADMIN]);
+        $target = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = Venue::factory()->create();
+        $membership = $this->createMembership($target, $venue, VenueMembershipAccessLevelEnum::OWNER);
+        $membership->forceFill(['access_level' => 'primary_manager'])->save();
+        $handler = app(ManageVenueMembershipHandler::class);
+        foreach ([
+            fn () => $handler->change($venue, $membership, VenueMembershipAccessLevelEnum::MANAGER, $admin),
+            fn () => $handler->revoke($venue, $membership, $admin),
+        ] as $operation) {
+            try {
+                $operation();
+                $this->fail('Primary manager must use the dedicated transfer workflow.');
+            } catch (VenueMembershipException) {
+                $this->assertSame('primary_manager', $membership->fresh()->access_level);
+                $this->assertSame(ContractStatusEnum::ACTIVE, $membership->contract->refresh()->status);
+            }
+        }
+    }
+
     public function test_superadmin_override_is_allowed_and_auditable_in_contract_comment(): void
     {
         $superadmin = User::factory()->create([

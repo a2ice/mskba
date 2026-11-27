@@ -761,7 +761,12 @@ final class VenueResource extends Resource
                 \App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalPreRequestsRelationManager::class,
             ])->icon('heroicon-o-chat-bubble-left-right'),
             CommissionAgentsRelationManager::class,
-            CommercialMembershipsRelationManager::class,
+            RelationGroup::make('Контракты', [
+                \App\Filament\Backoffice\Resources\Venues\RelationManagers\ContractHistoryRelationManager::class,
+                CommercialMembershipsRelationManager::class,
+                \App\Filament\Backoffice\Resources\Venues\RelationManagers\AgentAgreementsRelationManager::class,
+                \App\Filament\Backoffice\Resources\Venues\RelationManagers\AssignedManagersRelationManager::class,
+            ])->icon('heroicon-o-document-text'),
             CourtCommissionsRelationManager::class,
             PhotosRelationManager::class,
             \App\Filament\Backoffice\Resources\Venues\RelationManagers\ReviewsRelationManager::class,

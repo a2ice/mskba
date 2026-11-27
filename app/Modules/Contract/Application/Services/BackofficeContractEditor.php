@@ -84,6 +84,9 @@ final class BackofficeContractEditor
         return DB::transaction(function () use ($record, $data): Contract {
             $contract = Contract::query()->with(['membership', 'permissions'])
                 ->whereKey($record->id)->lockForUpdate()->firstOrFail();
+            if ($contract->comment === \App\Modules\Venue\Domain\Models\VenueAgentAgreement::CONTRACT_MARKER) {
+                throw ValidationException::withMessages(['status' => 'Агентский договор изменяется в профильном разделе площадки.']);
+            }
             $before = [
                 'name' => $contract->name,
                 'notes' => $contract->notes,

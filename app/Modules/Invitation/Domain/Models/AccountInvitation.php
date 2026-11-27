@@ -2,6 +2,7 @@
 
 namespace App\Modules\Invitation\Domain\Models;
 
+use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Model;
@@ -24,7 +25,13 @@ class AccountInvitation extends Model
             'completed_at' => 'datetime',
             'revoked_at' => 'datetime',
             'views_count' => 'integer',
+            'proposed_permissions' => 'array',
         ];
+    }
+
+    public function grantedMembership(): BelongsTo
+    {
+        return $this->belongsTo(ContractMembership::class, 'granted_membership_id');
     }
 
     public function issuer(): BelongsTo

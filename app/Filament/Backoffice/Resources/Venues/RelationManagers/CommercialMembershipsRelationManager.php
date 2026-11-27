@@ -139,7 +139,7 @@ final class CommercialMembershipsRelationManager extends RelationManager
         ->recordActions([
             Action::make('editCommercialRole')->label('Изменить права')
                 ->icon('heroicon-o-pencil-square')
-                ->visible(fn (ContractMembership $record): bool => $record->access_level !== Role::OWNER->value)
+                ->visible(fn (ContractMembership $record): bool => ! in_array($record->access_level, [Role::OWNER->value, 'primary_manager', Role::AGENT->value], true))
                 ->schema($this->roleFields())
                 ->fillForm(fn (ContractMembership $record): array => [
                     'role' => $record->access_level,
@@ -155,7 +155,7 @@ final class CommercialMembershipsRelationManager extends RelationManager
                 }),
             Action::make('revokeCommercialRole')->label('Отозвать')
                 ->icon('heroicon-o-x-circle')->color('danger')->requiresConfirmation()
-                ->visible(fn (ContractMembership $record): bool => $record->access_level !== Role::OWNER->value)
+                ->visible(fn (ContractMembership $record): bool => ! in_array($record->access_level, [Role::OWNER->value, 'primary_manager', Role::AGENT->value], true))
                 ->action(function (ContractMembership $record): void {
                     $this->manager()->revoke($this->getOwnerRecord(), $record, $this->actor());
                     Notification::make()->success()->title('Роль отозвана')->send();
