@@ -13,3 +13,5 @@ Base route: /api/v1/internal/editorial-news. JSON Accept header and Bearer authe
 - No access to system updates, FAQ, other authors' materials or archived content; no editing or deletion via API.
 
 The existing project-update draft API and verification rules remain unchanged. No secret is committed to the repository. Reviewed public news cover assets may be stored under ops/editorial-news/covers for the bridge.
+
+The GitHub bridge permits omission of `cover` for explicit site-only requests (`telegram_chat_titles: []`, `vk_group_id: null`). It does not query social destinations or send a social payload for that case. The editor may add the cover through Filament afterward. Any social destination still requires a reviewed cover file. No API/token scope changes.

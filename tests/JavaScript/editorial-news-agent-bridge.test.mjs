@@ -39,3 +39,26 @@ test('optional SEO fields are accepted and constrained', () => {
     assert.throws(() => validatePlan({ ...valid, meta_description: 'x'.repeat(321) }), /Invalid meta_description/);
     assert.throws(() => validatePlan({ ...valid, meta_keywords: 7 }), /Invalid meta_keywords/);
 });
+
+
+test('cover is optional only for a site-only request', () => {
+    const { cover, ...base } = plan;
+    const site = { ...base, telegram_chat_titles: [], vk_group_id: null };
+    assert.equal(validatePlan(site), site);
+    assert.throws(() => validatePlan(base), /Cover required/);
+    assert.throws(() => validatePlan({ ...site, telegram_chat_titles: ['MSKBA Official'] }), /Cover required/);
+    assert.throws(() => validatePlan({ ...site, vk_group_id: 174334075 }), /Cover required/);
+    assert.throws(() => validatePlan({ ...site, cover: null }), /Invalid cover path/);
+    assert.throws(() => validatePlan({ ...site, cover: '../../secret.jpg' }), /Invalid cover path/);
+    assert.throws(() => validatePlan({ ...site, allow_vk_wait: true }), /Invalid VK deferral/);
+    assert.equal(validatePlan({ ...site, cover }).cover, cover);
+});
+
+test('site-only delivery needs no social post or cover, but rejects unexpected destinations', () => {
+    const selection = { telegram_chat_ids: [], publish_in_vk: false };
+    const item = { status: 'published', url: 'https://mskba.ru/feed/news', has_cover: false,
+        telegram_publications: [], vk_publication: null };
+    assert.equal(delivery(item, selection), 'published');
+    assert.throws(() => delivery({ ...item, telegram_publications: [{ chat_id: 7 }] }, selection), /recipients/);
+    assert.throws(() => delivery({ ...item, vk_publication: { group_id: 174334075 } }, selection), /recipients/);
+});
