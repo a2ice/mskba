@@ -74,7 +74,7 @@ final class FaqHelpCatalog
         ];
     }
 
-    /** @return array{alias:string,title:string,description:string,url:string} */
+    /** @return array{alias:string,title:string,description:string,url:string,is_venue_creation_guide:bool} */
     private function summary(ContentItem $item): array
     {
         return [
@@ -82,6 +82,7 @@ final class FaqHelpCatalog
             'title' => $item->title,
             'description' => Str::limit((string) $item->short_description, 170),
             'url' => $item->publicUrl(),
+            'is_venue_creation_guide' => $item->system_key === 'faq.creation.venues',
         ];
     }
 }
