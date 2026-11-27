@@ -23,13 +23,12 @@ export function validatePlan(plan) {
     if (plan.vk_group_id !== null && (!Number.isSafeInteger(plan.vk_group_id) || plan.vk_group_id <= 0)) throw new Error('Invalid VK target.');
     if (plan.resume_existing_draft !== undefined && typeof plan.resume_existing_draft !== 'boolean') throw new Error('Invalid resume flag.');
     if (plan.allow_vk_wait !== undefined && (typeof plan.allow_vk_wait !== 'boolean' || plan.vk_group_id === null)) throw new Error('Invalid VK deferral flag.');
-    if ((names.length > 0 || plan.vk_group_id !== null) && plan.cover === undefined) throw new Error('Cover required for social publication.');
     return plan;
 }
 
 function normalize(name) { return name.trim().toLowerCase(); }
 
-export function selectDestinations(plan, registry) {
+export function selectDestinations(plan, registry, hasCover = plan.cover !== undefined) {
     const ids = plan.telegram_chat_titles.map(name => {
         const matches = (registry.telegram ?? []).filter(chat => typeof chat.title === 'string' && normalize(chat.title) === normalize(name));
         if (matches.length !== 1 || !Number.isSafeInteger(matches[0].id) || matches[0].id <= 0) throw new Error('Telegram target missing or ambiguous.');
@@ -37,7 +36,8 @@ export function selectDestinations(plan, registry) {
     });
     if (new Set(ids).size !== ids.length) throw new Error('Duplicate target IDs.');
     const vk = plan.vk_group_id;
-    if (vk !== null && (registry.vk?.group_id !== vk || (registry.vk?.available !== true && !(plan.allow_vk_wait === true && registry.vk?.can_defer === true)))) throw new Error('Requested VK group is unavailable; no publication sent.');
+    const vkReady = hasCover ? registry.vk?.available === true || (plan.allow_vk_wait === true && registry.vk?.can_defer === true) : registry.vk?.text_available === true;
+    if (vk !== null && (registry.vk?.group_id !== vk || !vkReady)) throw new Error('Requested VK group is unavailable; no publication sent.');
     return { telegram_chat_ids: ids, publish_in_vk: vk !== null, ...(vk === null ? {} : { vk_group_id: vk }), ...(plan.allow_vk_wait === true ? { defer_vk_until_authorized: true } : {}) };
 }
 
@@ -102,7 +102,7 @@ async function main(requestPath, token) {
         throw new Error('Alias already published; inspect reported destinations and status. No mutation performed.');
     }
     selection = siteOnly ? { telegram_chat_ids: [], publish_in_vk: false }
-        : selectDestinations(plan, await api('GET', '/destinations/list'));
+        : selectDestinations(plan, await api('GET', '/destinations/list'), item ? item.has_cover === true : plan.cover !== undefined);
     if (item && (item.status !== 'draft' || plan.resume_existing_draft !== true)) throw new Error('Existing draft: review in admin before explicitly resuming.');
     if (!item) {
         const form = new FormData();

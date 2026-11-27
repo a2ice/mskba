@@ -41,13 +41,13 @@ test('optional SEO fields are accepted and constrained', () => {
 });
 
 
-test('cover is optional only for a site-only request', () => {
+test('cover is optional for every channel', () => {
     const { cover, ...base } = plan;
     const site = { ...base, telegram_chat_titles: [], vk_group_id: null };
     assert.equal(validatePlan(site), site);
-    assert.throws(() => validatePlan(base), /Cover required/);
-    assert.throws(() => validatePlan({ ...site, telegram_chat_titles: ['MSKBA Official'] }), /Cover required/);
-    assert.throws(() => validatePlan({ ...site, vk_group_id: 174334075 }), /Cover required/);
+    assert.equal(validatePlan(base), base);
+    assert.equal(validatePlan({ ...site, telegram_chat_titles: ['MSKBA Official'] }).cover, undefined);
+    assert.equal(validatePlan({ ...site, vk_group_id: 174334075 }).cover, undefined);
     assert.throws(() => validatePlan({ ...site, cover: null }), /Invalid cover path/);
     assert.throws(() => validatePlan({ ...site, cover: '../../secret.jpg' }), /Invalid cover path/);
     assert.throws(() => validatePlan({ ...site, allow_vk_wait: true }), /Invalid VK deferral/);
@@ -61,4 +61,13 @@ test('site-only delivery needs no social post or cover, but rejects unexpected d
     assert.equal(delivery(item, selection), 'published');
     assert.throws(() => delivery({ ...item, telegram_publications: [{ chat_id: 7 }] }, selection), /recipients/);
     assert.throws(() => delivery({ ...item, vk_publication: { group_id: 174334075 } }, selection), /recipients/);
+});
+
+test('VK text requires configured wall, not photo authorization; photo mode never falls back', () => {
+    const { cover, ...textPlan } = plan;
+    const expired = { ...registry, vk: { available: false, text_available: true, can_defer: true, group_id: 174334075 } };
+    assert.deepEqual(selectDestinations(textPlan, expired), { telegram_chat_ids: [7], publish_in_vk: true, vk_group_id: 174334075 });
+    assert.throws(() => selectDestinations(plan, expired), /unavailable/);
+    assert.throws(() => selectDestinations(textPlan, expired, true), /unavailable/);
+    assert.throws(() => selectDestinations(textPlan, { ...expired, vk: { ...expired.vk, text_available: false } }), /unavailable/);
 });
