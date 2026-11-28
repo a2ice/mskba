@@ -21,7 +21,7 @@
             <article class="panel app-community-panel">
                 @include('components.entity-public-banner', ['bannerUrl' => $publicProfile['banner_url'] ?? null])
                 <header class="app-community-hero">
-                    @include('theme::pages.participants.partials.public-avatar', ['avatarUrl' => $publicProfile['avatar_url'], 'avatarRestricted' => $publicProfile['avatar_restricted']])
+                    @include('theme::pages.participants.partials.public-avatar', ['avatarUrl' => $publicProfile['avatar_url'], 'avatarRestricted' => $publicProfile['avatar_restricted'], 'avatarPlaceholderUrl' => $publicProfile['avatar_placeholder_url'] ?? null])
                     <div class="app-community-card-content">
                         <div class="app-entity-heading">
                             <h1 id="public-user-heading">{{ $publicProfile['name'] }}</h1>
