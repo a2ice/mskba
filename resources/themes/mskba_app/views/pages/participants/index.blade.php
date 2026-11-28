@@ -46,14 +46,20 @@
                         {{ $item['name'] }}
                     @endif
                 </h2>
-                @if($item['nickname'] && $item['nickname'] !== $item['name'])<p>{{ $item['nickname'] }}</p>@endif
+                @if($item['nickname'] && $item['nickname'] !== $item['name'])<p>{{ '@'.$item['nickname'] }}</p>@endif
                 <div class="app-category__badges">
                     @foreach($item['roles'] as $role)
                         <span>{{ $role['label'] }}</span>
                     @endforeach
                 </div>
+                @if(empty($item['roles']))<p class="muted">Участник</p>@endif
+                @if($item['is_own'] ?? false)<span class="badge">Мой профиль</span>@endif
+                @if(!empty($item['details']))<p>{{ implode(' · ', $item['details']) }}</p>@endif
                 @if(! $item['url'])<p>Профиль закрыт</p>@endif
                 </div>
+                @if(!empty($item['message_recipient_id']))
+                    <button class="icon-button" type="button" title="Написать сообщение" aria-label="Написать сообщение" data-direct-message-open data-recipient-id="{{ $item['message_recipient_id'] }}" data-recipient-name="{{ $item['name'] }}"><svg aria-hidden="true"><use href="#message"/></svg></button>
+                @endif
             </div>
         </article>
     @empty
@@ -65,6 +71,9 @@
 @endsection
 
 @section('category-after-items')
+    @if($participants->getCollection()->contains(fn ($item) => !empty($item['message_recipient_id'])))
+        @include('theme::pages.account.partials.direct-message-dialog')
+    @endif
     @if($participants->hasPages())
         <div class="app-category__pagination">{{ $participants->links() }}</div>
     @endif
