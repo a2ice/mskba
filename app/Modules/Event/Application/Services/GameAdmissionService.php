@@ -17,6 +17,7 @@ use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
+use App\Modules\Event\Domain\Models\GameInvitationThread;
 use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -130,6 +131,8 @@ final class GameAdmissionService
                     : null,
             ])->save();
 
+            $this->conversations->touch($lockedGame, $lockedAdmission);
+
             return $lockedAdmission->refresh();
         }, 3);
 
@@ -159,12 +162,24 @@ final class GameAdmissionService
         }
 
         if ($game->uses_event_planning && $updated->direction === GameAdmissionDirectionEnum::INVITATION) {
-            $ownerId = $game->event()->first()?->organizerActor()->value('user_id');
-            $recipientIds = collect([$ownerId, $updated->requestedByActor()->value('user_id')])->filter()->unique();
-            foreach ($recipientIds as $userId) {
-                $this->notify((int) $userId, $game,
-                    $decision === GameAdmissionStatusEnum::ACCEPTED ? 'Приглашение на игру принято' : 'Приглашение на игру отклонено',
-                    ($updated->team?->name ?? 'Игрок').' — '.$game->title);
+            $context = $updated->team_id === null ? null : GameInvitationThread::query()
+                ->where('game_id', $game->id)->where('team_id', $updated->team_id)->first();
+            if ($context !== null) {
+                foreach ($this->conversations->recipients($context) as $recipient) {
+                    if ($actor->user?->canonical()->id === $recipient->id) {
+                        continue;
+                    }
+                    $this->notify($recipient->id, $game,
+                        $decision === GameAdmissionStatusEnum::ACCEPTED ? 'Приглашение на игру принято' : 'Приглашение на игру отклонено',
+                        ($updated->team?->name ?? 'Игрок').' — '.$game->title, null, $context->id);
+                }
+            } else {
+                $ownerId = $game->event()->first()?->organizerActor()->value('user_id');
+                foreach (collect([$ownerId, $updated->requestedByActor()->value('user_id')])->filter()->unique() as $userId) {
+                    $this->notify((int) $userId, $game,
+                        $decision === GameAdmissionStatusEnum::ACCEPTED ? 'Приглашение на игру принято' : 'Приглашение на игру отклонено',
+                        'Игрок — '.$game->title);
+                }
             }
         }
 
@@ -206,6 +221,7 @@ final class GameAdmissionService
                 'responded_by_actor_id' => $actor->id,
                 'responded_at' => now(),
             ])->save();
+            $this->conversations->touch($lockedGame, $lockedAdmission);
         }, 3);
     }
 
@@ -430,20 +446,28 @@ final class GameAdmissionService
             ->values();
     }
 
-    private function notify(int $userId, Game $game, string $title, string $body, ?int $admissionId = null): void
+    private function notify(int $userId, Game $game, string $title, string $body, ?int $admissionId = null, ?int $contextId = null): void
     {
         $event = $game->event()->first();
         if ($event === null) {
             return;
+        }
+        if ($contextId === null && $game->uses_event_planning && $admissionId !== null) {
+            $teamId = $game->admissions()->whereKey($admissionId)->value('team_id');
+            if ($teamId !== null) {
+                $contextId = GameInvitationThread::query()->where('game_id', $game->id)->where('team_id', $teamId)->value('id');
+            }
         }
         $this->notifications->handle(new CreateUserNotificationDTO(
             userId: $userId,
             type: UserNotificationTypeEnum::SYSTEM,
             title: $title,
             body: $body,
-            actionUrl: route('events.show', $event->routeIdentifier()).($game->uses_event_planning ? '#planned-game-'.$game->id : ''),
-            actionText: 'Открыть игру',
-            payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment', ...($admissionId === null ? [] : ['game_admission_id' => $admissionId])],
+            actionUrl: $contextId !== null ? route('account.notifications.threads.game-invitation', $contextId)
+                : route('events.show', $event->routeIdentifier()).($game->uses_event_planning ? '#planned-game-'.$game->id : ''),
+            actionText: $contextId !== null ? 'Открыть диалог' : 'Открыть игру',
+            payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment', ...($admissionId === null ? [] : ['game_admission_id' => $admissionId]),
+                ...($contextId === null ? [] : ['game_invitation_thread_id' => $contextId])],
         ));
     }
 
