@@ -43,6 +43,10 @@ final class GameLifecycleService
                 throw new InvalidArgumentException('Игра с подтверждённым результатом уже закрыта.');
             }
 
+            if (! $lockedGame->hasSportConfiguration()) {
+                throw new InvalidArgumentException('Сначала настройте формат игры и спортивный регламент.');
+            }
+
             // Any game using recruitment needs confirmed sides, not only the primary game.
             $isStandalone = $lockedGame->recruitment_mode !== null;
             if ($isStandalone && $lockedGame->sides_confirmed_at === null) {
