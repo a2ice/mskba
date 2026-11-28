@@ -13,6 +13,13 @@
         <p>Вы уверены, что хотите удалить игру из мероприятия?</p>
         <strong data-game-plan-delete-name></strong>
         <p class="event-game-editor__hint" data-game-plan-delete-info></p>
+        <div data-game-cancel-options hidden>
+            <p>На эту игру уже были отправлены приглашения или сформирован состав. Игра будет отменена, история сохранится.</p>
+            <label class="check-label"><input type="checkbox" data-game-cancel-notify checked> Уведомить приглашённых участников</label>
+            <label class="event-game-editor__field"><span>Причина отмены (необязательно)</span>
+                <textarea data-game-cancel-reason rows="3" maxlength="1000" placeholder="Укажите причину отмены"></textarea>
+            </label>
+        </div>
         <p class="event-game-editor__error" data-game-plan-delete-error role="alert" hidden></p>
     </div>
     <footer class="mskba-modal__footer event-game-editor__footer">
