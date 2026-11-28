@@ -292,3 +292,35 @@ document.querySelectorAll('[data-venue-interest-filter]').forEach(root => {
             status.textContent = 'Не удалось загрузить карту. Попробуйте обновить страницу.';
         });
 })();
+
+
+// Remember each criterion's last applied direction, not a cancelled choice.
+// Current URL wins over session preferences, including legacy sort values.
+document.addEventListener('DOMContentLoaded', () => {
+    const key = 'mskba:venue-catalog:sort-directions:v1';
+    let preferences = {};
+    try { preferences = JSON.parse(sessionStorage.getItem(key) || '{}') || {}; } catch {}
+    for (const row of document.querySelectorAll('[data-venue-sort-row]')) {
+        const {sortAsc, sortDesc, sortSelected, sortAscHint, sortDescHint} = row.dataset;
+        let direction = row.dataset.sortDirection;
+        if (sortSelected === '1') preferences[sortAsc] = direction;
+        else if (['asc', 'desc'].includes(preferences[sortAsc])) direction = preferences[sortAsc];
+        const name = row.querySelector('[data-venue-sort-name]');
+        const arrow = row.querySelector('[data-venue-sort-direction]');
+        if (!name || !arrow) continue;
+        const opposite = direction === 'asc' ? 'desc' : 'asc';
+        for (const [link, value] of [[name, direction], [arrow, opposite]]) {
+            const url = new URL(link.href, location.href);
+            url.searchParams.set('sort', value === 'asc' ? sortAsc : sortDesc);
+            link.href = url.href;
+        }
+        row.dataset.sortDirection = direction;
+        const hint = opposite === 'asc' ? sortAscHint : sortDescHint;
+        arrow.title = hint;
+        arrow.setAttribute('aria-label', name.textContent.trim() + ': ' + hint);
+        const triangle = arrow.querySelector('[data-sort-triangle]');
+        if (direction === 'asc') triangle?.setAttribute('transform', 'rotate(180 8 8)');
+        else triangle?.removeAttribute('transform');
+    }
+    try { sessionStorage.setItem(key, JSON.stringify(preferences)); } catch {}
+});
