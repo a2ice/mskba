@@ -43,9 +43,8 @@ final class GameLifecycleService
                 throw new InvalidArgumentException('Игра с подтверждённым результатом уже закрыта.');
             }
 
-            $isStandalone = $event->type === EventTypeEnum::GAME
-                && (int) $event->primary_game_id === (int) $lockedGame->id
-                && $lockedGame->recruitment_mode !== null;
+            // Any game using recruitment needs confirmed sides, not only the primary game.
+            $isStandalone = $lockedGame->recruitment_mode !== null;
             if ($isStandalone && $lockedGame->sides_confirmed_at === null) {
                 throw new InvalidArgumentException('Перед началом игры утвердите обе стороны.');
             }
