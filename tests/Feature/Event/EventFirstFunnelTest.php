@@ -504,6 +504,13 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertDatabaseCount('game_invitation_recipients', 1);
         $this->assertDatabaseHas('game_invitation_recipients', ['game_admission_id' => $first->id, 'user_id' => $player->id, 'comment' => 'Кто сможет сыграть?']);
         $this->assertDatabaseMissing('game_invitation_recipients', ['user_id' => $otherPlayer->id]);
+        $playerNotice = \App\Modules\Notification\Domain\Models\UserNotification::query()
+            ->where('user_id', $player->id)->whereNotNull('payload->game_invitation_recipient_id')->sole();
+        $this->assertSame($game->id, $playerNotice->payload['game_id']);
+        $this->assertStringContainsString('Кто сможет сыграть?', $playerNotice->body);
+        $this->assertStringContainsString('Соперник: '.$b->name, $playerNotice->body);
+        $this->actingAs($player)->getJson($state)->assertForbidden();
+        $this->actingAs($ownerA);
         $this->assertSame('pending', $first->fresh()->status->value);
         $this->assertSame(0, $game->rosterEntries()->count());
         $respond = route('events.games.recruitment.respond', [...$params, $first->id]);
