@@ -44,16 +44,16 @@
     $parentCandidates = $event->participants
         ->where('status', EventParticipantStatusEnum::CONFIRMED)
         ->map(fn ($participant) => $participant->user)->keyBy('id') ?? collect();
-    $isEmbeddedGame = $event->type !== EventTypeEnum::GAME;
-    $effectiveStartsAt = $isEmbeddedGame ? $game->scheduled_starts_at : $event->starts_at;
-    $effectiveEndsAt = $isEmbeddedGame ? $game->scheduled_ends_at : $event->ends_at;
+    $isEmbeddedGame = $game->uses_event_planning || $event->type !== EventTypeEnum::GAME;
+    $effectiveStartsAt = $isEmbeddedGame ? ($game->scheduled_starts_at ?? ($game->uses_event_planning ? $event->starts_at : null)) : $event->starts_at;
+    $effectiveEndsAt = $isEmbeddedGame ? ($game->scheduled_ends_at ?? ($game->uses_event_planning ? $event->ends_at : null)) : $event->ends_at;
     $gameRouteParameters = [$event->routeIdentifier(), $game->id];
     $managementMode = $managementMode ?? false;
     $tournament = $game->tournamentMatch?->tournament;
     $tournamentCandidates = $tournamentCandidates ?? collect();
-    $formationLabel = $isEmbeddedGame ? 'Команды из участников' : $game->recruitment_mode->label();
+    $formationLabel = $game->uses_event_planning ? $game->recruitment_mode?->label() : ($isEmbeddedGame ? 'Команды из участников' : $game->recruitment_mode->label());
     $formationTooltip = match (true) {
-        $isEmbeddedGame => 'Стороны этой мини-игры формируются из участников основного мероприятия.',
+        $isEmbeddedGame && !$game->uses_event_planning => 'Стороны этой мини-игры формируются из участников основного мероприятия.',
         $game->recruitment_mode === GameRecruitmentModeEnum::PREFORMED_TEAMS => 'Заявки подают готовые команды, после чего организатор утверждает две стороны.',
         default => 'Заявки подают отдельные игроки, после чего организатор формирует из них две стороны.',
     };
@@ -62,7 +62,10 @@
         && $game->actual_started_at === null
         && ! $statisticsConfirmed
         && ! $isCancelled;
-    $candidatesForSlot = static function (string $slot, $side) use ($tournament, $tournamentCandidates, $isEmbeddedGame, $parentCandidates) {
+    $candidatesForSlot = static function (string $slot, $side) use ($game, $tournament, $tournamentCandidates, $isEmbeddedGame, $parentCandidates) {
+        if ($game->uses_event_planning) {
+            return $game->rosterEntries->where('game_side_id', $side?->id)->pluck('user')->filter()->keyBy('id');
+        }
         if ($tournament) {
             return $tournamentCandidates->get($slot, collect());
         }
@@ -124,7 +127,7 @@
                 <div class="game-scoreboard__score"><b data-game-visible-score="A">{{ $sideA?->score ?? 0 }}</b><span>:</span><b data-game-visible-score="B">{{ $sideB?->score ?? 0 }}</b><small>{{ $statisticsConfirmed ? 'Итоговый счёт' : 'Текущий счёт' }}</small></div>
                 <div class="game-scoreboard__team is-b"><img class="game-scoreboard__team-logo" src="{{ $teamLogoUrl($sideB) }}" alt="Логотип команды {{ $sideB?->display_name ?: 'B' }}"><strong>{{ $sideB?->display_name ?: 'Команда B' }}</strong></div>
                 @if($canManageScore && !$statisticsConfirmed && !$isCancelled)<button class="btn btn--secondary btn--sm game-scoreboard__edit" type="button" data-game-score-open><i class="ti ti-scoreboard"></i>Установить счёт</button>@endif
-                @if($isEmbeddedGame && $canUpdate && !$statisticsConfirmed && !$isCancelled)<details class="game-control-editor"><summary class="btn btn--secondary btn--sm"><i class="ti ti-pencil"></i>Редактировать</summary><form method="POST" action="{{ route('events.games.update', $gameRouteParameters) }}" class="row g-3">@csrf @method('PUT')<div class="col-12"><label class="form-label">Название</label><input class="form-control" name="title" value="{{ $title }}" required></div><input type="hidden" name="has_scheduled_time" value="{{ (int) ($game->scheduled_starts_at !== null) }}"><input type="hidden" name="starts_at" value="{{ $game->scheduled_starts_at?->format('H:i') }}"><input type="hidden" name="ends_at" value="{{ $game->scheduled_ends_at?->format('H:i') }}"><input type="hidden" name="side_a_size" value="{{ $game->side_a_size }}"><input type="hidden" name="side_b_size" value="{{ $game->side_b_size }}"><input type="hidden" name="scoring_type" value="{{ $game->scoring_type->value }}"><div class="col-md-6"><label class="form-label">Команда A</label><input class="form-control" name="side_a_name" value="{{ $sideA?->display_name }}"></div><div class="col-md-6"><label class="form-label">Команда B</label><input class="form-control" name="side_b_name" value="{{ $sideB?->display_name }}"></div><div class="col-12"><button class="btn btn--primary btn--sm">Сохранить</button></div></form></details>@endif
+                @if($isEmbeddedGame && !$game->uses_event_planning && $canUpdate && !$statisticsConfirmed && !$isCancelled)<details class="game-control-editor"><summary class="btn btn--secondary btn--sm"><i class="ti ti-pencil"></i>Редактировать</summary><form method="POST" action="{{ route('events.games.update', $gameRouteParameters) }}" class="row g-3">@csrf @method('PUT')<div class="col-12"><label class="form-label">Название</label><input class="form-control" name="title" value="{{ $title }}" required></div><input type="hidden" name="has_scheduled_time" value="{{ (int) ($game->scheduled_starts_at !== null) }}"><input type="hidden" name="starts_at" value="{{ $game->scheduled_starts_at?->format('H:i') }}"><input type="hidden" name="ends_at" value="{{ $game->scheduled_ends_at?->format('H:i') }}"><input type="hidden" name="side_a_size" value="{{ $game->side_a_size }}"><input type="hidden" name="side_b_size" value="{{ $game->side_b_size }}"><input type="hidden" name="scoring_type" value="{{ $game->scoring_type->value }}"><div class="col-md-6"><label class="form-label">Команда A</label><input class="form-control" name="side_a_name" value="{{ $sideA?->display_name }}"></div><div class="col-md-6"><label class="form-label">Команда B</label><input class="form-control" name="side_b_name" value="{{ $sideB?->display_name }}"></div><div class="col-12"><button class="btn btn--primary btn--sm">Сохранить</button></div></form></details>@endif
             </section>
 
             <div class="game-lifecycle-primary" data-game-lifecycle-primary>
