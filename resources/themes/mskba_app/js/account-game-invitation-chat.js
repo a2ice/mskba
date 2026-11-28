@@ -10,7 +10,11 @@ if (root) {
     const headers = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
     let pending = false, queued = false, sending = false, stopped = false;
     let lastHtml = null, lastRail = null, readPending = false, unread = true;
-    const showError = message => { error.textContent = message || ''; error.hidden = !message; };
+    const showError = message => {
+        error.textContent = message || ''; error.hidden = !message;
+        const modalError = content.querySelector('[data-game-teammates-error]');
+        if (modalError) { modalError.textContent = message || ''; modalError.hidden = !message; }
+    };
     const dialog = () => content.querySelector('[data-game-teammates-dialog]');
     const scroll = () => content.querySelector('[data-game-chat-scroll]');
     const nearBottom = node => node && node.scrollHeight - node.clientHeight - node.scrollTop < 100;
@@ -36,6 +40,7 @@ if (root) {
     }
     function replaceContent(html) {
         if (html === lastHtml) return;
+        const currentError = error.hidden ? '' : error.textContent;
         const viewport = scroll(), sticky = latestPage() && nearBottom(viewport), top = viewport?.scrollTop || 0;
         const previous = dialog(), open = previous?.open;
         const previousForm = previous?.querySelector('form');
@@ -58,6 +63,7 @@ if (root) {
         } else {
             syncSelection(next);
         }
+        if (currentError) showError(currentError);
         const updated = scroll();
         if (updated) updated.scrollTop = sticky ? updated.scrollHeight : top;
     }
@@ -170,6 +176,7 @@ if (root) {
         window.removeEventListener('mskba:realtime-state',onRealtime);
     },{once:true});
     syncSelection(dialog());
+    if (dialog()?.querySelector('[data-game-teammates-form] [role=alert]:not([hidden])')) dialog().showModal();
     if (latestPage() && scroll()) scroll().scrollTop = scroll().scrollHeight;
     void refresh();
 }
