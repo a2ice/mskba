@@ -74,6 +74,8 @@ final class GameInvitationThreadController extends Controller
         return response()->json([
             'id' => $context->id,
             'game_id' => $context->game_id,
+            'cancelled_at' => $context->game?->cancelled_at,
+            'cancellation_reason' => $context->game?->cancellation_reason,
             'team_id' => $context->team_id,
             'can_represent_team' => $conversations->canRepresentTeam($context, $viewer),
             'can_organize' => $conversations->canOrganize($context, $viewer),
