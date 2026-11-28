@@ -485,7 +485,7 @@
             @endforeach
             </div>
 
-            @if($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty())
+            @if(($event->type !== EventTypeEnum::GAME || $event->games->contains('uses_event_planning', true)) && $event->games->isNotEmpty())
                 <section class="event-card event-mini-games event-mini-games--public">
                     <div>
                         <span class="eyebrow">Мини-игры</span>
@@ -537,7 +537,7 @@
                         <i class="ti ti-chevron-down"></i>
                     </summary>
                     <div class="event-management__body">
-                        @if($event->type === EventTypeEnum::GAME && $event->primaryGame?->hasSportConfiguration()
+                        @if($event->type === EventTypeEnum::GAME && !$event->primaryGame?->uses_event_planning && $event->primaryGame?->hasSportConfiguration()
                             && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
                             <section class="event-game-management-link">
                                 <div>
