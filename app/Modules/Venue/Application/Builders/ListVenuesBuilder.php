@@ -21,7 +21,9 @@ final class ListVenuesBuilder
 
     public function getQuery(): Builder
     {
-        return Venue::query()->with([
+        return Venue::query()->withAvg([
+            'reviews as published_reviews_avg_rating' => fn ($query) => $query->where('is_published', true),
+        ], 'rating')->with([
             'location.address',
             'location.metroStations.line',
             'media' => fn ($query) => $query
