@@ -46,7 +46,9 @@ final class EventGamePlanningController extends Controller
     {
         $parent = $this->event($event);
         $actor = $actors->resolveForRequest($request) ?? abort(403);
-        $planning->remove($parent, $this->game($parent, $game), $actor);
+        $data = $request->validate(['notify' => ['sometimes', 'required', 'boolean'], 'reason' => ['nullable', 'string', 'max:1000']]);
+        $planning->remove($parent, $this->game($parent, $game), $actor,
+            array_key_exists('notify', $data) ? $request->boolean('notify') : null, $data['reason'] ?? null);
 
         return response()->json(['message' => 'Игра удалена.']);
     }
