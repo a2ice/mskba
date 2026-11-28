@@ -530,12 +530,34 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertSame('pending', $second->status->value);
         $this->assertDatabaseCount('game_invitation_threads', 1);
         $this->assertSame($threadId, $context->thread()->sole()->id);
+        $channel = app(\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class);
+        $this->assertTrue($channel->gameInvitation($ownerA, $context->id));
+        $this->assertTrue($channel->gameInvitation($organizer, $context->id));
+        $this->assertFalse($channel->gameInvitation($ownerB, $context->id));
+        $this->assertFalse($channel->gameInvitation($player, $context->id));
+        $broadcast = new \App\Modules\Notification\Infrastructure\Broadcasting\ConversationChangedBroadcast('game_invitation', $context->id);
+        $this->assertSame('private-game-invitation-threads.'.$context->id, $broadcast->broadcastOn()->name);
+        $this->assertSame('conversation.changed', $broadcast->broadcastAs());
+        $this->assertSame(['changed' => true, 'access_changed' => false], $broadcast->broadcastWith());
         $this->assertSame(1, $context->thread()->sole()->messages()->count());
         config()->set('themes.active', 'mskba_app');
         app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
         \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
         $url = route('account.notifications.threads.game-invitation', $context);
         $this->actingAs($ownerB)->get($url)->assertForbidden();
+        $this->getJson($url.'?fragment=1')->assertForbidden();
+        $readUrl = route('account.notifications.threads.game-invitation.read', $context);
+        $this->patchJson($readUrl)->assertForbidden();
+        $this->actingAs($ownerA);
+        $pendingNotice = \App\Modules\Notification\Domain\Models\UserNotification::query()
+            ->where('user_id', $ownerA->id)->where('payload->game_admission_id', $second->id)->sole();
+        $this->assertTrue($pendingNotice->isNew());
+        $fragment = $this->getJson($url.'?fragment=1')->assertOk()->assertJsonStructure(['html', 'rail_html']);
+        $this->assertStringContainsString('Повторное приглашение', $fragment->json('html'));
+        $this->assertStringContainsString('Оповестить тиммейтов', $fragment->json('html'));
+        $this->assertTrue($pendingNotice->fresh()->isNew());
+        $this->patchJson($readUrl)->assertOk()->assertJsonStructure(['unread_count']);
+        $this->assertFalse($pendingNotice->fresh()->isNew());
         $this->actingAs($ownerA)->get(route('account.notifications'))->assertOk()->assertSee($url, false);
         $this->get($url)->assertOk()->assertSee('Повторное приглашение')->assertSee('Пришли ещё раз приглашение')
             ->assertSee('Приглашение отклонено')->assertSee('Отказаться')->assertSee('Принять')->assertSee('Оповестить тиммейтов');
@@ -575,6 +597,10 @@ final class EventFirstFunnelTest extends TestCase
         $this->actingAs($ownerA)->get($url)->assertOk()->assertSee('Игра отменена')->assertSee('Изменились планы')
             ->assertSee('Пришли ещё раз приглашение')->assertDontSee('Оповестить тиммейтов');
         $this->getJson($state)->assertOk()->assertJsonPath('cancellation_reason', 'Изменились планы');
+        $cancelledFragment = $this->getJson($url.'?fragment=1')->assertOk()->json('html');
+        $this->assertStringContainsString('Игра отменена', $cancelledFragment);
+        $this->assertStringNotContainsString('data-game-chat-respond', $cancelledFragment);
+        $this->assertStringNotContainsString('data-game-teammates-open', $cancelledFragment);
         $this->postJson($notify, ['recipients' => [$player->id]])->assertUnprocessable();
         $this->postJson($messages, ['body' => 'Понял, спасибо'])->assertCreated();
 
