@@ -52,6 +52,7 @@ final class ShowEventHandler
                 'games' => fn ($query) => $query
                     ->withExists(['admissions', 'actions'])
                     ->with([
+                        'admissions',
                         'plannedTeamA.logo',
                         'plannedTeamB.logo',
                         'sides.team.logo',
