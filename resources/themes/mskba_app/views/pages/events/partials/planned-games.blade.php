@@ -1,10 +1,14 @@
 @php
     use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum as PlanPermission;
     use App\Modules\Event\Domain\Enums\GameStatusEnum;
+    use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
+    use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
+    use App\Modules\Event\Domain\Enums\EventStatusEnum;
     use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
     $canPlan = $editable && !$event->primaryGame?->tournamentMatch;
     $canAddGame = $canPlan && $effectivePermissions->contains(PlanPermission::CREATE_MINI_GAME->value);
     $canEditGame = $canPlan && $effectivePermissions->contains(PlanPermission::UPDATE_MINI_GAME->value);
+    $canInviteGame = $canPlan && $event->status === EventStatusEnum::PUBLISHED && $effectivePermissions->contains(PlanPermission::MANAGE_PARTICIPANTS->value);
     $canDeleteGame = $canPlan && $effectivePermissions->contains(PlanPermission::DELETE_MINI_GAME->value);
     $teamData = static fn ($team) => $team ? ['id' => $team->id, 'name' => $team->name, 'logo_url' => $team->logo?->publicUrl() ?: asset('images/team-placeholder.webp')] : null;
 @endphp
@@ -46,7 +50,48 @@
                     @if($child->recruitment_mode && $child->side_a_size > 1)
                         <p class="event-game-editor__hint">{{ $child->recruitment_mode->value === 'preformed_teams' ? 'Между командами' : 'Из участников' }}</p>
                     @endif
-                    @if($teamLabel)<p class="event-game-editor__hint">{{ $teamLabel }}</p>@endif
+                    @if($child->recruitment_mode?->value === 'preformed_teams')
+                        <div class="event-game-plan__teams">
+                            @foreach([$child->plannedTeamA, $child->plannedTeamB] as $team)
+                                @continue(!$team)
+                                @php
+                                    $latest = $child->admissions->where('team_id', $team->id)->sortByDesc('id')->first();
+                                    $status = $latest?->status;
+                                    $pendingApplication = $status === GameAdmissionStatusEnum::PENDING && $latest->direction === GameAdmissionDirectionEnum::APPLICATION;
+                                    $canSend = $scheduled && $canInviteGame && !$child->sides_confirmed_at;
+                                    $label = match ($status) {
+                                        GameAdmissionStatusEnum::PENDING => $pendingApplication ? 'Заявка на участие' : 'Приглашение отправлено',
+                                        GameAdmissionStatusEnum::ACCEPTED => 'Участие подтверждено',
+                                        GameAdmissionStatusEnum::DECLINED => 'Отклонено',
+                                        GameAdmissionStatusEnum::REVOKED => 'Отозвано',
+                                        default => 'Приглашение не отправлено',
+                                    };
+                                @endphp
+                                <div class="event-game-plan__team">
+                                    <img src="{{ $teamData($team)['logo_url'] }}" alt="" width="32" height="32">
+                                    <div class="event-game-plan__details">
+                                        <strong>{{ $team->name }}</strong>
+                                        <span class="event-game-editor__hint">{{ $label }}</span>
+                                        @if($canSend)
+                                            @if($pendingApplication)
+                                                <button type="button" class="event-game-plan__add" data-planned-invite-action data-method="POST" data-url="{{ route('events.games.recruitment.respond', [$event->routeIdentifier(), $child->id, $latest->id]) }}" data-payload='{"decision":"accepted"}'>Принять заявку</button>
+                                                <button type="button" class="event-game-plan__add" data-planned-invite-action data-method="POST" data-url="{{ route('events.games.recruitment.respond', [$event->routeIdentifier(), $child->id, $latest->id]) }}" data-payload='{"decision":"declined"}'>Отклонить заявку</button>
+                                            @elseif($status === GameAdmissionStatusEnum::PENDING)
+                                                <button type="button" class="event-game-plan__add" data-planned-invite-action data-method="DELETE" data-url="{{ route('events.games.recruitment.revoke', [$event->routeIdentifier(), $child->id, $latest->id]) }}">Отозвать приглашение</button>
+                                            @elseif($status !== GameAdmissionStatusEnum::ACCEPTED)
+                                                @if($team->acceptsCompetitionInvitations())
+                                                    <button type="button" class="event-game-plan__add" data-planned-invite-action data-method="POST" data-url="{{ route('events.games.recruitment.invite', [$event->routeIdentifier(), $child->id]) }}" data-payload='@json(["team_id" => $team->id])'>{{ $latest ? 'Отправить приглашение повторно' : 'Отправить приглашение' }}</button>
+                                                @else
+                                                    <span class="event-game-editor__hint">Команда не принимает приглашения</span>
+                                                @endif
+                                            @endif
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @if($canInviteGame)<p class="event-game-editor__error" data-planned-invite-error role="alert" hidden></p>@endif
+                    @elseif($teamLabel)<p class="event-game-editor__hint">{{ $teamLabel }}</p>@endif
                     {{-- The new sport runtime is connected in the next integration slice. --}}
                 </div>
                 @if($scheduled && $canEditGame && !$history)
