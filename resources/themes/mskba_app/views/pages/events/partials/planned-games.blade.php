@@ -32,12 +32,13 @@
                 ];
                 $selectedTeams = ['a' => $teamData($child->plannedTeamA), 'b' => $teamData($child->plannedTeamB)];
                 $teamLabel = collect($selectedTeams)->filter()->pluck('name')->implode(' — ');
-                $history = $child->admissions_exists || $child->sides->isNotEmpty() || $child->rosterEntries->isNotEmpty()
+                $history = $child->admissions_exists || $child->invitationThreads->isNotEmpty() || $child->sides->isNotEmpty() || $child->rosterEntries->isNotEmpty()
                     || $child->actions_exists || $child->playerStatistics->isNotEmpty() || $child->sides_confirmed_at;
             @endphp
             <div class="event-game-plan__row" id="planned-game-{{ $child->id }}" data-planned-game-row
                 data-game-config='@json($config, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
                 data-game-teams='@json($selectedTeams, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
+                data-game-has-history="{{ $history ? '1' : '0' }}"
                 data-update-url="{{ route('events.planned-games.update', [$event->routeIdentifier(), $child->id]) }}"
                 data-delete-url="{{ route('events.planned-games.destroy', [$event->routeIdentifier(), $child->id]) }}">
                 <div class="event-game-plan__details">
@@ -102,7 +103,7 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 12-12-3-3L5 16l-1 4zM14 7l3 3"/></svg>
                     </button>
                 @endif
-                @if($scheduled && $canDeleteGame && !$history)
+                @if($scheduled && $canDeleteGame && !$child->actions_exists && $child->playerStatistics->isEmpty())
                     <button class="icon-button event-game-plan__icon event-game-plan__remove" type="button" aria-label="Удалить игру" title="Удалить игру" data-planned-game-delete>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
                     </button>
