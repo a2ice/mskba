@@ -30,7 +30,8 @@ final class StandaloneGameCandidateSearchController extends Controller
     ): JsonResponse {
         $eventModel = Event::query()->whereRouteIdentifier($event)->firstOrFail();
         $item = Game::query()->whereKey($game)->whereBelongsTo($eventModel)->firstOrFail();
-        abort_if($eventModel->type !== EventTypeEnum::GAME || (int) $eventModel->primary_game_id !== $item->id, 404);
+        abort_if(!$item->uses_event_planning && ($eventModel->type !== EventTypeEnum::GAME || (int) $eventModel->primary_game_id !== $item->id), 404);
+        abort_unless($item->hasSportConfiguration() && $item->recruitment_mode !== null, 422);
         $actor = $actors->resolveForRequest($request);
         abort_if(
             $actor === null
@@ -47,6 +48,7 @@ final class StandaloneGameCandidateSearchController extends Controller
             $candidates = Team::query()
                 ->competitionEligible()
                 ->where('accepts_competition_invitations', true)
+                ->when($item->uses_event_planning, fn ($query) => $query->whereIn('id', [$item->planned_team_a_id, $item->planned_team_b_id]))
                 ->whereNotIn('id', $excluded)
                 ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($data['q']).'%'])
                 ->orderBy('name')
