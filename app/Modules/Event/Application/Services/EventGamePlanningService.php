@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 final class EventGamePlanningService
 {
-    public function __construct(private readonly EventManagementAccess $access) {}
+    public function __construct(private readonly EventManagementAccess $access, private readonly GamePlanningCancellation $cancellation) {}
 
     /** The new event-first contract is independent of the legacy single-game payload. */
     public static function rules(): array
@@ -118,15 +118,26 @@ final class EventGamePlanningService
         return $updated;
     }
 
-    /** Unused scheduled games can be removed without touching event participants. */
-    public function remove(Event $event, Game $game, Actor $actor): void
+    /** Remove a scheduled game without touching event participants or erasing history. */
+    public function remove(Event $event, Game $game, Actor $actor, ?bool $notify = null, ?string $reason = null): void
     {
-        DB::transaction(function () use ($event, $game, $actor): void {
+        DB::transaction(function () use ($event, $game, $actor, $notify, $reason): void {
             $parent = $this->lockManageable($event, $actor, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
             $locked = $this->lockPlanned($parent, $game);
-            $this->assertUnused($locked);
-            // Preserve the row and its identifiers; the default scope hides deleted games.
-            $locked->delete();
+            if ($locked->actions()->exists() || $locked->playerStatistics()->exists()
+                || $locked->periods()->whereNotNull('actual_started_at')->exists()) {
+                throw ValidationException::withMessages(['game' => 'У игры уже есть спортивные данные. Удаление невозможно.']);
+            }
+            $hasHistory = $locked->admissions()->exists() || $locked->invitationThreads()->exists()
+                || $locked->sides()->exists() || $locked->rosterEntries()->exists() || $locked->sides_confirmed_at !== null;
+            if ($hasHistory) {
+                if ($notify === null) {
+                    throw ValidationException::withMessages(['notify' => 'У игры уже есть история участия. Обновите страницу и подтвердите отмену.']);
+                }
+                $this->cancellation->cancel($parent, $locked, $actor, $notify, $reason);
+            } else {
+                $locked->delete();
+            }
             if ((int) $parent->primary_game_id === (int) $locked->id) {
                 $parent->forceFill(['primary_game_id' => $parent->games()
                     ->where('status', '!=', GameStatusEnum::CANCELLED->value)->orderBy('id')->value('id')])->save();
