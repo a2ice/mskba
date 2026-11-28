@@ -233,6 +233,7 @@ final class ListAccountConversationsHandler
         return $teamConversations->concat($this->bookingCards->handle($user, $actor))
             ->concat($directConversations)
             ->concat($operatorCards)->concat($profileConversations)->concat($supportConversations)
+            ->concat(app(\App\Modules\Event\Application\Services\GameInvitationConversation::class)->cards($user))
             ->sortByDesc('date')->values();
     }
 }
