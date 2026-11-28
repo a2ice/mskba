@@ -318,7 +318,7 @@ class VenueController extends Controller
             limit: isset($validated['limit']) ? (int) $validated['limit'] : 20,
         );
 
-        $searchVenueModels = Venue::query()->with(['characteristics', 'location.address', 'location.metroStations'])
+        $searchVenueModels = Venue::query()->withAvg(['reviews as published_reviews_avg_rating' => fn ($query) => $query->where('is_published', true)], 'rating')->with(['characteristics', 'location.address', 'location.metroStations'])
             ->whereKey(collect($venues)->pluck('id'))->get()->keyBy('id');
         $hoopsByVenue = $searchVenueModels
             ->mapWithKeys(fn (Venue $venue): array => [$venue->id => (int) ($venue->characteristics?->hoops_count ?? 1)]);
@@ -356,6 +356,7 @@ class VenueController extends Controller
                 'venue_url' => route('venues.show', $venue->routeIdentifier()),
                 'preview_url' => route('venues.preview', $venue->routeIdentifier()),
                 'hoops_count' => $hoopsByVenue->get($venue->id, 1),
+                'rating' => $searchVenueModels->get($venue->id)?->published_reviews_avg_rating === null ? null : round((float) $searchVenueModels->get($venue->id)->published_reviews_avg_rating, 1),
             ])->all(),
         ]);
     }
@@ -435,6 +436,7 @@ class VenueController extends Controller
                     'line_color' => $station->lineColor,
                 ])->all(),
                 'image_url' => $mapPhoto === null ? null : url($mapPhoto->publicUrl()),
+                'rating' => $venue->about->rating,
                 'surfaces' => $surfaces,
                 'amenities' => $amenities,
                 'url' => route('venues.show', $venue->routeIdentifier()),
