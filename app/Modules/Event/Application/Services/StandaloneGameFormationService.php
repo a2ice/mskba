@@ -274,7 +274,8 @@ final class StandaloneGameFormationService
             }
             $this->assertIndividualFormationOpen($locked);
             $ids = collect([...$a, ...$b])->map(fn ($id) => (int) $id);
-            $participants = $event->participants()->occupiesPlayerSpot()->with('user')
+            $participants = $event->participants()->occupiesPlayerSpot()
+                ->where('confirmation_version', $event->participation_confirmation_version)->with('user')
                 ->lockForUpdate()->get()->filter(fn ($participant) => $participant->user !== null
                     && !$participant->user->canonical()->isBlocked() && !$participant->user->canonical()->trashed())
                 ->keyBy(fn ($participant) => (int) $participant->user->canonical()->id);
