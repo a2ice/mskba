@@ -14,6 +14,7 @@ Route::prefix('events/{event}/games/{game}/recruitment')
         Route::get('/join', StandaloneGameQrJoinController::class)->name('join');
 
         Route::middleware('auth')->group(function (): void {
+            Route::delete('/participation', [StandaloneGameQrJoinController::class, 'withdraw'])->name('participation.withdraw');
             Route::post('/join/apply', [StandaloneGameQrJoinController::class, 'apply'])->name('join.apply');
             Route::delete('/join/admissions/{admission}', [StandaloneGameQrJoinController::class, 'revoke'])
                 ->whereNumber('admission')->name('join.revoke');
