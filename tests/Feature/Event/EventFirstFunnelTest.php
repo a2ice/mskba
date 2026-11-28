@@ -619,6 +619,78 @@ final class EventFirstFunnelTest extends TestCase
             ->where('payload->source', 'game.planning.cancelled')->where('payload->game_id', $silentId)->count());
     }
 
+    public function test_planned_games_have_independent_rosters_periods_and_results(): void
+    {
+        $organizer = $this->verifiedOrganizer();
+        $a = $this->verifiedOrganizer();
+        $b = $this->verifiedOrganizer();
+        $outsider = $this->verifiedOrganizer();
+        $input = [...$this->payload($this->venue(), [$this->slots()[0]]), 'type' => 'game', 'games' => [
+            ['title' => 'Первый матч', 'format' => 'streetball_1x1'],
+            ['title' => 'Второй матч', 'format' => 'streetball_1x1', 'timing_mode' => 'periods', 'periods_count' => 2],
+        ]];
+        $this->actingAs($organizer)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        [$first, $second] = $event->games()->orderBy('id')->get()->all();
+        foreach ([$a, $b] as $user) {
+            $event->participants()->create([
+                'user_id' => $user->id, 'role' => 'participant', 'status' => 'confirmed',
+                'participation_roles' => ['player'], 'joined_at' => now(),
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+        }
+        $firstParams = [$event->routeIdentifier(), $first->id];
+        $secondParams = [$event->routeIdentifier(), $second->id];
+        $selection = ['side_a_user_ids' => [$a->id], 'side_b_user_ids' => [$b->id]];
+        $firstConfirm = route('events.games.recruitment.event-participants.confirm', $firstParams);
+        $secondConfirm = route('events.games.recruitment.event-participants.confirm', $secondParams);
+        $this->postJson(route('events.games.start', $secondParams))->assertUnprocessable();
+        $this->postJson($secondConfirm, ['side_a_user_ids' => [$a->id], 'side_b_user_ids' => [$outsider->id]])->assertUnprocessable();
+        $this->postJson($secondConfirm, ['side_a_user_ids' => [$a->id], 'side_b_user_ids' => [$a->id]])->assertUnprocessable();
+        $this->actingAs($outsider)->postJson($secondConfirm, $selection)->assertForbidden();
+        $this->actingAs($organizer)->postJson($firstConfirm, $selection)->assertOk();
+        $this->postJson($secondConfirm, $selection)->assertOk();
+        $this->assertSame(2, $first->rosterEntries()->count());
+        $this->assertSame(2, $second->rosterEntries()->count());
+        $this->deleteJson(route('events.games.recruitment.unconfirm', $firstParams))->assertOk();
+        $this->assertSame(0, $first->rosterEntries()->count());
+        $this->assertSame(2, $second->rosterEntries()->count());
+        $this->assertSame(2, $event->participants()->occupiesPlayerSpot()->whereIn('user_id', [$a->id, $b->id])->count());
+        $this->postJson($firstConfirm, $selection)->assertOk();
+        $this->get(route('events.games.manage', $secondParams))->assertOk()->assertSee('Второй матч');
+        $this->get(route('events.games.show', $secondParams))->assertOk()->assertSee('Второй матч');
+        $this->get(route('events.games.recruitment.panel', [...$secondParams, 'management' => 1]))->assertOk()->assertSee('Стороны утверждены');
+        $this->getJson(route('events.games.lifecycle.show', $secondParams))->assertOk()->assertJsonPath('can_start', true);
+        $this->postJson(route('events.games.start', $secondParams))->assertOk();
+        $this->assertNull($first->fresh()->actual_started_at);
+        $this->patchJson(route('events.games.statistics', $secondParams), [
+            'scores' => ['A' => 0, 'B' => 0],
+            'players' => [$a->id => ['assists' => 1]],
+            'action' => ['type' => 'assist', 'user_id' => $a->id, 'payload' => ['field' => 'assists']],
+        ])->assertOk();
+        $this->assertSame(1, $second->actions()->firstOrFail()->gamePeriod->number);
+        $this->assertSame(0, $first->actions()->count());
+        $this->patchJson(route('events.games.score', $secondParams), ['scores' => ['A' => 2, 'B' => 0]])->assertOk();
+        $this->get(route('events.games.live', $secondParams))->assertOk()->assertSee('aria-label="2 : 0"', false);
+        $this->postJson(route('events.games.periods.end', $secondParams))->assertOk();
+        $this->postJson(route('events.games.periods.start-next', $secondParams))->assertOk();
+        $this->postJson(route('events.games.end', $secondParams))->assertOk();
+        $this->patchJson(route('events.games.statistics.complete', $secondParams), [
+            'scores' => ['A' => 2, 'B' => 0], 'players' => [$a->id => ['assists' => 1], $b->id => ['assists' => 0]],
+        ])->assertOk()->assertJsonPath('completed', true);
+        $this->assertSame('confirmed', $second->fresh()->statistics_status->value);
+        $this->assertSame('scheduled', $first->fresh()->status->value);
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->fresh()->status);
+        $this->postJson(route('events.games.start', $firstParams))->assertOk();
+        $this->patchJson(route('events.games.score', $firstParams), ['scores' => ['A' => 1, 'B' => 0]])->assertOk();
+        $this->postJson(route('events.games.end', $firstParams))->assertOk();
+        $this->patchJson(route('events.games.statistics.complete', $firstParams), [
+            'scores' => ['A' => 1, 'B' => 0], 'players' => [$a->id => ['assists' => 0], $b->id => ['assists' => 0]],
+        ])->assertOk();
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->fresh()->status);
+        $this->assertSame(2, (int) $second->sides()->where('slot', 'A')->value('score'));
+    }
+
     public function test_duplicate_time_options_are_rejected(): void
     {
         $user = $this->verifiedOrganizer();
