@@ -815,6 +815,8 @@ Route::get('/users/{user:username}/{role}', [PublicUserProfileController::class,
     ->where('role', 'player|coach|referee|statistician|media|venue_related')->name('users.role');
 
 Route::prefix('events')->group(function () {
+    Route::get('/quick-create/teams', \\App\\Modules\\Event\\Presentation\\Http\\Controllers\\EventGamePlanningTeamSearchController::class)
+        ->middleware('throttle:60,1')->name('events.funnel.teams');
     Route::get('/', [EventController::class, 'index'])
         ->name('events.index')
         ->defaults('breadcrumb', 'Мероприятия');
