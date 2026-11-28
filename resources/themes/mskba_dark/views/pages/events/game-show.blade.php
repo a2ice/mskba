@@ -5,6 +5,7 @@
     use App\Modules\Event\Domain\Enums\EventTypeEnum;
     use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
     use App\Modules\Event\Domain\Enums\GameStatusEnum;
+    use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
     use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
     use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
     use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
@@ -64,7 +65,7 @@
         && ! $isCancelled;
     $candidatesForSlot = static function (string $slot, $side) use ($game, $tournament, $tournamentCandidates, $isEmbeddedGame, $parentCandidates) {
         if ($game->uses_event_planning) {
-            return $game->rosterEntries->where('game_side_id', $side?->id)->pluck('user')->filter()->keyBy('id');
+            return $game->rosterEntries->where('status', GameRosterStatusEnum::SELECTED)->where('game_side_id', $side?->id)->pluck('user')->filter()->keyBy('id');
         }
         if ($tournament) {
             return $tournamentCandidates->get($slot, collect());
@@ -217,6 +218,9 @@
                     @php
                         $side = $sides->get($slot);
                         $sideRoster = $roster->get($side?->id, collect());
+                        if ($game->uses_event_planning && !$game->actual_started_at) {
+                            $sideRoster = $sideRoster->where('status', '!=', GameRosterStatusEnum::EXCLUDED);
+                        }
                         $entriesByUser = $sideRoster->keyBy('user_id');
                         $savedStarters = $sideRoster->where('lineup_role', GameLineupRoleEnum::STARTER);
                         $teamProfile = $side?->team?->sportProfiles
@@ -259,7 +263,7 @@
                                                 <input class="form-toggle__input" type="radio" name="game-captain-{{ $slot }}" value="{{ $player->id }}" data-game-captain @checked((bool) $entry?->is_captain) @disabled(! $isPlaying)>
                                                 <span class="form-toggle__control" aria-hidden="true"></span><strong class="form-toggle__title">Капитан</strong>
                                             </label>
-                                        @elseif($canEnterLiveStatistics)
+                                        @elseif($canEnterLiveStatistics && (!$game->uses_event_planning || $entry?->status !== GameRosterStatusEnum::EXCLUDED))
                                             <button type="button" data-game-shot-open><i class="ti ti-ball-basketball"></i>Бросок</button>
                                             <button type="button" data-game-stat-increment="assists"><i class="ti ti-hand-click"></i>Передача</button>
                                             <button type="button" data-game-stat-increment="defensive_rebounds"><i class="ti ti-jump-rope"></i>Подбор</button>
