@@ -166,9 +166,13 @@ final class VenueCatalogSortTest extends TestCase
         $this->get('/venues?sort=rating_desc')->assertOk()
             ->assertSeeInOrder(['RatedVenue Epsilon', 'RatedVenue Delta', 'RatedVenue Gamma', 'RatedVenue Beta'])
             ->assertDontSee('RatedVenue Unknown');
-        $this->getJson('/venues?sort=rating_desc&page=2&fragment=items')->assertOk()
+        $secondPage = $this->getJson('/venues?sort=rating_desc&page=2&fragment=items')->assertOk()
             ->assertJsonPath('total', 6)->assertJsonPath('has_more', false)
             ->assertSeeInOrder(['RatedVenue Alpha', 'RatedVenue Unknown']);
+        $html = $secondPage->json('html');
+        $this->assertStringContainsString('class="venue-catalog-card-rating is-unrated"', $html);
+        $this->assertStringContainsString('title="Еще не оценили"', $html);
+        $this->assertStringContainsString('aria-label="Еще не оценили"', $html);
     }
 
     public function test_unknown_sort_is_rejected_in_json_requests(): void
