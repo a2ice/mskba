@@ -5,6 +5,7 @@ const labels = {
     event: ['мероприятие', 'Мероприятие добавлено в избранное.'],
     team: ['команду', 'Команда добавлена в избранное.'],
     product: ['товар', 'Товар добавлен в избранное.'],
+    content: ['материал', 'Материал добавлен в избранное.'],
 };
 const storageKey = 'mskba:favorite:pending:v1';
 const currentPath = () => location.pathname + location.search + location.hash;
@@ -29,6 +30,7 @@ function requireAuth(type,id) {
 }
 function publish(type,id,result) {
     window.dispatchEvent(new CustomEvent('mskba:favorites:changed',{detail:{count:result.favorites_count}}));
+    if(type==='content')window.dispatchEvent(new CustomEvent('mskba:content-favorite:updated',{detail:{id,state:result.state,count:result.count}}));
     if(type==='venue')window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{detail:{venueId:id,state:result.state,count:result.count}}));
     document.querySelectorAll('[data-favorite-type][data-favorite-id]').forEach(node=>{
         if(node.dataset.favoriteType===type&&Number(node.dataset.favoriteId)===id){

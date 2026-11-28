@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Избранное',
-        'intro' => 'Сохраняй интересные площадки, мероприятия и команды. Удалённые элементы можно восстановить из корзины.',
+        'intro' => 'Сохраняй интересные площадки, мероприятия, команды, товары и материалы. Удалённые элементы можно восстановить из корзины.',
     ])
 @endsection
 
@@ -21,6 +21,7 @@
                     <option value="event">Мероприятия</option>
                     <option value="team">Команды</option>
                     <option value="product">Товары</option>
+                    <option value="content">Новости и материалы</option>
                 </select>
                     @include('account.partials.native-select-chevron')
                 </span>

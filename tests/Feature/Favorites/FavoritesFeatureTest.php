@@ -219,4 +219,31 @@ final class FavoritesFeatureTest extends TestCase
             ->assertJsonCount(1, 'data')->assertJsonPath('data.0.state', 'active');
         $this->assertDatabaseCount('favorites', 1);
     }
+    public function test_content_favorite_is_idempotent_and_visible_in_account(): void
+    {
+        $user = User::factory()->create();
+        $content = \App\Modules\Content\Domain\Models\ContentItem::query()->create([
+            'created_by_user_id' => $user->id, 'updated_by_user_id' => $user->id,
+            'type' => 'material', 'title' => 'Гид по аренде', 'alias' => 'rental-guide-favorite',
+            'short_description' => 'Описание', 'full_description' => 'Текст',
+            'status' => 'published', 'publish_in_feed' => true, 'feed_published_at' => now()->subMinute(),
+        ]);
+        $input = ['type' => 'content', 'id' => $content->id, 'action' => 'add'];
+        $this->postJson(route('favorites.toggle'), $input)->assertUnauthorized();
+        $this->actingAs($user);
+        $this->postJson(route('favorites.toggle'), $input)->assertOk()->assertJsonPath('count', 1);
+        $this->postJson(route('favorites.toggle'), $input)->assertOk()->assertJsonPath('count', 1);
+        $this->getJson(route('favorites.items', ['type' => 'content']))->assertOk()
+            ->assertJsonPath('data.0.title', $content->title)
+            ->assertJsonPath('data.0.url', route('news.show', $content->alias));
+        $this->postJson(route('favorites.toggle'), array_replace($input, ['action' => 'remove']))
+            ->assertOk()->assertJsonPath('count', 0);
+        $this->getJson(route('favorites.items', ['type' => 'content', 'state' => 'trashed']))
+            ->assertOk()->assertJsonCount(1, 'data');
+        $this->postJson(route('favorites.toggle'), $input)->assertOk()->assertJsonPath('count', 1);
+        $content->update(['status' => 'draft']);
+        $this->postJson(route('favorites.toggle'), array_replace($input, ['action' => 'remove']))->assertOk();
+        $this->postJson(route('favorites.toggle'), $input)->assertNotFound();
+        $this->assertDatabaseCount('favorites', 1);
+    }
 }

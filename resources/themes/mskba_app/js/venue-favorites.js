@@ -131,6 +131,7 @@ import { addFavorite } from './favorite-action.js';
         event:{subject:'Мероприятие',added:'Мероприятие добавлено в избранное',removed:'Мероприятие убрано из избранного'},
         team:{subject:'Команда',added:'Команда добавлена в избранное',removed:'Команда убрана из избранного'},
         product:{subject:'Товар',added:'Товар добавлен в избранное',removed:'Товар убран из избранного'},
+        content:{subject:'Материал',added:'Материал добавлен в избранное',removed:'Материал убран из избранного'},
         user:{subject:'Пользователь',added:'Пользователь добавлен в избранное',removed:'Пользователь убран из избранного'},
     };
     const pendingGeneric=new Set();
@@ -165,6 +166,7 @@ import { addFavorite } from './favorite-action.js';
             if(status.state!=='active'){await addFavorite(type,id);return;}
             const result=await request(endpoints.toggle,'POST',{type,id,action:'remove'});
             notifyFavoriteCount(result);
+            if(type==='content')window.dispatchEvent(new CustomEvent('mskba:content-favorite:updated',{detail:{id,state:result.state,count:result.count}}));
             const words=contextNames[type];
             if(result.state!=='active')toast(words?.removed||'Убрано из избранного');
             if(button) {
