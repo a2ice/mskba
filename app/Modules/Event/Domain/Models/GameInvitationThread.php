@@ -19,7 +19,7 @@ final class GameInvitationThread extends Model
 
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsTo(Team::class)->withTrashed();
     }
 
     public function thread(): HasOne
