@@ -201,12 +201,12 @@
             @endif
             <strong>Игры</strong>
             @forelse($event->games as $child)
-                @if($event->starts_at)
+                @if($event->starts_at && $child->hasSportConfiguration())
                     <a class="app-venue-activity" href="{{ $event->primary_game_id === $child->id && $event->type->value === 'game' ? route('events.show', ['event' => $event->routeIdentifier(), 'sport' => 1]) : route('events.games.show', [$event->routeIdentifier(), $child->id]) }}">
                         <strong class="app-venue-activity__title">{{ $child->title ?: 'Игра' }}</strong><span class="app-venue-activity__description">{{ $child->formatLabel() }} · {{ $child->status?->label() }}</span>
                     </a>
                 @else <p>{{ $child->title ?: 'Игра' }} · {{ $child->formatLabel() }}</p> @endif
-                @if($event->starts_at && $effectivePermissions->contains(Permission::UPDATE_MINI_GAME->value))<a class="button secondary" href="{{ route('events.games.manage', [$event->routeIdentifier(), $child->id]) }}">Управлять игрой</a>@endif
+                @if($event->starts_at && $child->hasSportConfiguration() && $effectivePermissions->contains(Permission::UPDATE_MINI_GAME->value))<a class="button secondary" href="{{ route('events.games.manage', [$event->routeIdentifier(), $child->id]) }}">Управлять игрой</a>@endif
             @empty <p>Игр пока нет</p> @endforelse
         </aside>
     </div>
