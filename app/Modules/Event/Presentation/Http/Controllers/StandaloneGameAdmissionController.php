@@ -72,6 +72,7 @@ final class StandaloneGameAdmissionController extends Controller
                 $manageableTeams = Team::query()
                     ->whereNull('temporary_for_event_id')
                     ->where('status', TeamStatusEnum::ACTIVE->value)
+                    ->when($item->uses_event_planning, fn ($query) => $query->whereIn('id', [$item->planned_team_a_id, $item->planned_team_b_id]))
                     ->orderBy('name')
                     ->get()
                     ->filter(fn (Team $team): bool => $teamAccess->allows(
@@ -86,7 +87,9 @@ final class StandaloneGameAdmissionController extends Controller
             )->values();
         }
 
-        return response()->view('theme::pages.events.partials.standalone-recruitment', [
+        $view = view()->exists('theme::pages.events.partials.standalone-recruitment')
+            ? 'theme::pages.events.partials.standalone-recruitment' : null;
+        $data = [
             'event' => $item->event,
             'game' => $item,
             'managementMode' => $management,
@@ -94,7 +97,15 @@ final class StandaloneGameAdmissionController extends Controller
             'manageableTeams' => $manageableTeams,
             'relevantAdmissions' => $relevantAdmissions,
             'assessmentSources' => TournamentAssessmentSourceEnum::cases(),
-        ]);
+            'eventPlayers' => $management && $canManage && $item->uses_event_planning
+                ? $item->event->participants()->occupiesPlayerSpot()->with('user.profile')->get()
+                    ->pluck('user')->filter()->map(fn (User $user) => $user->canonical())
+                    ->filter(fn (User $user) => !$user->isBlocked() && !$user->trashed())->unique('id')->values()
+                : collect(),
+        ];
+        // The sport workspace currently uses the existing legacy theme even from the native event page.
+        return $view !== null ? response()->view($view, $data) : response(view()->file(
+            resource_path('themes/mskba_dark/views/pages/events/partials/standalone-recruitment.blade.php'), $data)->render());
     }
 
     public function apply(
