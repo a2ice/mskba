@@ -34,7 +34,7 @@
                             <p><strong>{{ app(\App\Modules\Event\Application\Services\GameInvitationConversation::class)->statusLabel($item->status->value) }}</strong></p>
                             @if($item->response_comment)<p>{{ $item->response_comment }}</p>@endif
                             @if($canRespond && $item->status->value === 'pending')
-                                <form method="POST" action="{{ route('account.notifications.threads.game-invitation.respond', [$context, $item->id]) }}" class="app-messages__compose-footer">
+                                <form data-game-chat-respond method="POST" action="{{ route('account.notifications.threads.game-invitation.respond', [$context, $item->id]) }}" class="app-messages__compose-footer">
                                     @csrf
                                     <button type="submit" class="button secondary" name="decision" value="declined">Отказаться</button>
                                     <button type="submit" class="button primary" name="decision" value="accepted">Принять</button>
