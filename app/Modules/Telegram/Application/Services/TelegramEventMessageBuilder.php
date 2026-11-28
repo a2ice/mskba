@@ -104,7 +104,7 @@ final class TelegramEventMessageBuilder
         if (($event->type !== EventTypeEnum::GAME || $event->games->contains('uses_event_planning', true)) && $event->games->isNotEmpty()) {
             $lines[] = '';
             $lines[] = '🎮 <b>'.($event->games->contains('uses_event_planning', true) ? 'Игры: ' : 'Мини-игры: ').$event->games->count().'</b>';
-            foreach ($event->games as $game) {
+            foreach ($event->games->take(8) as $game) {
                 $sides = $game->sides->keyBy('slot');
                 $sideA = $sides->get('A');
                 $sideB = $sides->get('B');
@@ -120,6 +120,9 @@ final class TelegramEventMessageBuilder
                 $lines[] = $this->escape($sideA?->display_name ?: 'Команда A')
                     .' <b>'.$score.'</b> '
                     .$this->escape($sideB?->display_name ?: 'Команда B');
+            }
+            if ($event->games->count() > 8) {
+                $lines[] = '… и ещё '.($event->games->count() - 8).' игр. Полный список на портале.';
             }
         }
 
