@@ -3,7 +3,7 @@ import {mountEventGameEditor} from '../../../js/event-game-editor.js';
 const root=document.querySelector('[data-event-planned-games]');
 const editorDialog=document.getElementById('event-page-game-editor');
 const deleteDialog=document.getElementById('event-page-game-plan-delete');
-if(root&&editorDialog&&deleteDialog){
+if(root){
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const read=async(response)=>{
         const data=await response.json().catch(()=>({}));
@@ -17,6 +17,20 @@ if(root&&editorDialog&&deleteDialog){
         method,credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf(),'X-Requested-With':'XMLHttpRequest'},
         ...(value?{body:JSON.stringify(value)}:{}),
     }));
+    root.addEventListener('click',async event=>{
+        const trigger=event.target.closest('[data-planned-invite-action]');
+        if(!trigger||!root.contains(trigger)||trigger.disabled)return;
+        const row=trigger.closest('[data-planned-game-row]');
+        const error=row?.querySelector('[data-planned-invite-error]');
+        if(error)error.hidden=true;
+        const actions=[...row.querySelectorAll('[data-planned-invite-action]')];
+        actions.forEach(action=>action.disabled=true);
+        try{
+            await mutate(trigger.dataset.url,trigger.dataset.method,trigger.dataset.payload?JSON.parse(trigger.dataset.payload):undefined);
+            location.reload();
+        }catch(e){if(error){error.textContent=e.message;error.hidden=false;}actions.forEach(action=>action.disabled=false);}
+    });
+    if(editorDialog&&deleteDialog){
     const editor=mountEventGameEditor(editorDialog,{
         async searchTeams(query,exclude){
             const url=new URL(root.dataset.searchUrl,location.origin);
@@ -56,4 +70,5 @@ if(root&&editorDialog&&deleteDialog){
         catch(e){error.textContent=e.message;error.hidden=false;}
         finally{deleting=false;confirm.disabled=false;}
     });
+    }
 }
