@@ -9,6 +9,22 @@ return [
     'user' => env('UI_STUDIO_USER'),
     'password_hash' => env('UI_STUDIO_PASSWORD_HASH'),
     'cases' => [
+        'event-game-planning' => [
+            'title' => 'Мероприятие — планирование игр',
+            'issue' => 1175,
+            'revision' => 1,
+            'sources' => [
+                'resources/views/ui-studio/cases/event-game-planning.blade.php',
+                'resources/views/components/event-game-editor.blade.php',
+                'resources/views/components/event-game-plan-list.blade.php',
+                'resources/js/event-game-editor.js',
+                'resources/js/event-game-plan.js',
+            ],
+            'kit_changes' => [],
+            'status' => 'Кандидат к визуальной приёмке',
+            'templates' => ['mskba_app'],
+            'states' => ['normal' => 'Без игр', 'multiple' => 'Список игр', 'editing' => 'Создание игры', 'teams' => 'Между командами', 'delete' => 'Удаление игры'],
+        ],
         'unified-chat' => [
             'title' => 'Единый чат — редактор сообщения',
             'issue' => 933,
