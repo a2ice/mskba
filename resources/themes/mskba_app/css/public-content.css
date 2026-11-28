@@ -80,3 +80,11 @@
     .app-content-page__grid { grid-template-columns: minmax(0, 1fr); }
     .app-content-page__article { padding: 20px; }
 }
+
+/* News detail shares the catalog shell, without changing FAQ article styles. */
+.app-news-detail__main{display:grid;min-width:0;gap:20px}
+.app-news-detail .app-content-page__article{max-width:none;min-width:0;padding:clamp(20px,3vw,40px)}
+.app-news-detail .app-content-page__article h1{font-size:clamp(22.5px,3vw,39px);line-height:1.15}
+.app-news-detail .app-content-page__article > .button{justify-self:start;max-width:100%;width:auto}
+.app-news-detail .app-content-page__cover{max-height:none;height:auto;object-fit:contain}
+@media(max-width:850px){.app-news-detail__main{gap:16px}.app-news-detail .app-category__mobile-filters{margin-bottom:0}}

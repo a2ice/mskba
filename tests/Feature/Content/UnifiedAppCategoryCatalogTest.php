@@ -128,8 +128,7 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             $this->get($url)->assertOk()
                 ->assertSee('data-default-category-view="list"', false)
                 ->assertSee('data-default-category-results="list"', false)
-                ->assertSee('app-category__items--list', false)
-                ;
+                ->assertSee('app-category__items--list', false);
             if (! str_contains($url, '/feed')) {
                 $this->get($url)->assertSee('name="view" value="list"', false);
             }
@@ -175,6 +174,14 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             ->assertSee('Уникальный мяч в новости')
             ->assertDontSee('Другая публикация')
             ->assertSee(route('news.show', 'unique-ball-news'), false);
+
+        $this->get(route('news.show', 'unique-ball-news'))->assertOk()
+            ->assertSee('id="news-article"', false)
+            ->assertSee('news-category-filter-desktop', false)
+            ->assertSee('news-category-filter-mobile', false)
+            ->assertSee('app-news-meta', false)
+            ->assertSee('Расширенные фильтры')
+            ->assertDontSee('aria-label="Вернуться к новостям"', false);
 
         $this->get(route('news.index', ['q' => 'отсутствует']))
             ->assertOk()

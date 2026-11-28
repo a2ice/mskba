@@ -11,7 +11,7 @@
     $canonicalUrl = $contentItem->publicUrl();
     $structuredData = [[
         '@context' => 'https://schema.org',
-        '@type' => 'NewsArticle',
+        '@type' => $contentItem->type === \App\Modules\Content\Domain\Enums\ContentTypeEnum::MATERIAL ? 'Article' : 'NewsArticle',
         'headline' => $contentItem->title,
         'description' => $metaDescription,
         'datePublished' => $contentItem->feed_published_at?->toIso8601String(),
