@@ -25,14 +25,17 @@
 @endsection
 
 @section('category-sidebar')
-    <h2>Поиск команд</h2>
+    <h2>Участники</h2>
+    @include('theme::pages.participants.partials.navigation')
+    <div class="app-category__separator"></div>
     @include('theme::pages.teams.partials.category-filters', ['scope' => 'desktop'])
 @endsection
 
 @section('category-before-items')
     <details class="app-category__mobile-filters panel">
-        <summary>Фильтры <span aria-hidden="true">⌄</span></summary>
+        <summary>Категории и фильтры <span aria-hidden="true">⌄</span></summary>
         <div class="app-category__mobile-filters-body">
+            @include('theme::pages.participants.partials.navigation')
             @include('theme::pages.teams.partials.category-filters', ['scope' => 'mobile'])
         </div>
     </details>
@@ -41,6 +44,9 @@
 @section('category-items')
             @forelse ($teams as $team)
                 <article class="panel app-team-card">
+                    <div class="app-team-card__top">
+                        @include('theme::pages.teams.partials.public-logo')
+                        <div class="app-community-card-content">
                     <div class="app-team-card__title">
                         <h2><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
                         @if ($team->active_hiring_positions_count > 0)
@@ -52,7 +58,15 @@
                             <span class="badge">{{ $profile->sport_type->label() }}</span>
                         @endforeach
                     </div>
+                    </div>
+                    </div>
+                    @if(filled($team->description))
+                        <p class="app-team-card__detail">{{ \Illuminate\Support\Str::limit($team->description, 120) }}</p>
+                    @endif
                     <p class="app-team-card__detail">Участников: {{ $team->active_memberships_count }}</p>
+                    @if($team->active_hiring_positions_count > 0)
+                        <p class="app-team-card__detail">Открытых вакансий: {{ $team->active_hiring_positions_count }}</p>
+                    @endif
                     <a class="button secondary" href="{{ route('teams.show', $team->routeIdentifier()) }}">Посмотреть команду</a>
                 </article>
             @empty
