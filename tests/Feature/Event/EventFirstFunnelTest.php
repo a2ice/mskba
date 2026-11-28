@@ -456,11 +456,18 @@ final class EventFirstFunnelTest extends TestCase
         $this->actingAs($outsider)->postJson($invite, ['team_id' => $a->id])->assertUnprocessable();
         $this->actingAs($organizer)->postJson($invite, ['team_id' => $a->id])->assertOk();
         $first = $game->admissions()->sole();
+        $notice = \App\Modules\Notification\Domain\Models\UserNotification::query()
+            ->where('user_id', $ownerA->id)
+            ->where('payload->game_admission_id', $first->id)->sole();
+        $this->assertSame($game->id, $notice->payload['game_id']);
+        $this->assertStringContainsString('#planned-game-'.$game->id, $notice->action_url);
+        $this->assertTrue($notice->isNew());
         $this->postJson($invite, ['team_id' => $a->id])->assertUnprocessable();
         $respond = route('events.games.recruitment.respond', [...$params, $first->id]);
         $this->actingAs($outsider)->postJson($respond, ['decision' => 'accepted'])->assertUnprocessable();
         $this->actingAs($ownerA)->postJson($respond, ['decision' => 'declined'])->assertOk();
         $this->assertSame('declined', $first->fresh()->status->value);
+        $this->assertFalse($notice->fresh()->isNew());
         $this->actingAs($organizer)->postJson($invite, ['team_id' => $a->id])->assertOk();
         $second = $game->admissions()->latest('id')->firstOrFail();
         $this->assertNotEquals($first->id, $second->id);
