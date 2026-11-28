@@ -65,7 +65,7 @@ final class GameAdmissionService
     {
         $admission = $this->createPending($game, $actor, $candidate, GameAdmissionDirectionEnum::INVITATION);
         if ($candidate instanceof User) {
-            $this->notify($candidate->canonical()->id, $game, 'Приглашение на игру', 'Вас пригласили принять участие в игре.');
+            $this->notify($candidate->canonical()->id, $game, 'Приглашение на игру', 'Вас пригласили принять участие в игре.', $admission->id);
         } else {
             foreach ($this->teamRepresentativeUserIds($candidate) as $userId) {
                 $this->notify(
@@ -73,6 +73,7 @@ final class GameAdmissionService
                     $game,
                     'Приглашение команды на игру',
                     'Команду «'.$candidate->name.'» пригласили принять участие в игре.',
+                    $admission->id,
                 );
             }
         }
@@ -153,6 +154,16 @@ final class GameAdmissionService
                             : 'Заявка команды «'.$candidate->name.'» на игру отклонена.',
                     );
                 }
+            }
+        }
+
+        if ($game->uses_event_planning && $updated->direction === GameAdmissionDirectionEnum::INVITATION) {
+            $ownerId = $game->event()->first()?->organizerActor()->value('user_id');
+            $recipientIds = collect([$ownerId, $updated->requestedByActor()->value('user_id')])->filter()->unique();
+            foreach ($recipientIds as $userId) {
+                $this->notify((int) $userId, $game,
+                    $decision === GameAdmissionStatusEnum::ACCEPTED ? 'Приглашение на игру принято' : 'Приглашение на игру отклонено',
+                    ($updated->team?->name ?? 'Игрок').' — '.$game->title, $updated->id);
             }
         }
 
@@ -238,6 +249,9 @@ final class GameAdmissionService
                 $this->assertCandidateMayAct($candidate, $actor);
             }
             $this->assertCandidateMatchesMode($lockedGame, $candidate);
+            if ($direction === GameAdmissionDirectionEnum::INVITATION && $candidate instanceof Team && ! $candidate->acceptsCompetitionInvitations()) {
+                throw new InvalidArgumentException('Команда запретила приглашения в игры и турниры.');
+            }
             $this->assertNoActiveDuplicate($lockedGame, $candidate);
 
             return $lockedGame->admissions()->create([
@@ -286,6 +300,9 @@ final class GameAdmissionService
         }
 
         if ($candidate instanceof Team) {
+            if ($game->uses_event_planning && ! in_array((int) $candidate->id, [(int) $game->planned_team_a_id, (int) $game->planned_team_b_id], true)) {
+                throw new InvalidArgumentException('Команда не запланирована в этой игре.');
+            }
             if ($candidate->status !== TeamStatusEnum::ACTIVE || $candidate->isTemporary()) {
                 throw new InvalidArgumentException('Участвовать может только активная постоянная команда.');
             }
@@ -349,8 +366,11 @@ final class GameAdmissionService
 
     private function assertStandaloneOpen(Event $event, Game $game): void
     {
-        if ($event->type !== EventTypeEnum::GAME || (int) $event->primary_game_id !== (int) $game->id) {
+        if (! $game->uses_event_planning && ($event->type !== EventTypeEnum::GAME || (int) $event->primary_game_id !== (int) $game->id)) {
             throw new InvalidArgumentException('Заявки доступны только для основной самостоятельной игры.');
+        }
+        if ($game->uses_event_planning && ($event->status !== EventStatusEnum::PUBLISHED || $event->ends_at?->isPast() || ! $game->hasSportConfiguration())) {
+            throw new InvalidArgumentException('Приглашения доступны для настроенной игры в опубликованном мероприятии.');
         }
         if ($game->status !== GameStatusEnum::SCHEDULED || $game->actual_started_at !== null) {
             throw new InvalidArgumentException('После начала игры набор участников закрыт.');
@@ -395,7 +415,7 @@ final class GameAdmissionService
             ->values();
     }
 
-    private function notify(int $userId, Game $game, string $title, string $body): void
+    private function notify(int $userId, Game $game, string $title, string $body, ?int $admissionId = null): void
     {
         $event = $game->event()->first();
         if ($event === null) {
@@ -408,7 +428,7 @@ final class GameAdmissionService
             body: $body,
             actionUrl: route('events.show', $event->routeIdentifier()),
             actionText: 'Открыть игру',
-            payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment'],
+            payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment', ...($admissionId === null ? [] : ['game_admission_id' => $admissionId])],
         ));
     }
 
