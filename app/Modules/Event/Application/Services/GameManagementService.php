@@ -441,7 +441,9 @@ final class GameManagementService
                     $invalid = collect($userIds)->map(fn ($id) => (int) $id)
                         ->filter(fn ($id) => ($candidates[$id]['slot'] ?? null) !== $slot);
                     if ($invalid->isNotEmpty()) {
-                        throw new InvalidArgumentException('Игрок не может быть перенесён в состав соперника без переутверждения сторон.');
+                        throw new InvalidArgumentException($lockedGame->uses_event_planning
+                            ? 'Игрок не может быть перенесён в состав соперника без переутверждения сторон.'
+                            : 'Игрок постоянной команды не может быть перенесён в состав соперника.');
                     }
                 }
             }
@@ -1056,7 +1058,7 @@ final class GameManagementService
 
         if ($game->uses_event_planning) {
             // Use the confirmed per-game snapshot, never the entire event pool or an opponent's roster.
-            return $game->rosterEntries()->with('gameSide')->get()->mapWithKeys(fn ($entry) => [
+            return $game->rosterEntries()->where('status', GameRosterStatusEnum::SELECTED->value)->with('gameSide')->get()->mapWithKeys(fn ($entry) => [
                 $entry->user_id => ['membership_id' => $entry->source_contract_membership_id,
                     'participant_id' => $entry->source_event_participant_id, 'slot' => $entry->gameSide?->slot],
             ]);
