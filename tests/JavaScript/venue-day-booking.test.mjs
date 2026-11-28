@@ -713,7 +713,24 @@ test('event creation select controls reuse the branded native select, not custom
     assert.match(tpl, /min-height:48px/);
     assert.match(tpl, /border-radius:12px/);
     assert.match(tpl, /font-size:16px;line-height:24px/);
-    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 5);
+    const editor = readFileSync(
+        new URL('../../resources/views/components/event-game-editor.blade.php', import.meta.url), 'utf8',
+    );
+    // The format moved out of the parent wizard. All four editor selects
+    // (format, recruitment, scoring and periods) must use the same primitive.
+    assert.equal((tpl.match(/<select\b/g) || []).length, 4);
+    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 4);
+    assert.equal((editor.match(/<select\b/g) || []).length, 4);
+    assert.equal((editor.match(/<use href="#chevron-down"\/>/g) || []).length, 4);
+    for (const source of [tpl, editor]) {
+        const controls = [...source.matchAll(/<span class="select-control"><select\b[\s\S]*?<\/select><svg\b[\s\S]*?<use href="#chevron-down"\/>[\s\S]*?<\/svg><\/span>/g)];
+        assert.equal(controls.length, 4);
+    }
+    assert.match(editor, /min-height:48px/);
+    assert.match(editor, /border-radius:12px/);
+    assert.match(editor, /font-size:16px;line-height:24px/);
+    assert.match(editor, /padding-inline-end:48px/);
+    assert.match(editor, /@media\(forced-colors:active\)/);
     assert.doesNotMatch(tpl, /min-height:43px|quick-event-dialog__eyebrow/);
 });
 
