@@ -312,6 +312,41 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertSame(0, $games[1]->sides()->count());
     }
 
+    public function test_unconfigured_game_has_no_invented_sports_parameters(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $input = [...$this->payload($this->venue()), 'type' => 'game', 'games' => [
+            ['title' => 'Игра', 'format' => null],
+        ]];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        $game = $event->games()->sole();
+        $this->assertSame($game->id, $event->primary_game_id);
+        foreach (['format', 'side_a_size', 'side_b_size', 'scoring_type', 'timing_mode', 'periods_count', 'recruitment_mode'] as $field) {
+            $this->assertNull($game->{$field});
+        }
+        $this->assertFalse($game->hasSportConfiguration());
+        $this->assertFalse($game->acceptsAdmissions());
+        $this->assertSame('Не определен', $game->formatLabel());
+        $this->assertSame(0, $game->periods()->count());
+        $this->assertSame(0, $game->sides()->count());
+        $this->get(route('events.show', $event->routeIdentifier()))->assertOk();
+        $this->postJson(route('events.games.start', [$event->routeIdentifier(), $game->id]))
+            ->assertUnprocessable();
+        $this->assertNull($game->fresh()->actual_started_at);
+    }
+
+    public function test_unconfigured_game_rejects_stale_sport_fields(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $input = [...$this->payload($this->venue()), 'type' => 'game', 'games' => [
+            ['title' => 'Игра', 'format' => null, 'scoring_type' => 'basketball'],
+        ]];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)
+            ->assertUnprocessable()->assertJsonValidationErrors(['games.0.scoring_type']);
+        $this->assertDatabaseCount('events', 0);
+    }
+
     public function test_invalid_planned_team_selection_rolls_back_entire_event(): void
     {
         $user = $this->verifiedOrganizer();
