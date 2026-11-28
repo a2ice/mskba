@@ -168,7 +168,9 @@ final class VenueCatalogSortTest extends TestCase
             ->assertDontSee('RatedVenue Unknown');
         $this->getJson('/venues?sort=rating_desc&page=2&fragment=items')->assertOk()
             ->assertJsonPath('total', 6)->assertJsonPath('has_more', false)
-            ->assertSeeInOrder(['RatedVenue Alpha', 'RatedVenue Unknown']);
+            ->assertSeeInOrder(['RatedVenue Alpha', 'RatedVenue Unknown'])
+            ->assertSee('venue-catalog-card-rating is-unrated')
+            ->assertSee('Еще не оценили');
     }
 
     public function test_unknown_sort_is_rejected_in_json_requests(): void
