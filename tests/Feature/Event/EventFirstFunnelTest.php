@@ -35,6 +35,32 @@ final class EventFirstFunnelTest extends TestCase
         return $user;
     }
 
+    public function test_planning_team_search_only_returns_active_permanent_visible_teams(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $actor = \App\Modules\Identity\Domain\Models\Actor::factory()->create(['user_id' => $user->id]);
+        $create = fn (string $suffix, string $status) => \App\Modules\Team\Domain\Models\Team::query()->create([
+            'created_by_actor_id' => $actor->id,
+            'name' => 'Planning Rockets '.$suffix,
+            'alias' => 'planning-rockets-'.$suffix,
+            'status' => $status,
+        ]);
+        $first = $create('alpha', 'active');
+        $second = $create('beta', 'active');
+        $create('draft', 'draft');
+        $create('blocked', 'blocked');
+        $create('archived', 'archived');
+        $create('deleted', 'active')->delete();
+
+        $response = $this->getJson(route('events.funnel.teams', ['q' => 'Rockets']))
+            ->assertOk()->assertJsonCount(2, 'teams');
+        $this->assertSame([$first->id, $second->id], collect($response->json('teams'))->pluck('id')->all());
+        $response->assertJsonStructure(['teams' => [['id', 'name', 'logo_url']]]);
+        $this->getJson(route('events.funnel.teams', ['q' => 'Rockets', 'exclude_id' => $first->id]))
+            ->assertOk()->assertJsonCount(1, 'teams')->assertJsonPath('teams.0.id', $second->id);
+        $this->getJson(route('events.funnel.teams', ['q' => 'R']))->assertUnprocessable();
+    }
+
     public function test_contact_required_even_for_confirmed_account_and_pending_contact_can_resume(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
