@@ -125,11 +125,15 @@ final class StandaloneGameFormationService
     public function previewBalanced(Game $game, Actor $actor, string $assessmentSource, int $seed): array
     {
         $fresh = Game::query()->with('event')->findOrFail($game->id);
-        $this->access->assertAllows(
-            $fresh->event,
-            $actor,
-            EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS,
-        );
+        if ($fresh->uses_event_planning) {
+            abort_unless($this->access->allows($fresh->event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS), 403);
+        } else {
+            $this->access->assertAllows(
+                $fresh->event,
+                $actor,
+                EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS,
+            );
+        }
         $this->assertStandaloneEditable($fresh->event, $fresh);
         $this->assertIndividualFormationOpen($fresh);
         $users = $this->acceptedIndividualUsers($fresh);
@@ -394,8 +398,12 @@ final class StandaloneGameFormationService
     private function lockEditable(Game $game, Actor $actor): array
     {
         $event = Event::query()->lockForUpdate()->findOrFail($game->event_id);
-        $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
         $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
+        if ($lockedGame->uses_event_planning) {
+            abort_unless($this->access->allows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS), 403);
+        } else {
+            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+        }
         $this->assertStandaloneEditable($event, $lockedGame);
 
         return [$event, $lockedGame];
