@@ -12,6 +12,23 @@ final class DirectMessageRecipientAccess
 {
     public function __construct(private readonly UserPrivacyAccessService $privacy) {}
 
+    /** UI affordance only; the send endpoint repeats authorization inside its transaction. */
+    public function canSend(User $recipient, ?User $sender, DirectMessageBlockService $blocks): bool
+    {
+        if ($sender === null) {
+            return false;
+        }
+
+        $recipient = $recipient->canonical();
+        $sender = $sender->canonical();
+
+        return ! $sender->isSameIdentity($recipient)
+            && ! $sender->isBlocked() && ! $sender->trashed()
+            && ! $recipient->isBlocked() && ! $recipient->trashed()
+            && ! $blocks->blockedBetween($sender, $recipient)
+            && $this->allows($recipient, $sender);
+    }
+
     public function allows(User $recipient, User $sender): bool
     {
         $recipient = $recipient->canonical();

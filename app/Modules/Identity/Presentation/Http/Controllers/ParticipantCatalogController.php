@@ -6,6 +6,8 @@ use App\Modules\Identity\Application\Services\PublicUserProfileService;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\Services\DirectMessageBlockService;
+use App\Modules\Notification\Application\Services\DirectMessageRecipientAccess;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -66,8 +68,18 @@ final class ParticipantCatalogController
 
         $page = max(1, $request->integer('page', 1));
         $perPage = 18;
+        $visibleCandidates = $candidates->keyBy('id');
+        $messageAccess = app(DirectMessageRecipientAccess::class);
+        $blocks = app(DirectMessageBlockService::class);
+        $visibleItems = $items->forPage($page, $perPage)->values()->map(function (array $item) use ($visibleCandidates, $profiles, $viewer, $messageAccess, $blocks): array {
+            $subject = $visibleCandidates->get($item['id']);
+            $item['details'] = $subject && $item['url'] ? $profiles->catalogDetails($subject, $viewer) : [];
+            $item['message_recipient_id'] = $subject && $item['url'] && $messageAccess->canSend($subject, $viewer, $blocks) ? $subject->id : null;
+
+            return $item;
+        });
         $participants = new LengthAwarePaginator(
-            $items->forPage($page, $perPage)->values(),
+            $visibleItems,
             $items->count(),
             $perPage,
             $page,

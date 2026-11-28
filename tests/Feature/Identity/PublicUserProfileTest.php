@@ -234,6 +234,30 @@ final class PublicUserProfileTest extends TestCase
         }
     }
 
+    public function test_app_profile_uses_safe_avatar_and_message_permission(): void
+    {
+        $this->switchTheme('mskba_app');
+        $subject = $this->user('player');
+        $profile = $subject->createProfile(['first_name' => 'Публичный', 'last_name' => 'Игрок']);
+        $profile->media()->create(['collection' => 'avatar', 'disk' => 'public', 'path' => 'avatars/private-community-photo.webp', 'is_featured' => true]);
+        $this->privacy($subject, 'avatar', 'nobody');
+        $viewer = $this->user('player');
+        $this->privacy($subject, 'messages', 'nobody');
+        $url = app(PublicUserProfileService::class)->url($subject);
+        $this->actingAs($viewer)->get($url)->assertOk()
+            ->assertDontSee('avatars/private-community-photo.webp', false)
+            ->assertSee('images/blank/avatar/avatar-male.png', false)
+            ->assertDontSee('data-recipient-id="'.$subject->id.'"', false)
+            ->assertDontSee('View for page');
+
+        $this->privacy($subject, 'messages', 'everyone');
+        $this->get($url)->assertOk()->assertSee('data-recipient-id="'.$subject->id.'"', false);
+
+        $this->actingAs($subject)->get($url)->assertOk()
+            ->assertSee('Перейти в аккаунт')
+            ->assertDontSee('data-recipient-id="'.$subject->id.'"', false);
+    }
+
     private function user(string $role): User
     {
         $user = User::factory()->create(['status' => 'confirmed', 'username' => fake()->unique()->userName(), 'password' => 'private-password']);

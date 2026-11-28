@@ -116,6 +116,7 @@ final class PublicUserProfileService
                 ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url)
                 : null,
             'avatar_restricted' => ! $avatarAllowed,
+            'avatar_placeholder_url' => $this->placeholderUrl($subject, $viewer),
             'url' => $url,
             'roles' => $activeRoles
                 ->map(fn (UserParticipationRoleEnum $role): array => [
@@ -125,6 +126,49 @@ final class PublicUserProfileService
                 ->values()
                 ->all(),
         ];
+    }
+
+    /** Compact details for the current page of the catalog, not for every search candidate. */
+    public function catalogDetails(User $subject, ?User $viewer): array
+    {
+        $subject = $subject->canonical();
+        $details = [];
+        if ($this->privacy->allows($subject, $viewer, Privacy::PROFILE)) {
+            if ($this->privacy->allows($subject, $viewer, Privacy::PROFILE_AGE) && $subject->profile?->age !== null) {
+                $details[] = 'Возраст: '.$subject->profile->age;
+            }
+            if ($subject->hasActiveRole('player') && $this->privacy->allows($subject, $viewer, Privacy::ROLE_PLAYER)) {
+                if ($this->privacy->allows($subject, $viewer, Privacy::PLAYER_CHARACTERISTICS)) {
+                    $player = $subject->playerProfile;
+                    if ($player?->height_cm !== null) $details[] = $player->height_cm.' см';
+                    if ($player?->weight_kg !== null) $details[] = $player->weight_kg.' кг';
+                    if ($player?->experience_years !== null) $details[] = 'Стаж: '.$player->experience_years.' лет';
+                }
+                if ($this->privacy->allows($subject, $viewer, Privacy::PLAYER_TEAMS)) {
+                    $names = Team::query()->competitionEligible()
+                        ->whereIn('id', $this->memberships($subject, 'team', 'player')->select('scope_id'))
+                        ->orderBy('name')->limit(2)->pluck('name');
+                    if ($names->isNotEmpty()) $details[] = $names->implode(', ');
+                }
+            }
+        }
+        if ($subject->hasActiveRole('coach') &&
+            (($this->privacy->allows($subject, $viewer, Privacy::PROFILE) && $this->privacy->allows($subject, $viewer, Privacy::ROLE_COACH) && $this->privacy->allows($subject, $viewer, Privacy::COACH_SECTIONS))
+            || ($this->privacy->allowsDistribution($subject, Privacy::PROFILE) && $this->privacy->allowsDistribution($subject, Privacy::ROLE_COACH) && $this->privacy->allowsDistribution($subject, Privacy::COACH_SECTIONS)))) {
+            $names = $this->sections($subject)->take(2)->pluck('name');
+            if ($names->isNotEmpty()) $details[] = $names->implode(', ');
+        }
+
+        return $details;
+    }
+
+    public function placeholderUrl(User $subject, ?User $viewer): string
+    {
+        $subject = $subject->canonical();
+        $female = $this->privacy->allows($subject, $viewer, Privacy::PROFILE) && $this->privacy->allows($subject, $viewer, Privacy::PROFILE_GENDER)
+            && $subject->profile?->gender === \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE;
+
+        return asset($female ? 'images/blank/avatar/avatar-female.png' : 'images/blank/avatar/avatar-male.png');
     }
 
     public function sections(User $user): Collection
@@ -193,6 +237,8 @@ final class PublicUserProfileService
         });
         abort_if($role !== null && ! $roles->contains(fn ($candidate) => $candidate->value === $role), 404);
         $subject->loadMissing('profile');
+        $data['avatar_placeholder_url'] = $this->placeholderUrl($subject, $viewer);
+        $data['nickname'] = $profileAllowed ? $subject->nickname : null;
         $data['banner_url'] = $profileAllowed ? $subject->profile?->bannerUrl() : null;
         $data['demographics'] = $profileAllowed ? array_filter([
             'gender' => $this->privacy->allows($subject, $viewer, Privacy::PROFILE_GENDER)

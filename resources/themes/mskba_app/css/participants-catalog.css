@@ -2,3 +2,37 @@
 .app-participant-card__avatar--empty { display: grid; place-items: center; font-size: 34px; color: var(--muted); }
 .app-participant-card .app-category__card-body { align-items: flex-start; }
 .app-category__items--list .app-participant-card { min-height: 0; }
+
+/* Public community cards: shared catalog layout, scoped to this section. */
+.app-participant-card .app-category__card-body{display:flex;flex-direction:row;align-items:flex-start;gap:14px}
+.app-participant-card__avatar{flex:none}
+.app-community-card-content{min-width:0;flex:1;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.app-community-card-content h2,.app-community-card-content p{margin:0}
+
+.app-community-detail .app-category__sidebar h2{color:var(--text);font-size:21px;font-weight:800}
+.app-community-detail__main{display:flex;flex-direction:column;gap:15px;min-width:0}
+.app-community-panel{padding:24px;display:flex;flex-direction:column;gap:16px;min-width:0;overflow-wrap:anywhere}
+.app-community-panel h1,.app-community-panel h2,.app-community-panel h3,.app-community-panel p{margin:0}
+.app-community-hero{display:flex;align-items:flex-start;gap:20px;min-width:0}
+.app-community-hero>.app-participant-card__avatar,.app-community-hero>.app-team-card__logo{width:96px;height:96px}
+.app-community-hero h1{font-size:clamp(24px,3vw,40px);line-height:1.15}
+.app-community-tabs{display:flex;gap:16px;overflow-x:auto;padding:0 20px;scrollbar-width:thin}
+.app-community-tabs a{display:flex;align-items:center;min-height:44px;white-space:nowrap;color:var(--text);text-decoration:none;border-bottom:2px solid transparent}
+.app-community-tabs a[aria-current="page"]{color:var(--accent);border-color:var(--accent)}
+.app-community-list{margin:0;padding-inline-start:20px;display:grid;gap:8px}
+.app-community-person{display:flex;align-items:center;gap:12px;min-width:0}
+.app-community-person>.app-participant-card__avatar{width:48px;height:48px}
+.app-community-person__body{flex:1;min-width:0;overflow-wrap:anywhere}
+.app-community-person .button{flex:none}
+.app-community-lineup{display:grid;gap:12px}
+.app-community-panel .app-team-actions{flex-wrap:wrap}
+@media(max-width:600px){
+ .app-community-panel{padding:16px}
+ .app-community-hero{gap:12px}
+ .app-community-hero>.app-participant-card__avatar,.app-community-hero>.app-team-card__logo{width:68px;height:68px}
+ .app-community-person{flex-wrap:wrap}
+ .app-community-tabs{padding:0 12px}
+}
+
+.app-community-contact-options{display:grid;gap:12px}
+.app-community-contact-option{white-space:normal;text-align:left;overflow-wrap:anywhere;justify-content:flex-start}
