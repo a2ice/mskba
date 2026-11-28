@@ -8,8 +8,8 @@
 @endphp
 <div data-event-pricing-fields class="field-group" style="display:grid;gap:10px">
     <input type="hidden" name="is_paid" value="{{ $pricingPaid ? '1' : '0' }}">
-    <label style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" data-event-paid @checked($pricingPaid)> Платное мероприятие
+    <label class="event-paid-toggle check-label" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" data-event-paid @checked($pricingPaid)> <span>Платное мероприятие</span>
     </label>
     <div data-event-paid-fields @if(!$pricingPaid) hidden @endif>
         <label class="field-group" style="display:grid;gap:5px;margin-bottom:10px">
@@ -32,7 +32,9 @@
             <input type="checkbox" data-event-cost-save-default @disabled(!$pricingPaid)> Использовать этот комментарий по умолчанию
         </label>
     </div>
-    @include('components.event-cost-inclusion-fields', ['pricingEvent' => $pricingEvent])
+    <fieldset data-event-paid-inclusions style="border:0;padding:0;margin:0;min-width:0;{{ $pricingPaid ? '' : 'display:none;' }}" @if(!$pricingPaid) hidden disabled @endif>
+        @include('components.event-cost-inclusion-fields', ['pricingEvent' => $pricingEvent])
+    </fieldset>
     @error('total_cost') <small role="alert">{{ $message }}</small> @enderror
     @error('participant_cost') <small role="alert">{{ $message }}</small> @enderror
     @error('cost_comment') <small role="alert">{{ $message }}</small> @enderror
@@ -43,6 +45,7 @@
     const form=root.closest('form');
     const paid=root.querySelector('[name=is_paid]'),toggle=root.querySelector('[data-event-paid]');
     const area=root.querySelector('[data-event-paid-fields]');
+    const inclusions=root.querySelector('[data-event-paid-inclusions]');
     const total=root.querySelector('[name=total_cost]'),share=root.querySelector('[name=participant_cost]');
     const mode=root.querySelector('[name=participant_cost_auto]'),reset=root.querySelector('[data-event-price-auto]');
     const comment=root.querySelector('[name=cost_comment]'),save=root.querySelector('[name=save_cost_comment_default]');
@@ -54,6 +57,9 @@
         toggle.checked=enabled;
         area.hidden=!enabled;
         area.style.display=enabled?'':'none';
+        inclusions.hidden=!enabled;
+        inclusions.disabled=!enabled;
+        inclusions.style.display=enabled?'':'none';
         [total,share,comment,saveToggle].forEach(field=>field.disabled=!enabled);
         total.required=share.required=enabled;
         saveToggle.checked=save.value==='1';

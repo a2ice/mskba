@@ -190,6 +190,30 @@ final class TelegramEventParticipationModeTest extends TestCase
         ]);
     }
 
+    public function test_planned_event_publication_and_callback_are_not_bound_to_primary_game(): void
+    {
+        $this->fakeTelegramAnswer();
+        [$event, $game] = $this->standaloneGame();
+        $game->forceFill(['uses_event_planning' => true, 'title' => 'Первый матч'])->save();
+        $second = $game->replicate();
+        $second->title = 'Второй матч';
+        $second->save();
+        $user = $this->telegramUser();
+        $this->publication($event);
+        $text = app(TelegramEventMessageBuilder::class)->text($event->fresh());
+        $this->assertStringContainsString('Игры: 2', $text);
+        $this->assertStringContainsString('Первый матч', $text);
+        $this->assertStringContainsString('Второй матч', $text);
+        $this->assertStringNotContainsString('Набор игроков: принято', $text);
+        app(HandleEventParticipationCallback::class)->handle($this->callbackPayload($event->id, 'join'));
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id, 'user_id' => $user->id,
+            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+        ]);
+        $this->assertSame(0, $game->admissions()->count());
+        $this->assertSame(0, $second->admissions()->count());
+    }
+
     public function test_cancelled_public_game_still_opens_from_telegram_mini_app_destination(): void
     {
         [$event, $game] = $this->standaloneGame();

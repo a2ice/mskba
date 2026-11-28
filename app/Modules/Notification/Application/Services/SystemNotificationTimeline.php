@@ -11,7 +11,7 @@ final class SystemNotificationTimeline
     public function page(User $user, ?int $before = null): array
     {
         $query = UserNotification::query()->whereIn('user_id', $user->canonical()->identityIds())
-            ->whereNull('payload->join_request_id')->whereNull('payload->direct_conversation_id')
+            ->whereNull('payload->game_invitation_thread_id')->whereNull('payload->join_request_id')->whereNull('payload->direct_conversation_id')
             ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id')
             ->where(fn ($q) => $q->whereNull('payload->delivery_channels')
                 ->orWhereJsonContains('payload->delivery_channels', 'in_app'))

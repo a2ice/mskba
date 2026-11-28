@@ -30,6 +30,7 @@
 @endphp
 <dialog class="mskba-modal quick-event-dialog {{ $quickApp ? 'quick-event-dialog--app' : 'quick-event-dialog--dark' }}"
     data-quick-event-dialog data-authenticated="{{ auth()->check() ? '1' : '0' }}"
+    data-game-team-search-url="{{ route('events.funnel.teams') }}"
     data-initial-court-id="{{ $quickSelectedCourt }}"
     data-schedule-day-template="{{ route('venues.schedule.day', '__VENUE__') }}"
     data-courts='@json($quickCourtChoices)'
@@ -43,16 +44,7 @@
     <form method="POST" action="{{ route('events.funnel.store') }}" data-quick-event-form>
         @csrf
         <input type="hidden" name="event_request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-        <input type="hidden" name="game_recruitment_mode" value="individual_draft">
-        <input type="hidden" name="game_accepts_applications" value="1">
-        <input type="hidden" name="side_a_size" value="3" data-quick-side-a>
-        <input type="hidden" name="side_b_size" value="3" data-quick-side-b>
-        <input type="hidden" name="scoring_type" value="streetball" data-quick-scoring>
-        <input type="hidden" name="timing_mode" value="whole_game" data-quick-timing>
-        <input type="hidden" name="periods_count" value="4">
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="base">
-            <h3>1. О мероприятии</h3>
-            <p class="quick-event-dialog__hint">Сначала общие сведения, затем — пожелания по времени. Бронь не создаётся.</p>
             <label class="quick-event-dialog__field"><span>Тип мероприятия</span>
                 <span class="select-control"><select name="type" required data-quick-type>
                     <option value="" disabled selected>Выбери тип мероприятия</option>
@@ -61,6 +53,9 @@
                     @endforeach
                 </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
             </label>
+            <div data-quick-game-plan hidden>
+                @include('components.event-game-plan-list', ['planId' => 'quick-event-game-plan', 'planApp' => $quickApp])
+            </div>
             <label class="quick-event-dialog__field"><span>Название <small>можно изменить</small></span>
                 <input type="text" name="title" maxlength="150" minlength="2" placeholder="Например, играем 3×3" data-quick-title>
             </label>
@@ -80,19 +75,6 @@
                 <p class="quick-event-dialog__hint" data-quick-venue-message role="status" hidden></p>
                 <button type="button" class="quick-event-dialog__venue-map-link" data-quick-venue-map-open>На карте</button>
             </div>
-            <input type="hidden" name="create_game" value="0">
-            <label class="quick-event-dialog__game-toggle" data-quick-create-game-row hidden>
-                <input type="checkbox" name="create_game" value="1" data-quick-create-game checked>
-                <span>Создать игру внутри мероприятия</span>
-            </label>
-            <p class="quick-event-dialog__hint" data-quick-create-game-hint hidden>Игру можно будет настроить отдельно. Если снять галочку, создастся только мероприятие; игру можно добавить позднее.</p>
-            <label class="quick-event-dialog__field" data-quick-game-fields><span>Начальный формат игры</span>
-                <span class="select-control"><select name="game_format" data-quick-format>
-                    <option value="streetball_3x3">3×3</option>
-                    <option value="basketball_5x5">5×5</option>
-                    <option value="streetball_1x1">1×1</option>
-                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
-            </label>
             <label class="quick-event-dialog__field"><span>Видимость</span>
                 <span class="select-control"><select name="visibility" required>
                     <option value="public">Открытое для всех</option>
@@ -168,6 +150,7 @@
         </footer>
     </form>
 </dialog>
+@include('components.event-game-editor', ['editorId' => 'quick-event-game-editor', 'editorApp' => $quickApp])
 <dialog class="mskba-modal quick-event-venue-map {{ $quickApp ? 'quick-event-venue-map--app' : 'quick-event-venue-map--dark' }}"
     data-quick-venue-map-dialog aria-labelledby="quick-event-venue-map-title">
     <header class="mskba-modal__header quick-event-dialog__heading">
@@ -276,7 +259,8 @@
 }
 .quick-event-dialog__game-toggle[hidden],.quick-event-dialog__field[hidden],.quick-event-dialog__hint[hidden]{display:none}
 .quick-event-dialog__game-toggle{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;font-weight:600}
-.quick-event-dialog__game-toggle input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
+.quick-event-dialog__game-toggle input,.quick-event-dialog [data-event-pricing-fields] input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:20px;padding:0;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
+.quick-event-dialog [data-event-pricing-fields] .event-paid-toggle{justify-content:flex-start;min-height:44px;font-weight:600;gap:12px}
 .quick-event-dialog__schedule-fields{display:grid;gap:16px;min-width:0;margin:0;padding:0;border:0}
 .quick-event-dialog__schedule-fields[hidden]{display:none}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}

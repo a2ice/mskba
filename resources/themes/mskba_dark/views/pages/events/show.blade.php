@@ -485,7 +485,7 @@
             @endforeach
             </div>
 
-            @if($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty())
+            @if(($event->type !== EventTypeEnum::GAME || $event->games->contains('uses_event_planning', true)) && $event->games->isNotEmpty())
                 <section class="event-card event-mini-games event-mini-games--public">
                     <div>
                         <span class="eyebrow">Мини-игры</span>
@@ -500,8 +500,8 @@
                                 $childHasScore = $childSideA?->score !== null && $childSideB?->score !== null;
                                 $gameRouteParameters = [$event->routeIdentifier(), $game->id];
                             @endphp
-                            <article>
-                                <a class="event-mini-games__summary" href="{{ route('events.games.show', $gameRouteParameters) }}">
+                            <article id="planned-game-{{ $game->id }}">
+                                @if($game->hasSportConfiguration())<a class="event-mini-games__summary" href="{{ route('events.games.show', $gameRouteParameters) }}">@else<div class="event-mini-games__summary">@endif
                                     <strong>{{ $game->title ?: 'Игра #'.$game->id }}</strong>
                                     <span>
                                         {{ $game->scheduled_starts_at && $game->scheduled_ends_at
@@ -514,8 +514,8 @@
                                         <b>{{ $childHasScore ? $childSideA->score.':'.$childSideB->score : '—:—' }}</b>
                                         {{ $childSideB?->display_name ?: 'Команда B' }}
                                     </span>
-                                </a>
-                                @if(collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
+                                @if($game->hasSportConfiguration())</a>@else</div>@endif
+                                @if($game->hasSportConfiguration() && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
                                     <a class="btn btn--secondary btn--sm" href="{{ route('events.games.manage', $gameRouteParameters) }}">Управлять</a>
                                 @endif
                             </article>
@@ -537,7 +537,7 @@
                         <i class="ti ti-chevron-down"></i>
                     </summary>
                     <div class="event-management__body">
-                        @if($event->type === EventTypeEnum::GAME && $event->games->isNotEmpty()
+                        @if($event->type === EventTypeEnum::GAME && !$event->primaryGame?->uses_event_planning && $event->primaryGame?->hasSportConfiguration()
                             && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
                             <section class="event-game-management-link">
                                 <div>

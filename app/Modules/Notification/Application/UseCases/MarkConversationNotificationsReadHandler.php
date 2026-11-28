@@ -14,7 +14,7 @@ final class MarkConversationNotificationsReadHandler
 
     public function handle(User $user, ?int $joinRequestId = null, ?int $directConversationId = null,
         ?int $profileChangeRequestId = null, ?int $supportTicketId = null,
-        ?int $operatorConversationId = null, ?string $bookingPublicId = null, ?int $preRequestId = null): int
+        ?int $operatorConversationId = null, ?string $bookingPublicId = null, ?int $preRequestId = null, ?int $gameInvitationThreadId = null): int
     {
         $canonical = $user->canonical();
         $query = UserNotification::query()
@@ -35,8 +35,10 @@ final class MarkConversationNotificationsReadHandler
             $query->where('payload->booking_id', $bookingPublicId);
         } elseif ($preRequestId !== null) {
             $query->where('payload->pre_request_id', $preRequestId);
+        } elseif ($gameInvitationThreadId !== null) {
+            $query->where('payload->game_invitation_thread_id', $gameInvitationThreadId);
         } else {
-            $query->whereNull('payload->join_request_id')->whereNull('payload->direct_conversation_id')
+            $query->whereNull('payload->game_invitation_thread_id')->whereNull('payload->join_request_id')->whereNull('payload->direct_conversation_id')
                 ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id')
                 ->whereNull('payload->operator_conversation_id');
             if (config('features.venue_rental.rental_flow') && config('features.venue_rental.conversations')) {

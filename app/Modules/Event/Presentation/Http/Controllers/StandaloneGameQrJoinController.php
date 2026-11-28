@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameAdmissionNotificationStateService;
 use App\Modules\Event\Application\Services\StandaloneGameQrJoinService;
+use App\Modules\Event\Application\Services\StandaloneGamePlayerWithdrawalService;
+use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -35,6 +39,7 @@ final class StandaloneGameQrJoinController extends Controller
     ): Response {
         [$eventModel, $gameModel] = $this->models($event, $game);
         abort_unless($eventModel->visibility === EventVisibilityEnum::PUBLIC, 404);
+        abort_if($gameModel->uses_event_planning && $eventModel->status === EventStatusEnum::DRAFT, 404);
 
         $identityIds = $request->user()?->canonical()->identityIds() ?? [];
         $latestAdmission = $identityIds === []
@@ -49,6 +54,7 @@ final class StandaloneGameQrJoinController extends Controller
             : $gameModel->rosterEntries()
                 ->with('gameSide')
                 ->whereIn('user_id', $identityIds)
+                ->when($gameModel->uses_event_planning, fn ($q) => $q->where('status', '!=', GameRosterStatusEnum::EXCLUDED->value))
                 ->latest('id')
                 ->first()?->gameSide;
 
@@ -58,6 +64,10 @@ final class StandaloneGameQrJoinController extends Controller
             'latestAdmission' => $latestAdmission,
             'assignedSide' => $assignedSide,
             'available' => $service->isAvailable($eventModel, $gameModel),
+            'canWithdraw' => $gameModel->uses_event_planning && $eventModel->status === EventStatusEnum::PUBLISHED
+                && $gameModel->actual_ended_at === null && in_array($gameModel->status, [GameStatusEnum::SCHEDULED, GameStatusEnum::IN_PROGRESS], true)
+                && ($gameModel->status === GameStatusEnum::IN_PROGRESS || !$eventModel->ends_at?->isPast())
+                && ($assignedSide !== null || $latestAdmission?->status === GameAdmissionStatusEnum::ACCEPTED),
         ]);
     }
 
@@ -77,6 +87,20 @@ final class StandaloneGameQrJoinController extends Controller
         }
 
         return $this->success($request, 'Заявка отправлена организатору.');
+    }
+
+    public function withdraw(Request $request, string $event, int $game, CurrentActorResolver $actors,
+        StandaloneGamePlayerWithdrawalService $service): RedirectResponse|JsonResponse
+    {
+        [, $gameModel] = $this->models($event, $game);
+        abort_unless($gameModel->uses_event_planning, 404);
+        try {
+            $service->withdraw($gameModel, $actors->resolveForRequest($request) ?? abort(403));
+        } catch (InvalidArgumentException $exception) {
+            return $this->error($request, $exception);
+        }
+
+        return $this->success($request, 'Участие в этой игре отменено.');
     }
 
     public function revoke(
@@ -125,12 +149,16 @@ final class StandaloneGameQrJoinController extends Controller
             ->latest('id')
             ->get();
 
-        return response()->view('theme::pages.events.partials.game-qr-late-join', [
+        $data = [
             'event' => $eventModel,
             'game' => $gameModel->loadMissing('sides'),
             'pendingAdmissions' => $pending,
             'available' => $service->isAvailable($eventModel, $gameModel),
-        ]);
+        ];
+
+        return view()->exists('theme::pages.events.partials.game-qr-late-join')
+            ? response()->view('theme::pages.events.partials.game-qr-late-join', $data)
+            : response(view()->file(resource_path('themes/mskba_dark/views/pages/events/partials/game-qr-late-join.blade.php'), $data)->render());
     }
 
     public function accept(
@@ -220,8 +248,9 @@ final class StandaloneGameQrJoinController extends Controller
         $gameModel = Game::query()->whereKey($game)->whereBelongsTo($eventModel)->firstOrFail();
 
         abort_if(
-            $eventModel->type !== EventTypeEnum::GAME
-            || (int) $eventModel->primary_game_id !== $gameModel->id
+            (!$gameModel->uses_event_planning && ($eventModel->type !== EventTypeEnum::GAME
+            || (int) $eventModel->primary_game_id !== $gameModel->id))
+            || !$gameModel->hasSportConfiguration()
             || $gameModel->recruitment_mode !== GameRecruitmentModeEnum::INDIVIDUAL_DRAFT,
             404,
         );

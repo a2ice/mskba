@@ -59,6 +59,9 @@ final class StandaloneGamePlayerWithdrawalService
                     'responded_by_actor_id' => $actor->id,
                     'responded_at' => now(),
                 ])->save();
+                if ($lockedGame->uses_event_planning) {
+                    app(GameAdmissionNotificationStateService::class)->resolve($admission);
+                }
                 $changed = true;
             }
 
@@ -74,6 +77,11 @@ final class StandaloneGamePlayerWithdrawalService
                     'status' => GameRosterStatusEnum::EXCLUDED,
                 ])->save();
                 $changed = true;
+            }
+
+            if ($lockedGame->uses_event_planning) {
+                // A game-specific withdrawal must not change the parent RSVP, other games or event permissions.
+                return $changed;
             }
 
             $participants = $event->participants()
@@ -115,8 +123,9 @@ final class StandaloneGamePlayerWithdrawalService
 
     private function assertWithdrawalOpen(Event $event, Game $game): void
     {
-        if ($event->type !== EventTypeEnum::GAME
-            || (int) $event->primary_game_id !== (int) $game->id
+        if ((!$game->uses_event_planning && ($event->type !== EventTypeEnum::GAME
+            || (int) $event->primary_game_id !== (int) $game->id))
+            || !$game->hasSportConfiguration()
             || $game->recruitment_mode !== GameRecruitmentModeEnum::INDIVIDUAL_DRAFT) {
             throw new InvalidArgumentException('Индивидуальное участие для этой игры не используется.');
         }
@@ -126,7 +135,7 @@ final class StandaloneGamePlayerWithdrawalService
         }
         if ($game->actual_ended_at !== null
             || ! in_array($game->status, [GameStatusEnum::SCHEDULED, GameStatusEnum::IN_PROGRESS], true)
-            || ($game->status === GameStatusEnum::SCHEDULED && $event->ends_at->lessThanOrEqualTo(now()))) {
+            || ($game->status === GameStatusEnum::SCHEDULED && $event->ends_at?->lessThanOrEqualTo(now()))) {
             throw new InvalidArgumentException('Игра уже завершена.');
         }
     }

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
+use App\Modules\Event\Application\Services\EventGamePlanningService;
 use App\Modules\Event\Application\Services\StandaloneGameFormationService;
 use App\Modules\Event\Application\Services\StandaloneGameInitialSelectionService;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
@@ -37,6 +38,7 @@ final class CreateEventHandler
         private readonly CyrillicTransliterator $transliterator,
         private readonly StandaloneGameFormationService $standaloneGames,
         private readonly StandaloneGameInitialSelectionService $initialSelections,
+        private readonly EventGamePlanningService $gamePlanning,
         private readonly UpdateUserParticipationRolesHandler $participationRoles,
         private readonly SocialWallService $wall,
     ) {}
@@ -195,7 +197,9 @@ final class CreateEventHandler
             // Legacy creation routes retain their previous automatic-game behavior;
             // the event-first wizard explicitly controls this optional child.
             $createGame = ! $funnel || (bool) ($data['create_game'] ?? true);
-            if ($event->type === EventTypeEnum::GAME && $createGame) {
+            if ($funnel && array_key_exists('games', $data)) {
+                $this->gamePlanning->initialize($event, $actor, $data['games']);
+            } elseif ($event->type === EventTypeEnum::GAME && $createGame) {
                 $game = $this->standaloneGames->initialize(
                     $event,
                     $actor,

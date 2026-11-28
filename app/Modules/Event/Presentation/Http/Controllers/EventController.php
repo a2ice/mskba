@@ -239,9 +239,9 @@ final class EventController extends Controller
         }
         $item = $events->handle($event, $actor);
         $nativeEvent = app(ThemeResolver::class)->active() === 'mskba_app'
-            && ($item->proposed_time_options !== null || $item->starts_at === null)
+            && ($item->proposed_time_options !== null || $item->starts_at === null || $item->games->contains('uses_event_planning', true))
             && ! ($request->boolean('sport') && $item->starts_at !== null
-                && $item->type === EventTypeEnum::GAME && $item->primaryGame !== null);
+                && $item->type === EventTypeEnum::GAME && !$item->primaryGame?->uses_event_planning && $item->primaryGame?->hasSportConfiguration());
         if ($item->starts_at === null && ! $nativeEvent) {
             return ThemeResolver::page('events.unscheduled', ['event' => $item]);
         }
@@ -266,7 +266,7 @@ final class EventController extends Controller
         );
         $seoDescription = $item->description ?: $generatedDescription;
 
-        return ThemeResolver::page($nativeEvent ? 'events.event-first-show' : ($item->type === EventTypeEnum::GAME && $item->primaryGame !== null
+        return ThemeResolver::page($nativeEvent ? 'events.event-first-show' : ($item->type === EventTypeEnum::GAME && !$item->primaryGame?->uses_event_planning && $item->primaryGame?->hasSportConfiguration()
                 ? 'events.game-show' : 'events.show'), [
             'event' => $item,
             'game' => $item->primaryGame,

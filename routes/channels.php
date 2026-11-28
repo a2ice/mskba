@@ -20,3 +20,5 @@ Broadcast::channel('support-tickets.{id}', static fn (User $user, string $id): b
 Broadcast::channel('operator-conversations.{id}', static fn (User $user, string $id): bool => app(ConversationChannel::class)->operator($user, $id));
 // Page-change events contain no URLs. Only the assigned operator may subscribe.
 Broadcast::channel('operator-presence.{userId}', \App\Modules\Portal\Infrastructure\Broadcasting\OperatorPresenceChannel::class);
+
+Broadcast::channel('game-invitation-threads.{id}', static fn (User $user, string $id): bool => app(ConversationChannel::class)->gameInvitation($user, $id));

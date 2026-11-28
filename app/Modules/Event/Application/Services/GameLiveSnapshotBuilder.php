@@ -19,7 +19,7 @@ final class GameLiveSnapshotBuilder
 
     public function load(int $eventId, int $gameId): Game
     {
-        return Game::query()
+        $game = Game::query()
             ->whereKey($gameId)
             ->where('event_id', $eventId)
             ->with([
@@ -33,11 +33,15 @@ final class GameLiveSnapshotBuilder
                 'periods.actions',
             ])
             ->firstOrFail();
+        abort_unless($game->hasSportConfiguration(), 404);
+
+        return $game;
     }
 
     /** @return array<string, mixed> */
     public function build(Game $game): array
     {
+        abort_unless($game->hasSportConfiguration(), 404);
         $sides = $game->sides->keyBy('slot');
         $roster = $game->rosterEntries->groupBy('game_side_id');
         $statistics = $game->playerStatistics->keyBy('user_id');

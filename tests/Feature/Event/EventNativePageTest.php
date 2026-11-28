@@ -105,6 +105,7 @@ final class EventNativePageTest extends TestCase
         $this->actingAs($user)->put($url, [...$base, 'is_paid' => '0'])->assertRedirect();
         $this->assertFalse($event->fresh()->is_paid);
         $this->assertNull($event->fresh()->participant_cost_minor);
+        $this->assertSame([], $event->fresh()->cost_inclusions);
         $this->get(route('events.show', $event->routeIdentifier()))->assertOk()
             ->assertDontSee('data-event-participation-price', false);
         $this->assertDatabaseCount('venue_bookings', 0);

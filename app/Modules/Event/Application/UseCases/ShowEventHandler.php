@@ -50,7 +50,12 @@ final class ShowEventHandler
                     'tournamentMatch.tournament',
                 ]),
                 'games' => fn ($query) => $query
+                    ->withExists(['admissions', 'actions'])
                     ->with([
+                        'admissions',
+                        'invitationThreads',
+                        'plannedTeamA.logo',
+                        'plannedTeamB.logo',
                         'sides.team.logo',
                         'rosterEntries.user.profile.activeAvatar',
                         'playerStatistics',

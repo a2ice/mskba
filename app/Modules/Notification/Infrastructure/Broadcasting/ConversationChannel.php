@@ -45,6 +45,13 @@ final class ConversationChannel
         return $conversation !== null && app(OperatorConversationAccess::class)->canRead($user, $conversation);
     }
 
+    public function gameInvitation(User $user, string|int $id): bool
+    {
+        $context = \App\Modules\Event\Domain\Models\GameInvitationThread::query()->find($id);
+
+        return $context !== null && app(\App\Modules\Event\Application\Services\GameInvitationConversation::class)->canRead($context, $user);
+    }
+
     public function direct(User $user, string|int $id): bool
     {
         $thread = DirectConversation::query()->find($id);

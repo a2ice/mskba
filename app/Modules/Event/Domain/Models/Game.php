@@ -14,6 +14,7 @@ use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Tournament\Domain\Models\TournamentMatch;
+use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,6 +32,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'description',
     'status',
     'recruitment_mode',
+    'uses_event_planning',
+    'planned_team_a_id',
+    'planned_team_b_id',
     'accepts_applications',
     'sides_confirmed_at',
     'sides_confirmed_by_actor_id',
@@ -89,9 +93,24 @@ class Game extends Model
         return $this->belongsTo(Actor::class, 'sides_confirmed_by_actor_id');
     }
 
+    public function plannedTeamA(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'planned_team_a_id');
+    }
+
+    public function plannedTeamB(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'planned_team_b_id');
+    }
+
     public function sides(): HasMany
     {
         return $this->hasMany(GameSide::class);
+    }
+
+    public function invitationThreads(): HasMany
+    {
+        return $this->hasMany(GameInvitationThread::class);
     }
 
     public function admissions(): HasMany
@@ -157,14 +176,21 @@ class Game extends Model
         return $this->morphMany(Media::class, 'mediable');
     }
 
+    public function hasSportConfiguration(): bool
+    {
+        return $this->side_a_size !== null && $this->side_b_size !== null
+            && $this->scoring_type !== null && $this->timing_mode !== null;
+    }
+
     public function formatLabel(): string
     {
-        return $this->side_a_size.'×'.$this->side_b_size;
+        return $this->hasSportConfiguration() ? $this->side_a_size.'×'.$this->side_b_size : 'Не определен';
     }
 
     public function acceptsAdmissions(): bool
     {
-        return $this->recruitment_mode !== null
+        return $this->hasSportConfiguration()
+            && $this->recruitment_mode !== null
             && $this->status === GameStatusEnum::SCHEDULED
             && $this->actual_started_at === null
             && $this->sides_confirmed_at === null
@@ -175,6 +201,7 @@ class Game extends Model
     {
         return [
             'status' => GameStatusEnum::class,
+            'uses_event_planning' => 'boolean',
             'recruitment_mode' => GameRecruitmentModeEnum::class,
             'accepts_applications' => 'boolean',
             'sides_confirmed_at' => 'immutable_datetime',

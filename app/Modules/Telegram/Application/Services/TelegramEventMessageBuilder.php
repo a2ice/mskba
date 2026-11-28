@@ -101,10 +101,10 @@ final class TelegramEventMessageBuilder
             $lines[] = '🛡 Ответственные: '.$this->escape($responsibles->join(', '));
         }
 
-        if ($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty()) {
+        if (($event->type !== EventTypeEnum::GAME || $event->games->contains('uses_event_planning', true)) && $event->games->isNotEmpty()) {
             $lines[] = '';
-            $lines[] = '🎮 <b>Мини-игры: '.$event->games->count().'</b>';
-            foreach ($event->games as $game) {
+            $lines[] = '🎮 <b>'.($event->games->contains('uses_event_planning', true) ? 'Игры: ' : 'Мини-игры: ').$event->games->count().'</b>';
+            foreach ($event->games->take(8) as $game) {
                 $sides = $game->sides->keyBy('slot');
                 $sideA = $sides->get('A');
                 $sideB = $sides->get('B');
@@ -120,6 +120,9 @@ final class TelegramEventMessageBuilder
                 $lines[] = $this->escape($sideA?->display_name ?: 'Команда A')
                     .' <b>'.$score.'</b> '
                     .$this->escape($sideB?->display_name ?: 'Команда B');
+            }
+            if ($event->games->count() > 8) {
+                $lines[] = '… и ещё '.($event->games->count() - 8).' игр. Полный список на портале.';
             }
         }
 
@@ -240,13 +243,14 @@ final class TelegramEventMessageBuilder
             return null;
         }
         if ($event->relationLoaded('primaryGame')) {
-            return $event->primaryGame;
+            return $event->primaryGame?->uses_event_planning ? null : $event->primaryGame;
         }
         if ($event->relationLoaded('games')) {
-            return $event->games->firstWhere('id', (int) $event->primary_game_id);
+            $game = $event->games->firstWhere('id', (int) $event->primary_game_id);
+            return $game?->uses_event_planning ? null : $game;
         }
 
-        return $event->primaryGame()
+        return $event->primaryGame()->where('uses_event_planning', false)
             ->with(['sides', 'admissions.user', 'admissions.team', 'rosterEntries'])
             ->first();
     }

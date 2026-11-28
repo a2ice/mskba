@@ -43,9 +43,16 @@ final class GameLifecycleService
                 throw new InvalidArgumentException('Игра с подтверждённым результатом уже закрыта.');
             }
 
-            $isStandalone = $event->type === EventTypeEnum::GAME
-                && (int) $event->primary_game_id === (int) $lockedGame->id
-                && $lockedGame->recruitment_mode !== null;
+            if (! $lockedGame->hasSportConfiguration()) {
+                throw new InvalidArgumentException('Сначала настройте формат игры и спортивный регламент.');
+            }
+
+            if ($lockedGame->uses_event_planning && $event->status->value !== 'published') {
+                throw new InvalidArgumentException('Сначала опубликуйте мероприятие.');
+            }
+
+            // Any game using recruitment needs confirmed sides, not only the primary game.
+            $isStandalone = $lockedGame->recruitment_mode !== null;
             if ($isStandalone && $lockedGame->sides_confirmed_at === null) {
                 throw new InvalidArgumentException('Перед началом игры утвердите обе стороны.');
             }

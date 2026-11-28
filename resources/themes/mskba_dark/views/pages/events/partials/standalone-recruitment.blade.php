@@ -105,14 +105,14 @@
                             <label class="form-label">Сторона A</label>
                             <select class="form-select" name="team_a_id" required>
                                 <option value="">Выберите команду</option>
-                                @foreach($acceptedTeams as $admission)<option value="{{ $admission->team_id }}">{{ $admission->team->name }}</option>@endforeach
+                                @foreach($acceptedTeams as $admission)<option value="{{ $admission->team_id }}" @selected($game->uses_event_planning && (int) $game->planned_team_a_id === (int) $admission->team_id)>{{ $admission->team->name }}</option>@endforeach
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Сторона B</label>
                             <select class="form-select" name="team_b_id" required>
                                 <option value="">Выберите команду</option>
-                                @foreach($acceptedTeams as $admission)<option value="{{ $admission->team_id }}">{{ $admission->team->name }}</option>@endforeach
+                                @foreach($acceptedTeams as $admission)<option value="{{ $admission->team_id }}" @selected($game->uses_event_planning && (int) $game->planned_team_b_id === (int) $admission->team_id)>{{ $admission->team->name }}</option>@endforeach
                             </select>
                         </div>
                         <div class="col-12"><button class="btn btn--primary" type="submit">Утвердить стороны</button></div>
@@ -122,6 +122,27 @@
                 <div class="alert alert-info mb-4">Для утверждения сторон нужно минимум две принятые команды. Сейчас: {{ $acceptedTeams->count() }}.</div>
             @endif
 
+            @if($isIndividualMode && $game->uses_event_planning)
+                <div class="border rounded p-3 mb-4">
+                    <h3 class="h5">Сформировать из участников мероприятия</h3>
+                    <p class="form-text">Выберите подтверждённых игроков для каждой стороны. Игрок может быть только в одной стороне текущей игры.</p>
+                    <form method="POST" action="{{ route('events.games.recruitment.event-participants.confirm', $routeParameters) }}" data-game-recruitment-ajax data-reload-page="1">
+                        @csrf
+                        <div class="row g-3">
+                            @foreach(['a' => 'Команда 1', 'b' => 'Команда 2'] as $slot => $label)
+                                <fieldset class="col-md-6"><legend class="h6">{{ $label }}</legend>
+                                    @forelse($eventPlayers as $player)
+                                        <label class="d-flex gap-2 align-items-center mb-2"><input type="checkbox" name="side_{{ $slot }}_user_ids[]" value="{{ $player->id }}"> {{ $player->username ?: 'Игрок #'.$player->id }}</label>
+                                    @empty
+                                        <p>Нет подтверждённых игроков.</p>
+                                    @endforelse
+                                </fieldset>
+                            @endforeach
+                        </div>
+                        <button class="btn btn--primary" type="submit" @disabled($eventPlayers->count() < $game->side_a_size + $game->side_b_size)>Утвердить стороны</button>
+                    </form>
+                </div>
+            @endif
             @if($isIndividualMode)
                 <div class="border rounded p-3 mb-4"
                      data-balanced-formation
@@ -147,6 +168,7 @@
             @endif
         @endif
 
+        @if(!$game->uses_event_planning)
         <div class="border rounded p-3 mb-4">
             <h3 class="h5">Основные параметры игры</h3>
             <form class="row g-3" method="POST" action="{{ route('events.games.recruitment.configuration', $routeParameters) }}" data-game-recruitment-ajax data-reload-page="1">
@@ -161,6 +183,7 @@
             </form>
         </div>
 
+        @endif
         <h3 class="h5">Заявки и приглашения</h3>
         @forelse($admissions->sortByDesc('id') as $admission)
             <article class="border rounded p-3 mb-2">

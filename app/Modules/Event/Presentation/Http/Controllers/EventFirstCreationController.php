@@ -188,7 +188,8 @@ final class EventFirstCreationController extends Controller
             'max_participants' => ['nullable', 'integer', 'between:2,500'],
             ...\App\Modules\Event\Application\Services\EventParticipationPricing::rules(),
             ...\App\Modules\Event\Application\Services\EventTimeComment::rules(),
-            // The event can be created independently from its optional Game child.
+            ...\App\Modules\Event\Application\Services\EventGamePlanningService::rules(),
+            // Legacy clients may still use the original single-game parameters.
             'create_game' => ['sometimes', 'boolean'],
             'add_organizer_role' => ['sometimes', 'boolean'],
             'organizer_participates' => ['sometimes', 'boolean'],

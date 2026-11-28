@@ -815,6 +815,8 @@ Route::get('/users/{user:username}/{role}', [PublicUserProfileController::class,
     ->where('role', 'player|coach|referee|statistician|media|venue_related')->name('users.role');
 
 Route::prefix('events')->group(function () {
+    Route::get('/quick-create/teams', \App\Modules\Event\Presentation\Http\Controllers\EventGamePlanningTeamSearchController::class)
+        ->middleware('throttle:60,1')->name('events.funnel.teams');
     Route::get('/', [EventController::class, 'index'])
         ->name('events.index')
         ->defaults('breadcrumb', 'Мероприятия');
@@ -896,6 +898,9 @@ Route::prefix('events')->group(function () {
             ->middleware('throttle:30,1')->whereNumber('photo')->name('events.result.photos.update');
         Route::delete('/{event}/result/photos/{photo}', [EventController::class, 'destroyResultPhoto'])
             ->middleware('throttle:20,1')->whereNumber('photo')->name('events.result.photos.destroy');
+        Route::post('/{event}/planned-games', [\App\Modules\Event\Presentation\Http\Controllers\EventGamePlanningController::class, 'store'])->name('events.planned-games.store');
+        Route::put('/{event}/planned-games/{game}', [\App\Modules\Event\Presentation\Http\Controllers\EventGamePlanningController::class, 'update'])->whereNumber('game')->name('events.planned-games.update');
+        Route::delete('/{event}/planned-games/{game}', [\App\Modules\Event\Presentation\Http\Controllers\EventGamePlanningController::class, 'destroy'])->whereNumber('game')->name('events.planned-games.destroy');
         Route::post('/{event}/games', [GameController::class, 'createMiniGame'])->name('events.games.store');
         Route::get('/{event}/games/{game}/manage', [NestedGameController::class, 'manage'])->whereNumber('game')->name('events.games.manage');
         Route::put('/{event}/games/{game}', [NestedGameController::class, 'update'])->whereNumber('game')->name('events.games.update');
@@ -1195,6 +1200,12 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:60,1')->name('account.notifications.direct.access');
         Route::post('/notifications/users/{user}/messages', [DirectMessagesController::class, 'send'])
             ->middleware('throttle:direct-messages')->name('account.notifications.direct.send');
+        Route::get('/notifications/threads/game-invitation/{context}', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'show'])->whereNumber('context')->name('account.notifications.threads.game-invitation')->defaults('breadcrumb', 'Приглашение на игру');
+        Route::patch('/notifications/threads/game-invitation/{context}/read', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'read'])->whereNumber('context')->middleware('throttle:60,1')->name('account.notifications.threads.game-invitation.read');
+        Route::get('/notifications/threads/game-invitation/{context}/state', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'state'])->whereNumber('context')->middleware('throttle:60,1')->name('account.notifications.threads.game-invitation.state');
+        Route::post('/notifications/threads/game-invitation/{context}/messages', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'message'])->whereNumber('context')->middleware('throttle:20,1')->name('account.notifications.threads.game-invitation.messages');
+        Route::post('/notifications/threads/game-invitation/{context}/admissions/{admission}/notify-teammates', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'notifyTeammates'])->whereNumber(['context', 'admission'])->middleware('throttle:10,1')->name('account.notifications.threads.game-invitation.notify-teammates');
+        Route::post('/notifications/threads/game-invitation/{context}/admissions/{admission}/respond', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'respond'])->whereNumber(['context', 'admission'])->middleware('throttle:20,1')->name('account.notifications.threads.game-invitation.respond');
         Route::get('/notifications/threads/profile/{changeRequest}', [ProfileRequestThreadController::class, 'show'])->name('account.notifications.threads.profile')->defaults('breadcrumb', 'Изменение данных');
         Route::get('/notifications/threads/profile/{changeRequest}/history', [ProfileRequestThreadController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.history');
         Route::patch('/notifications/threads/profile/{changeRequest}/read', [ProfileRequestThreadController::class, 'read'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.read');

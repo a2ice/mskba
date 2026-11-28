@@ -19,7 +19,7 @@ final class GetSystemConversationPreviewHandler
     {
         $identityIds = $user->canonical()->identityIds();
         $base = UserNotification::query()->whereIn('user_id', $identityIds)
-            ->whereNull('payload->join_request_id')
+            ->whereNull('payload->game_invitation_thread_id')->whereNull('payload->join_request_id')
             ->whereNull('payload->direct_conversation_id')
             ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id');
         // Disabled rental conversations must not make existing notices disappear.
