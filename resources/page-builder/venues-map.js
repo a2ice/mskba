@@ -161,6 +161,12 @@
     } else {
       media.append(mediaPlaceholder());
     }
+    const score = venue.rating == null ? null : Number(venue.rating);
+    const rating = document.createElement('span');
+    rating.className = 'venue-catalog-card-rating';
+    rating.dataset.venueCardRating = Number.isFinite(score) ? String(score) : '';
+    rating.textContent = Number.isFinite(score) ? score.toFixed(1) : '—';
+    media.append(rating);
     const badge = document.createElement('span');
     badge.className = 'mskba-venues-map__card-label';
     badge.textContent = 'Площадка MSKBA';

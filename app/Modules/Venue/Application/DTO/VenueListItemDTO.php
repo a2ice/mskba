@@ -36,6 +36,7 @@ final readonly class VenueListItemDTO
         public ?bool $matchedRequiresApproval = null,
         /** @var list<VenueMetroStationDTO> */
         public array $metroStations = [],
+        public ?float $rating = null,
     ) {}
 
     /**

@@ -8,13 +8,15 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 
 function harness({ denied = false, failure = false } = {}) {
     const posts = [], navigations = [], handlers = [];
-    let calls = 0, selection, click;
+    let calls = 0, selection, click, reverseClick;
     const settings = { dataset: { autoPrompt: '0', locationUrl: '/venues/distance-location' } };
     const option = { href: '/venues?city_id=3&sort=distance', addEventListener(_, fn) { click = fn; }, setAttribute() {}, removeAttribute() {}, focus() {} };
+    const reverse = {...option, href: '/venues?city_id=3&sort=distance_desc', addEventListener(_, fn) { reverseClick = fn; }};
     const picker = { dispatchEvent(event) { selection = event.detail; } };
     const status = { hidden: true };
     const document = {
         addEventListener(name, fn) { if (name === 'DOMContentLoaded') handlers.push(fn); },
+        querySelectorAll(selector) { return selector === '[data-venue-distance-option]' ? [option, reverse] : []; },
         querySelector(selector) {
             return { '[data-venue-distance-prompt]': settings, '[data-venue-distance-option]': option,
                 '[data-nearby-filter]': picker, '[data-venue-distance-error]': status,
@@ -30,7 +32,7 @@ function harness({ denied = false, failure = false } = {}) {
     runInNewContext(read('venue-catalog-distance-on-demand.js'), context);
     handlers.forEach(fn => fn());
     return { posts, navigations, status, get calls() { return calls; }, get selection() { return selection; },
-        choose: () => click({ preventDefault() {} }) };
+        choose: () => click({ preventDefault() {} }), reverse: () => reverseClick({ preventDefault() {} }) };
 }
 
 test('no automatic geolocation or suggestion; explicit selection applies coordinates and preserves query', async () => {
@@ -72,4 +74,11 @@ test('shared picker routes external confirmation separately from radius filter',
     const source = read('venue-catalog-nearby.js');
     assert.match(source, /if \(externalSelection\) \{[\s\S]*?selection\.select\([\s\S]*?return;[\s\S]*?\}\s*point = draft;/);
     assert.match(source, /selection\?\.cancel\?\.\(\)/);
+});
+
+test('reverse distance uses the exact selected link and manual selection', async () => {
+    const h = harness({ denied: true });
+    await h.reverse();
+    h.selection.select({ latitude: 56, longitude: 38 }); await tick();
+    assert.deepEqual(h.navigations, ['/venues?city_id=3&sort=distance_desc']);
 });

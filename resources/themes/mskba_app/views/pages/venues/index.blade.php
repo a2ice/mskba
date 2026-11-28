@@ -23,13 +23,13 @@
     $categoryEnableSorting = true;
     $categoryCompactToolbar = true;
     $venueAdvancedFiltersActive = collect(['city_id', 'district_id', 'type', 'operational_status', 'access'])->contains(fn ($key) => filled($filters[$key] ?? null));
-    $categorySortValue = ($filters['sort'] ?? '') === 'distance' && !$venueDistanceAvailable ? '' : ($filters['sort'] ?? '');
-    $categorySortChoices = [
-        '' => 'По названию (А–Я)',
-        'name_desc' => 'По названию (Я–А)',
-        'new' => 'Сначала новые',
+    $categorySortValue = in_array($filters['sort'] ?? '', ['distance', 'distance_desc'], true) && !$venueDistanceAvailable ? '' : ($filters['sort'] ?? '');
+    $categorySortGroups = [
+        ['label' => 'Рейтинг', 'asc' => 'rating_asc', 'desc' => 'rating_desc', 'default' => 'desc', 'ascHint' => 'По возрастанию', 'descHint' => 'По убыванию'],
+        ['label' => 'Название', 'asc' => 'name_asc', 'desc' => 'name_desc', 'default' => 'asc', 'ascHint' => 'По возрастанию', 'descHint' => 'По убыванию'],
+        ['label' => 'Опубликовано', 'asc' => 'old', 'desc' => 'new', 'default' => 'desc', 'ascHint' => 'Сначала более ранние', 'descHint' => 'Сначала новые'],
     ];
-    if (!($isLandingPreview ?? false)) $categorySortChoices['distance'] = 'По удаленности';
+    if (!($isLandingPreview ?? false)) $categorySortGroups[] = ['label' => 'Удалённость', 'asc' => 'distance', 'desc' => 'distance_desc', 'default' => 'asc', 'ascHint' => 'Сначала ближе', 'descHint' => 'Сначала дальше', 'distance' => true];
     $categorySidebarLabel = 'Фильтры площадок';
     $categoryResultTotal = $total;
     $venuePageQuery = array_filter(
