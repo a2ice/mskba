@@ -35,7 +35,7 @@
                 $history = $child->admissions_exists || $child->sides->isNotEmpty() || $child->rosterEntries->isNotEmpty()
                     || $child->actions_exists || $child->playerStatistics->isNotEmpty() || $child->sides_confirmed_at;
             @endphp
-            <div class="event-game-plan__row" data-planned-game-row
+            <div class="event-game-plan__row" id="planned-game-{{ $child->id }}" data-planned-game-row
                 data-game-config='@json($config, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
                 data-game-teams='@json($selectedTeams, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
                 data-update-url="{{ route('events.planned-games.update', [$event->routeIdentifier(), $child->id]) }}"
