@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('games', function (Blueprint $table): void {
+            $table->boolean('uses_event_planning')->default(false);
             $table->foreignId('planned_team_a_id')->nullable()->constrained('teams')->nullOnDelete();
             $table->foreignId('planned_team_b_id')->nullable()->constrained('teams')->nullOnDelete();
         });
@@ -19,6 +20,7 @@ return new class extends Migration
         Schema::table('games', function (Blueprint $table): void {
             $table->dropConstrainedForeignId('planned_team_a_id');
             $table->dropConstrainedForeignId('planned_team_b_id');
+            $table->dropColumn('uses_event_planning');
         });
     }
 };
