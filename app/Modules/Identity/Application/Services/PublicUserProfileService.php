@@ -116,7 +116,7 @@ final class PublicUserProfileService
                 ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url)
                 : null,
             'avatar_restricted' => ! $avatarAllowed,
-            'avatar_placeholder_url' => $this->placeholderUrl($subject, $viewer, $profileAllowed),
+            'avatar_placeholder_url' => $this->placeholderUrl($subject, $viewer),
             'url' => $url,
             'roles' => $activeRoles
                 ->map(fn (UserParticipationRoleEnum $role): array => [
@@ -128,9 +128,10 @@ final class PublicUserProfileService
         ];
     }
 
-    private function placeholderUrl(User $subject, ?User $viewer, bool $profileAllowed): string
+    public function placeholderUrl(User $subject, ?User $viewer): string
     {
-        $female = $profileAllowed && $this->privacy->allows($subject, $viewer, Privacy::PROFILE_GENDER)
+        $subject = $subject->canonical();
+        $female = $this->privacy->allows($subject, $viewer, Privacy::PROFILE) && $this->privacy->allows($subject, $viewer, Privacy::PROFILE_GENDER)
             && $subject->profile?->gender === \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE;
 
         return asset($female ? 'images/blank/avatar/avatar-female.png' : 'images/blank/avatar/avatar-male.png');
@@ -181,7 +182,6 @@ final class PublicUserProfileService
             'name' => trim(($subject->profile?->first_name ?? '').' '.($subject->profile?->last_name ?? '')) ?: ($subject->nickname ?: $subject->username ?: 'Пользователь'),
             'avatar_url' => $avatarAllowed ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url) : null,
             'avatar_restricted' => ! $avatarAllowed,
-            'avatar_placeholder_url' => $this->placeholderUrl($subject, $viewer, $this->privacy->allows($subject, $viewer, Privacy::PROFILE)),
             'url' => $this->url($subject),
             'public_coach' => $publicCoach,
             'role_label' => $publicCoach ? 'Тренер' : ($subject->hasActiveRole('player') && $this->privacy->allows($subject, $viewer, Privacy::ROLE_PLAYER) ? 'Игрок' : 'Пользователь'),
@@ -203,6 +203,7 @@ final class PublicUserProfileService
         });
         abort_if($role !== null && ! $roles->contains(fn ($candidate) => $candidate->value === $role), 404);
         $subject->loadMissing('profile');
+        $data['avatar_placeholder_url'] = $this->placeholderUrl($subject, $viewer);
         $data['nickname'] = $profileAllowed ? $subject->nickname : null;
         $data['banner_url'] = $profileAllowed ? $subject->profile?->bannerUrl() : null;
         $data['demographics'] = $profileAllowed ? array_filter([
