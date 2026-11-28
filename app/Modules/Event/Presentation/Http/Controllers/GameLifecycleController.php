@@ -39,9 +39,7 @@ final class GameLifecycleController extends Controller
             || $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED;
         $started = $game->actual_started_at !== null;
         $ended = $game->actual_ended_at !== null;
-        $requiresSideConfirmation = $game->event->type === EventTypeEnum::GAME
-            && (int) $game->event->primary_game_id === (int) $game->id
-            && $game->recruitment_mode !== null;
+        $requiresSideConfirmation = $game->recruitment_mode !== null;
         $sidesReady = ! $requiresSideConfirmation || $game->sides_confirmed_at !== null;
 
         $roster = $game->sides->mapWithKeys(function ($side) use ($game): array {
@@ -92,7 +90,7 @@ final class GameLifecycleController extends Controller
             'sides_confirmed' => $game->sides_confirmed_at !== null,
             'actual_started_at' => $game->actual_started_at?->toIso8601String(),
             'actual_ended_at' => $game->actual_ended_at?->toIso8601String(),
-            'can_start' => $canComplete && $sidesReady && ! $started && ! $cancelled && ! $completed,
+            'can_start' => $game->hasSportConfiguration() && $canComplete && $sidesReady && ! $started && ! $cancelled && ! $completed,
             'can_end' => $canComplete && $started && ! $ended && ! $cancelled && ! $completed
                 && (! $usesPeriods || $activePeriod?->number === (int) $game->periods_count),
             'can_end_period' => $canComplete && $usesPeriods && $activePeriod !== null
@@ -105,14 +103,14 @@ final class GameLifecycleController extends Controller
                 && (! $usesPeriods || $activePeriod !== null),
             'can_manage_score' => $canManageScore && $started && ! $ended && ! $cancelled && ! $completed
                 && (! $usesPeriods || $activePeriod !== null),
-            'can_manage_lineup' => $canManageRoster && ! $started && ! $cancelled && ! $completed,
+            'can_manage_lineup' => $game->hasSportConfiguration() && $canManageRoster && ! $started && ! $cancelled && ! $completed,
             'can_confirm_result' => $canComplete && $canManageStatistics && $ended && ! $cancelled && ! $completed,
             'start_url' => route('events.games.start', [$nestedEvent, $nestedGame]),
             'end_url' => route('events.games.end', [$nestedEvent, $nestedGame]),
             'end_period_url' => route('events.games.periods.end', [$nestedEvent, $nestedGame]),
             'end_early_url' => route('events.games.end-early', [$nestedEvent, $nestedGame]),
             'start_next_period_url' => route('events.games.periods.start-next', [$nestedEvent, $nestedGame]),
-            'timing_mode' => $game->timing_mode->value,
+            'timing_mode' => $game->timing_mode?->value,
             'periods_count' => $game->periods_count,
             'active_period' => $activePeriod?->number,
             'periods' => $periods,
