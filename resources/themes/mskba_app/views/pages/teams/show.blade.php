@@ -128,6 +128,11 @@
                     </ul>
                 </section>
             @endif
+            @foreach($publicCompetitionBlocks as $block)
+                @if(count($block['items']))
+                    @include('theme::pages.participants.partials.profile-block', ['block' => $block])
+                @endif
+            @endforeach
             <section class="panel app-community-panel" id="team-join">
                 <h2>Вступление в команду</h2>
                 @if($isActiveTeamMember)
