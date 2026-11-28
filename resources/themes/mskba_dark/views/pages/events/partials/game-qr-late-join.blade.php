@@ -5,7 +5,9 @@
     $joinUrl = route('events.games.recruitment.join', $routeParameters);
     $confirmed = $game->sides_confirmed_at !== null;
     $decisionOpen = $game->actual_ended_at === null
-        && in_array($game->status, [GameStatusEnum::SCHEDULED, GameStatusEnum::IN_PROGRESS], true);
+        && in_array($game->status, [GameStatusEnum::SCHEDULED, GameStatusEnum::IN_PROGRESS], true)
+        && (!$game->uses_event_planning || ($event->status->value === 'published' && $event->visibility->value === 'public'
+            && ($game->status === GameStatusEnum::IN_PROGRESS || !$event->ends_at?->isPast())));
     $name = static function ($admission): string {
         $user = $admission->user?->canonical();
         $profile = $user?->profile;
