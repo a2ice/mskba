@@ -436,12 +436,12 @@ final class GameManagementService
             if ($allIds->diff($candidates->keys())->isNotEmpty()) {
                 throw new InvalidArgumentException('Один или несколько игроков недоступны для этой игры.');
             }
-            if ($lockedParent->type === EventTypeEnum::GAME) {
+            if ($lockedGame->uses_event_planning || $lockedParent->type === EventTypeEnum::GAME) {
                 foreach (['A' => $sideAUserIds, 'B' => $sideBUserIds] as $slot => $userIds) {
                     $invalid = collect($userIds)->map(fn ($id) => (int) $id)
                         ->filter(fn ($id) => ($candidates[$id]['slot'] ?? null) !== $slot);
                     if ($invalid->isNotEmpty()) {
-                        throw new InvalidArgumentException('Игрок постоянной команды не может быть перенесён в состав соперника.');
+                        throw new InvalidArgumentException('Игрок не может быть перенесён в состав соперника без переутверждения сторон.');
                     }
                 }
             }
