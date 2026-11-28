@@ -12,6 +12,7 @@
 .event-game-plan__add,.event-game-plan__name{width:fit-content;background:none;border:0;padding:0;color:var(--accent,#ed782c);font:inherit;font-weight:600;cursor:pointer;text-align:left;overflow-wrap:anywhere}
 .event-game-plan__row{display:flex;align-items:flex-start;gap:6px;border:1px solid var(--line,#606772);border-radius:12px;padding:10px 12px}
 .event-game-plan__details{flex:1;min-width:0;display:grid;gap:3px}
+.event-game-plan .event-game-editor__hint{margin:0;color:var(--muted,#929aa4);font-size:14px;line-height:20px;font-weight:400}
 .event-game-plan__danger,.event-game-plan__remove{color:var(--danger,#d23e45)}
 </style>
 @endonce
