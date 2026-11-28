@@ -48,8 +48,8 @@ final class EventGameController extends Controller
                 'periods',
             ])
             ->firstOrFail();
-        abort_if($parent->type->value === 'game' && $parent->primary_game_id !== $gameModel->id, 404);
-        if (! $managementMode && $parent->type->value === 'game') {
+        abort_if(!$gameModel->uses_event_planning && $parent->type->value === 'game' && $parent->primary_game_id !== $gameModel->id, 404);
+        if (! $gameModel->uses_event_planning && ! $managementMode && $parent->type->value === 'game') {
             return redirect()->route('events.show', $parent->routeIdentifier(), 301);
         }
         $canManage = $actor !== null && $access->canManage($parent, $actor);
