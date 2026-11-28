@@ -102,7 +102,7 @@ class VenueController extends Controller
             'longitude' => ['nullable', 'required_with:latitude,radius_km', 'numeric', 'between:-180,180'],
             'radius_km' => ['nullable', 'required_with:latitude,longitude', 'integer', 'between:1,10'],
             'view' => ['nullable', Rule::in(['list', 'map'])],
-            'sort' => ['nullable', Rule::in(['new', 'name_asc', 'name_desc', 'distance'])],
+            'sort' => ['nullable', Rule::in(['new', 'old', 'name_asc', 'name_desc', 'distance', 'distance_desc', 'rating_asc', 'rating_desc'])],
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'fragment' => ['nullable', Rule::in(['items'])],
         ]);
@@ -253,7 +253,7 @@ class VenueController extends Controller
             'geographyCities' => City::query()->with(['districts' => fn ($query) => $query->orderBy('name')])->orderBy('name')->get(),
         ]);
 
-        if ($venueDistanceAvailable || ($filters['sort'] ?? null) === 'distance') {
+        if ($venueDistanceAvailable || in_array($filters['sort'] ?? null, ['distance', 'distance_desc'], true)) {
             $response->header('Cache-Control', 'private, no-store');
         }
 
