@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\ContentEngagement;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
@@ -15,7 +16,7 @@ use Illuminate\Http\Response;
 
 final class NewsController extends Controller
 {
-    public function index(ReactionReadService $reactions): Response|RedirectResponse
+    public function index(ReactionReadService $reactions, ContentEngagement $engagement): Response|RedirectResponse
     {
         if (request()->routeIs('legacy.news.index')) {
             return redirect()->route('news.index', request()->query(), 301);
@@ -53,10 +54,12 @@ final class NewsController extends Controller
             $this->viewer(),
         );
 
-        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries', 'filters', 'types', 'filterTypes'));
+        $engagementSummaries = $engagement->summaries($contentItems->getCollection(), request());
+
+        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries', 'filters', 'types', 'filterTypes', 'engagementSummaries'));
     }
 
-    public function show(ContentItem $contentItem, ReactionReadService $reactions): Response|RedirectResponse
+    public function show(ContentItem $contentItem, ReactionReadService $reactions, ContentEngagement $engagement): Response|RedirectResponse
     {
         abort_unless(
             $contentItem->status === ContentStatusEnum::PUBLISHED && $contentItem->publish_in_feed
@@ -78,7 +81,13 @@ final class NewsController extends Controller
             $this->viewer(),
         );
 
-        return ThemeResolver::page('news.show', compact('contentItem', 'reactionSummary'));
+        $engagementSummary = $engagement->summaries(collect([$contentItem]), request())[$contentItem->id];
+        $response = ThemeResolver::page('news.show', compact('contentItem', 'reactionSummary', 'engagementSummary'));
+        if ($response->isSuccessful()) {
+            $engagement->recordView($contentItem, request());
+        }
+
+        return $response;
     }
 
     private function viewer(): ?User

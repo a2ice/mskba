@@ -11,7 +11,7 @@
     $canonicalUrl = $contentItem->publicUrl();
     $structuredData = [[
         '@context' => 'https://schema.org',
-        '@type' => 'NewsArticle',
+        '@type' => $contentItem->type === \App\Modules\Content\Domain\Enums\ContentTypeEnum::MATERIAL ? 'Article' : 'NewsArticle',
         'headline' => $contentItem->title,
         'description' => $metaDescription,
         'datePublished' => $contentItem->feed_published_at?->toIso8601String(),
@@ -26,6 +26,12 @@
         ],
         ...($metaImage ? ['image' => [$metaImage]] : []),
     ]];
+    $types = \App\Modules\Content\Domain\Enums\ContentTypeEnum::cases();
+    $filterTypes = array_values(array_filter($types, fn ($type) => $type !== \App\Modules\Content\Domain\Enums\ContentTypeEnum::SYSTEM_UPDATE));
+    $filters = ['q' => '', 'type' => $contentItem->type->value];
+    $categoryView = 'list';
+    $categoryResetUrl = route('news.index');
+    $articleSidebar = true;
     $breadcrumbs = [
         ['label' => 'Новости', 'url' => route('news.index')],
         ['label' => $contentItem->title],
@@ -34,17 +40,18 @@
 @extends('theme::layouts.app', ['title' => $title, 'breadcrumbs' => $breadcrumbs])
 
 @section('content')
-<section class="container app-content-page" aria-labelledby="feed-article-heading">
-    <nav aria-label="Вернуться к новостям"><a href="{{ route('news.index') }}">Все новости</a></nav>
-    <article class="panel app-content-page__article">
+<section class="container app-category app-news-detail" id="news-article" aria-labelledby="feed-article-heading">
+    <div class="app-category__layout">
+        <aside class="app-category__sidebar panel" aria-label="Навигация и фильтры новостей">
+            @include('theme::pages.news.partials.sidebar', ['scope' => 'desktop'])
+        </aside>
+        <div class="app-category__main app-news-detail__main">
+            @include('theme::pages.news.partials.mobile-sidebar')
+            <article class="panel app-content-page__article">
         <header class="app-content-page__article-heading">
-            <p class="muted">
-                {{ $contentItem->type->label() }}
-                <time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}">
-                    {{ $contentItem->feed_published_at->locale('ru')->translatedFormat('j F Y') }}
-                </time>
-            </p>
             <h1 id="feed-article-heading">{{ $contentItem->title }}</h1>
+            @include('theme::pages.news.partials.metadata')
+            @include('theme::pages.news.partials.engagement', ['stats' => $engagementSummary, 'compact' => false])
             @if($contentItem->short_description)<p class="app-content-page__lead">{{ $contentItem->short_description }}</p>@endif
         </header>
         @if($cover)
@@ -54,6 +61,9 @@
         @if($contentItem->link_url)
             <a class="button primary" href="{{ $contentItem->destinationUrl() }}">Перейти</a>
         @endif
-    </article>
+            </article>
+            @include('theme::pages.news.partials.comments')
+        </div>
+    </div>
 </section>
 @endsection

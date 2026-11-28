@@ -114,8 +114,9 @@ final class FavoritesController extends Controller
         return response()->json([
             'state' => $favorite->trashed_at === null ? 'active' : 'trashed',
             'notify_upcoming_events' => $favorite->notify_upcoming_events,
-            'count' => $type === 'venue' ? Favorite::query()
-                ->where('entity_type', 'venue')->where('entity_id', $id)
+            'count' => in_array($type, ['venue', 'content'], true) ? Favorite::query()
+                ->where('entity_type', $type)->where('entity_id', $id)
+                ->when($type === 'content', fn ($query) => $query->whereNotNull('user_id'))
                 ->whereNull('trashed_at')->count() : null,
             'type' => $type,
             'id' => $id,

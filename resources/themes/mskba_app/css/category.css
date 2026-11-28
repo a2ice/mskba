@@ -40,6 +40,8 @@
 .app-category__card{display:flex;flex-direction:column;position:relative;min-width:0;overflow:hidden}
 .app-category__card-cover{display:block;position:relative;width:100%;aspect-ratio:1.58;overflow:hidden;background:var(--surface-raised)}
 .app-category__card-cover img{display:block;width:100%;height:100%;object-fit:cover}
+/* Preserve the upper-left text and logo on editorial covers without changing other catalogs. */
+#news-catalog .app-category__card-cover img{object-position:0 0}
 .app-category__cover-placeholder{display:grid;place-items:center;height:100%;font-size:13px;color:var(--muted);font-weight:700}
 .app-category__card-body{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;gap:12px;padding:18px}
 .app-category__badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
@@ -68,3 +70,18 @@
 .app-category__layout:has(.app-category-toolbar--compact) .app-category__sidebar .app-category__filter-actions{gap:8px}
 .app-category__layout:has(.app-category-toolbar--compact) .app-category__sidebar .app-category__filter-actions>.button{min-width:0}
 .app-category__layout:has(.app-category-toolbar--compact) .app-category__filters .app-category__toggle{min-height:28px}
+
+/* Editorial cards are sized by text, not intrinsic image dimensions. */
+#news-catalog .app-category__items--list .app-category__card{min-height:150px}
+#news-catalog .app-category__items--list .app-category__card-cover{align-self:stretch;min-height:0}
+#news-catalog .app-category__items--list .app-category__card-cover img{position:absolute;inset:0}
+#news-catalog .app-category__items--list .app-category__cover-placeholder{position:absolute;inset:0;text-align:center;padding:8px}
+#news-catalog .app-category__card-body{gap:8px}
+.app-news-meta,.app-category__card .app-news-meta,.app-category__card .app-news-meta time{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:color-mix(in srgb,var(--muted) 86%,var(--info));font-size:13px;line-height:1.4}
+#news-catalog .app-category__nav,#news-article .app-category__nav{margin-bottom:14px}
+#news-catalog .app-category__sidebar h2,#news-article .app-category__sidebar h2{color:var(--text);font-size:21px;font-weight:800}
+@media(max-width:480px){
+    #news-catalog .app-category__items--list .app-category__card-cover{width:30%;flex-basis:30%}
+    #news-catalog .app-category__card h2{font-size:16px}
+    #news-catalog .app-category__card-body{padding:12px;gap:8px}
+}

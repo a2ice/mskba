@@ -86,6 +86,11 @@ final class ContentItem extends Model
         return $this->belongsToMany(FaqSection::class);
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ContentComment::class);
+    }
+
     public function telegramPublications(): HasMany
     {
         return $this->hasMany(TelegramContentPublication::class);
@@ -143,6 +148,7 @@ final class ContentItem extends Model
             'status' => ContentStatusEnum::class,
             'content_format' => ContentFormatEnum::class,
             'publish_in_feed' => 'boolean',
+            'views_count' => 'integer',
             'publish_in_telegram' => 'boolean',
             'feed_published_at' => 'immutable_datetime',
         ];

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Favorites\Application\Services;
 
+use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -20,6 +21,7 @@ final class FavoriteTargetRegistry
         'event' => 'Мероприятия',
         'team' => 'Команды',
         'product' => 'Товары',
+        'content' => 'Новости и материалы',
     ];
 
     public function visible(string $type, int $id): ?Model
@@ -35,6 +37,7 @@ final class FavoriteTargetRegistry
                 ->whereHas('categories', fn ($query) => $query->whereIn(
                     'shop_categories.id', app(ShopCatalogService::class)->visibleCategoryIds(),
                 ))->first(),
+            'content' => ContentItem::query()->publishedInFeed()->whereKey($id)->first(),
             default => null,
         };
     }
@@ -52,12 +55,13 @@ final class FavoriteTargetRegistry
         }
 
         return [
-            'title' => $type === 'event' ? $target->title : $target->name,
+            'title' => in_array($type, ['event', 'content'], true) ? $target->title : $target->name,
             'url' => match ($type) {
                 'venue' => route('venues.show', $target->routeIdentifier()),
                 'event' => route('events.show', $target->routeIdentifier()),
                 'team' => route('teams.show', $target->routeIdentifier()),
                 'product' => route('shop.product', $target->slug),
+                'content' => route('news.show', $target->alias),
             },
             'available' => true,
         ];

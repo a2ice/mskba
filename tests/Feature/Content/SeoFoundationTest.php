@@ -63,15 +63,17 @@ final class SeoFoundationTest extends TestCase
             ->assertSee('<link rel="prev"', false);
     }
 
-    public function test_news_article_exposes_news_article_structured_data(): void
+    public function test_material_exposes_article_structured_data_and_news_keeps_news_article(): void
     {
         $content = $this->publishedContent();
 
         $this->get(route('news.show', $content->alias))
             ->assertOk()
-            ->assertSee('"@type":"NewsArticle"', false)
+            ->assertSee('"@type":"Article"', false)
             ->assertSee('"headline":"SEO материал"', false)
             ->assertSee('"mainEntityOfPage"', false);
+        $news = $this->publishedContent(['type' => 'user']);
+        $this->get(route('news.show', $news->alias))->assertOk()->assertSee('"@type":"NewsArticle"', false);
     }
 
     public function test_public_information_pages_have_specific_meta_descriptions(): void
