@@ -125,6 +125,7 @@ final class EventGamePlanningService
             $parent = $this->lockManageable($event, $actor, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
             $locked = $this->lockPlanned($parent, $game);
             if ($locked->actions()->exists() || $locked->playerStatistics()->exists()
+                || $locked->sides()->where('score', '>', 0)->exists()
                 || $locked->periods()->whereNotNull('actual_started_at')->exists()) {
                 throw ValidationException::withMessages(['game' => 'У игры уже есть спортивные данные. Удаление невозможно.']);
             }
