@@ -417,6 +417,62 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertNotNull($game->fresh()->actual_started_at);
     }
 
+    public function test_planned_game_invitations_are_addressed_to_each_game_and_can_be_repeated(): void
+    {
+        $organizer = $this->verifiedOrganizer();
+        $ownerA = $this->verifiedOrganizer();
+        $ownerB = $this->verifiedOrganizer();
+        $outsider = $this->verifiedOrganizer();
+        $team = function (User $owner, string $suffix) {
+            $actor = \App\Modules\Identity\Domain\Models\Actor::factory()->create(['user_id' => $owner->id]);
+
+            return \App\Modules\Team\Domain\Models\Team::query()->create([
+                'created_by_actor_id' => $actor->id,
+                'name' => 'Invite '.$suffix,
+                'alias' => 'invite-'.$suffix,
+                'status' => 'active',
+                'accepts_competition_invitations' => true,
+            ]);
+        };
+        $a = $team($ownerA, 'a');
+        $b = $team($ownerB, 'b');
+        $c = $team($outsider, 'c');
+        $input = [...$this->payload($this->venue(), [$this->slots()[0]]), 'type' => 'game', 'games' => [
+            ['title' => 'Первая игра', 'format' => 'streetball_3x3'],
+            ['title' => 'Вторая игра', 'format' => 'basketball_5x5',
+                'recruitment_mode' => 'preformed_teams', 'team_a_id' => $a->id, 'team_b_id' => $b->id],
+        ]];
+        $this->actingAs($organizer)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        $game = $event->games()->orderByDesc('id')->firstOrFail();
+        $this->assertNotEquals($game->id, $event->primary_game_id);
+        $this->assertSame(0, $game->admissions()->count());
+        $params = [$event->routeIdentifier(), $game->id];
+        $invite = route('events.games.recruitment.invite', $params);
+        $this->postJson($invite, ['team_id' => $c->id])->assertUnprocessable();
+        $b->update(['accepts_competition_invitations' => false]);
+        $this->postJson($invite, ['team_id' => $b->id])->assertUnprocessable();
+        $b->update(['accepts_competition_invitations' => true]);
+        $this->actingAs($outsider)->postJson($invite, ['team_id' => $a->id])->assertUnprocessable();
+        $this->actingAs($organizer)->postJson($invite, ['team_id' => $a->id])->assertOk();
+        $first = $game->admissions()->sole();
+        $this->postJson($invite, ['team_id' => $a->id])->assertUnprocessable();
+        $respond = route('events.games.recruitment.respond', [...$params, $first->id]);
+        $this->actingAs($outsider)->postJson($respond, ['decision' => 'accepted'])->assertUnprocessable();
+        $this->actingAs($ownerA)->postJson($respond, ['decision' => 'declined'])->assertOk();
+        $this->assertSame('declined', $first->fresh()->status->value);
+        $this->actingAs($organizer)->postJson($invite, ['team_id' => $a->id])->assertOk();
+        $second = $game->admissions()->latest('id')->firstOrFail();
+        $this->assertNotEquals($first->id, $second->id);
+        $this->assertSame('pending', $second->status->value);
+        $this->actingAs($ownerA)->postJson($respond, ['decision' => 'accepted'])->assertUnprocessable();
+        $this->postJson(route('events.games.recruitment.respond', [...$params, $second->id]), ['decision' => 'accepted'])->assertOk();
+        $this->assertSame('accepted', $second->fresh()->status->value);
+        $this->assertSame('declined', $first->fresh()->status->value);
+        $this->assertSame(0, $event->primaryGame()->firstOrFail()->admissions()->count());
+        $this->assertSame(0, $game->sides()->count());
+    }
+
     public function test_duplicate_time_options_are_rejected(): void
     {
         $user = $this->verifiedOrganizer();
