@@ -456,6 +456,16 @@ final class EventFirstFunnelTest extends TestCase
         $this->actingAs($outsider)->postJson($invite, ['team_id' => $a->id])->assertUnprocessable();
         $this->actingAs($organizer)->postJson($invite, ['team_id' => $a->id])->assertOk();
         $first = $game->admissions()->sole();
+        $context = \App\Modules\Event\Domain\Models\GameInvitationThread::query()->sole();
+        $threadId = $context->thread()->sole()->id;
+        $state = route('account.notifications.threads.game-invitation.state', $context);
+        $messages = route('account.notifications.threads.game-invitation.messages', $context);
+        $this->assertSame($game->id, $context->game_id);
+        $this->assertSame($a->id, $context->team_id);
+        $this->getJson($state)->assertOk()->assertJsonPath('can_organize', true);
+        $this->actingAs($ownerB)->getJson($state)->assertForbidden();
+        $this->actingAs($outsider)->postJson($messages, ['body' => 'Не имею доступа'])->assertForbidden();
+        $this->actingAs($organizer);
         $notice = \App\Modules\Notification\Domain\Models\UserNotification::query()
             ->where('user_id', $ownerA->id)
             ->where('payload->game_admission_id', $first->id)->sole();
@@ -468,12 +478,21 @@ final class EventFirstFunnelTest extends TestCase
         $this->actingAs($ownerA)->postJson($respond, ['decision' => 'declined'])->assertOk();
         $this->assertSame('declined', $first->fresh()->status->value);
         $this->assertFalse($notice->fresh()->isNew());
+        $this->getJson($state)->assertOk()->assertJsonPath('invitations.0.status', 'declined');
+        $this->postJson($messages, ['body' => 'Пришли ещё раз приглашение'])->assertCreated();
+        $this->assertSame('declined', $first->fresh()->status->value);
+        $this->actingAs($organizer)->getJson($state)->assertOk()
+            ->assertJsonPath('messages.0.body', 'Пришли ещё раз приглашение');
         $this->actingAs($organizer)->postJson($invite, ['team_id' => $a->id])->assertOk();
         $second = $game->admissions()->latest('id')->firstOrFail();
         $this->assertNotEquals($first->id, $second->id);
         $this->assertSame('pending', $second->status->value);
+        $this->assertDatabaseCount('game_invitation_threads', 1);
+        $this->assertSame($threadId, $context->thread()->sole()->id);
+        $this->assertSame(1, $context->thread()->sole()->messages()->count());
         $this->actingAs($ownerA)->postJson($respond, ['decision' => 'accepted'])->assertUnprocessable();
-        $this->postJson(route('events.games.recruitment.respond', [...$params, $second->id]), ['decision' => 'accepted'])->assertOk();
+        $this->postJson(route('account.notifications.threads.game-invitation.respond', [$context, $second->id]), ['decision' => 'accepted'])->assertOk();
+        $this->getJson($state)->assertOk()->assertJsonPath('invitations.0.status', 'declined')->assertJsonPath('invitations.1.status', 'accepted');
         $this->assertSame('accepted', $second->fresh()->status->value);
         $this->assertSame('declined', $first->fresh()->status->value);
         $this->assertSame(0, $event->primaryGame()->firstOrFail()->admissions()->count());
