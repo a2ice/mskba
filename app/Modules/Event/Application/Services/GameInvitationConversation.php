@@ -102,7 +102,7 @@ final class GameInvitationConversation
                     ? $message->body : ($context->game?->title ?? 'Игра'),
                 'unread_count' => $unread->get($context->id, collect())->count(),
                 'date' => $context->updated_at,
-                'status' => $this->statusLabel($latest?->status?->value),
+                'status' => $context->game?->cancelled_at ? 'Игра отменена' : $this->statusLabel($latest?->status?->value),
                 'url' => route('account.notifications.threads.game-invitation', $context),
             ];
         })->values();
