@@ -47,6 +47,16 @@
                                     <button type="submit" class="button primary" name="decision" value="accepted">Принять</button>
                                 </form>
                             @endif
+                            @if($canNotify && $item->id === $latestInvitation?->id)
+                                @if($players->contains(fn ($player) => !in_array((int) $player->id, $notified, true)))
+                                    <button type="button" class="button secondary" data-game-teammates-open>Оповестить тиммейтов</button>
+                                @elseif($players->isNotEmpty())
+                                    <p>Все действующие игроки оповещены.</p>
+                                @else
+                                    <p>В команде пока нет действующих игроков.</p>
+                                @endif
+                                @if(count($notified))<p>Оповещено игроков: {{ count($notified) }}</p>@endif
+                            @endif
                             <time class="app-messages__timestamp" datetime="{{ $item->created_at->toIso8601String() }}">{{ $item->created_at->format('d.m.Y H:i') }}</time>
                         </article>
                     @endif
@@ -54,6 +64,31 @@
             </div>
             @if($messages->previousPageUrl())<a href="{{ $messages->previousPageUrl() }}">Более новые сообщения</a>@endif
         </div>
+        @if(session('status'))<p role="status">{{ session('status') }}</p>@endif
+        @if($canNotify && $players->isNotEmpty())
+            <dialog class="mskba-modal event-teammates-dialog" data-game-teammates-dialog aria-labelledby="game-teammates-title">
+                <header class="mskba-modal__header"><h2 id="game-teammates-title">Оповестить тиммейтов</h2></header>
+                <form method="POST" action="{{ route('account.notifications.threads.game-invitation.notify-teammates', [$context, $latestInvitation->id]) }}" data-game-teammates-form>
+                    @csrf
+                    <div class="mskba-modal__body mskba-scroll">
+                        <p>Сообщить игрокам команды о предстоящей игре. Это не подтверждает их участие.</p>
+                        <label class="check-label"><input type="checkbox" data-game-teammates-all checked> Все участники команды</label>
+                        @foreach($players as $player)
+                            @php($already = in_array((int) $player->id, $notified, true))
+                            <label class="check-label">
+                                <input type="checkbox" name="recipients[]" value="{{ $player->id }}" @checked(!$already) @disabled($already)>
+                                {{ $player->username ?: 'Игрок #'.$player->id }} @if($already)<small>Оповещён</small>@endif
+                            </label>
+                        @endforeach
+                        <label for="game-teammates-comment">Сообщение от себя (необязательно)</label>
+                        <textarea id="game-teammates-comment" name="comment" rows="3" maxlength="1000" placeholder="Ребята, кто сможет сыграть?"></textarea>
+                        @error('recipients')<p role="alert">{{ $message }}</p>@enderror
+                        @error('recipients.*')<p role="alert">{{ $message }}</p>@enderror
+                    </div>
+                    <footer class="mskba-modal__footer"><button type="button" class="button secondary" data-game-teammates-close>Отмена</button><button type="submit" class="button primary" data-game-teammates-submit>Оповестить</button></footer>
+                </form>
+            </dialog>
+        @endif
         <form class="panel app-messages__compose" method="POST" action="{{ route('account.notifications.threads.game-invitation.messages', $context) }}">
             @csrf
             <label class="sr-only" for="game-invitation-message">Сообщение</label>
@@ -63,4 +98,29 @@
         </form>
     </section>
 </div>
+<style>
+.event-teammates-dialog>form{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.event-teammates-dialog .mskba-modal__body{display:grid;gap:12px;padding:20px;overflow:auto}
+.event-teammates-dialog .mskba-modal__header,.event-teammates-dialog .mskba-modal__footer{padding:16px 20px}
+.event-teammates-dialog .mskba-modal__footer{display:flex;justify-content:flex-end;gap:8px}
+.event-teammates-dialog .check-label{display:flex;align-items:center;gap:8px}
+.event-teammates-dialog .check-label input{width:20px;height:20px;flex:none;margin:0}
+</style>
+<script>
+(() => {
+    const dialog=document.querySelector('[data-game-teammates-dialog]');
+    if(!dialog)return;
+    const all=dialog.querySelector('[data-game-teammates-all]');
+    const checks=[...dialog.querySelectorAll('input[name="recipients[]"]:not(:disabled)')];
+    const submit=dialog.querySelector('[data-game-teammates-submit]');
+    const sync=()=>{const count=checks.filter(check=>check.checked).length;all.checked=count===checks.length&&count>0;all.indeterminate=count>0&&count<checks.length;all.disabled=!checks.length;submit.disabled=!count;};
+    all.addEventListener('change',()=>{checks.forEach(check=>check.checked=all.checked);sync();});
+    checks.forEach(check=>check.addEventListener('change',sync));
+    document.querySelectorAll('[data-game-teammates-open]').forEach(button=>button.addEventListener('click',()=>{sync();dialog.showModal();}));
+    dialog.querySelector('[data-game-teammates-close]').addEventListener('click',()=>dialog.close());
+    dialog.querySelector('form').addEventListener('submit',()=>{submit.disabled=true;});
+    sync();
+    @if($errors->has('recipients') || $errors->has('recipients.*')) dialog.showModal(); @endif
+})();
+</script>
 @endsection
