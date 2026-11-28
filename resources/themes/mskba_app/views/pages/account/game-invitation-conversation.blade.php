@@ -24,6 +24,13 @@
                 <a class="button secondary" href="{{ $messages->nextPageUrl() }}">Предыдущие сообщения</a>
             @endif
             <div class="app-messages__history" role="log">
+                @if($game?->cancelled_at)
+                    <article class="app-messages__bubble app-messages__bubble--system">
+                        <strong>Игра отменена</strong>
+                        @if($game->cancellation_reason)<p>Причина: {{ $game->cancellation_reason }}</p>@endif
+                        <time datetime="{{ $game->cancelled_at->toIso8601String() }}">{{ $game->cancelled_at->format('d.m.Y H:i') }}</time>
+                    </article>
+                @endif
                 @foreach($entries as $entry)
                     @php($item = $entry['item'])
                     @if($entry['kind'] === 'message')
@@ -37,7 +44,7 @@
                             @if($game?->format)<p>{{ $game->formatLabel() }}</p>@endif
                             @if($event?->starts_at)<p>{{ $event->starts_at->timezone('Europe/Moscow')->format('d.m.Y H:i') }} (МСК)</p>@endif
                             @if($event?->venue)<p>{{ $event->venue->name }}</p>@endif
-                            @if($event)<a href="{{ route('events.show', $event->routeIdentifier()) }}#planned-game-{{ $game->id }}">Перейти к мероприятию</a>@endif
+                            @if($event)<a href="{{ route('events.show', $event->routeIdentifier()) }}{{ $game->trashed() ? '' : '#planned-game-'.$game->id }}">Перейти к мероприятию</a>@endif
                             <p><strong>{{ app(\App\Modules\Event\Application\Services\GameInvitationConversation::class)->statusLabel($item->status->value) }}</strong></p>
                             @if($item->response_comment)<p>{{ $item->response_comment }}</p>@endif
                             @if($canRespond && $item->status->value === 'pending')
