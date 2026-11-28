@@ -14,6 +14,9 @@ use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Application\Services\PublicUserProfileService;
+use App\Modules\Notification\Application\Services\DirectMessageBlockService;
+use App\Modules\Notification\Application\Services\DirectMessageRecipientAccess;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Media\Domain\Models\Media;
@@ -218,6 +221,9 @@ final class TeamController extends Controller
         CurrentActorResolver $actors,
         TeamManagementAccess $access,
         PageSeoResolver $pageSeo,
+        PublicUserProfileService $profiles,
+        DirectMessageRecipientAccess $messages,
+        DirectMessageBlockService $blocks,
     ): Response {
         $item = Team::query()->whereRouteIdentifier($team)
             ->with([
@@ -265,6 +271,26 @@ final class TeamController extends Controller
                 ]];
             });
 
+        $viewer = $request->user()?->canonical();
+        // Keep roster counts/slots even if a member's personal profile is private.
+        // Never render names, avatars or message identifiers from raw memberships.
+        $publicMembers = $activeMemberships->mapWithKeys(function ($membership) use ($profiles, $messages, $blocks, $viewer): array {
+            $subject = $membership->user?->canonical();
+            if ($subject === null || ! $profiles->canPreview($subject, $viewer)) {
+                return [$membership->id => ['name' => 'Участник', 'url' => null, 'avatar_url' => null, 'avatar_restricted' => true, 'recipient_id' => null]];
+            }
+
+            $person = $profiles->preview($subject, $viewer);
+
+            return [$membership->id => [
+                'name' => $person['name'],
+                'url' => $person['url'],
+                'avatar_url' => $person['avatar_url'],
+                'avatar_restricted' => $person['avatar_restricted'],
+                'recipient_id' => $messages->canSend($subject, $viewer, $blocks) ? $subject->id : null,
+            ]];
+        });
+
         $sportLabels = $item->sportProfiles
             ->map(fn ($profile): string => $profile->sport_type->label())
             ->unique()
@@ -276,6 +302,7 @@ final class TeamController extends Controller
 
         return ThemeResolver::page('teams.show', [
             'team' => $item,
+            'publicMembers' => $publicMembers,
             'coaches' => $coaches,
             'managers' => $managers,
             'activeMemberships' => $activeMemberships,
@@ -309,7 +336,7 @@ final class TeamController extends Controller
                 $seoDescription,
                 route('teams.show', $item->routeIdentifier()),
             ),
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function edit(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): Response
