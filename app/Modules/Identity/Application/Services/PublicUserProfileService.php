@@ -116,6 +116,7 @@ final class PublicUserProfileService
                 ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url)
                 : null,
             'avatar_restricted' => ! $avatarAllowed,
+            'avatar_placeholder_url' => $this->placeholderUrl($subject, $viewer, $profileAllowed),
             'url' => $url,
             'roles' => $activeRoles
                 ->map(fn (UserParticipationRoleEnum $role): array => [
@@ -125,6 +126,14 @@ final class PublicUserProfileService
                 ->values()
                 ->all(),
         ];
+    }
+
+    private function placeholderUrl(User $subject, ?User $viewer, bool $profileAllowed): string
+    {
+        $female = $profileAllowed && $this->privacy->allows($subject, $viewer, Privacy::PROFILE_GENDER)
+            && $subject->profile?->gender === \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE;
+
+        return asset($female ? 'images/blank/avatar/avatar-female.png' : 'images/blank/avatar/avatar-male.png');
     }
 
     public function sections(User $user): Collection
@@ -172,6 +181,7 @@ final class PublicUserProfileService
             'name' => trim(($subject->profile?->first_name ?? '').' '.($subject->profile?->last_name ?? '')) ?: ($subject->nickname ?: $subject->username ?: 'Пользователь'),
             'avatar_url' => $avatarAllowed ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url) : null,
             'avatar_restricted' => ! $avatarAllowed,
+            'avatar_placeholder_url' => $this->placeholderUrl($subject, $viewer, $this->privacy->allows($subject, $viewer, Privacy::PROFILE)),
             'url' => $this->url($subject),
             'public_coach' => $publicCoach,
             'role_label' => $publicCoach ? 'Тренер' : ($subject->hasActiveRole('player') && $this->privacy->allows($subject, $viewer, Privacy::ROLE_PLAYER) ? 'Игрок' : 'Пользователь'),
