@@ -1200,6 +1200,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:60,1')->name('account.notifications.direct.access');
         Route::post('/notifications/users/{user}/messages', [DirectMessagesController::class, 'send'])
             ->middleware('throttle:direct-messages')->name('account.notifications.direct.send');
+        Route::get('/notifications/threads/game-invitation/{context}/state', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'state'])->whereNumber('context')->middleware('throttle:60,1')->name('account.notifications.threads.game-invitation.state');
+        Route::post('/notifications/threads/game-invitation/{context}/messages', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'message'])->whereNumber('context')->middleware('throttle:20,1')->name('account.notifications.threads.game-invitation.messages');
+        Route::post('/notifications/threads/game-invitation/{context}/admissions/{admission}/respond', [\App\Modules\Event\Presentation\Http\Controllers\GameInvitationThreadController::class, 'respond'])->whereNumber(['context', 'admission'])->middleware('throttle:20,1')->name('account.notifications.threads.game-invitation.respond');
         Route::get('/notifications/threads/profile/{changeRequest}', [ProfileRequestThreadController::class, 'show'])->name('account.notifications.threads.profile')->defaults('breadcrumb', 'Изменение данных');
         Route::get('/notifications/threads/profile/{changeRequest}/history', [ProfileRequestThreadController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.history');
         Route::patch('/notifications/threads/profile/{changeRequest}/read', [ProfileRequestThreadController::class, 'read'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.read');
