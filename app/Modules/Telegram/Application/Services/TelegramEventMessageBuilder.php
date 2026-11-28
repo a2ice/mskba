@@ -101,9 +101,9 @@ final class TelegramEventMessageBuilder
             $lines[] = '🛡 Ответственные: '.$this->escape($responsibles->join(', '));
         }
 
-        if ($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty()) {
+        if (($event->type !== EventTypeEnum::GAME || $event->games->contains('uses_event_planning', true)) && $event->games->isNotEmpty()) {
             $lines[] = '';
-            $lines[] = '🎮 <b>Мини-игры: '.$event->games->count().'</b>';
+            $lines[] = '🎮 <b>'.($event->games->contains('uses_event_planning', true) ? 'Игры: ' : 'Мини-игры: ').$event->games->count().'</b>';
             foreach ($event->games as $game) {
                 $sides = $game->sides->keyBy('slot');
                 $sideA = $sides->get('A');
@@ -240,13 +240,14 @@ final class TelegramEventMessageBuilder
             return null;
         }
         if ($event->relationLoaded('primaryGame')) {
-            return $event->primaryGame;
+            return $event->primaryGame?->uses_event_planning ? null : $event->primaryGame;
         }
         if ($event->relationLoaded('games')) {
-            return $event->games->firstWhere('id', (int) $event->primary_game_id);
+            $game = $event->games->firstWhere('id', (int) $event->primary_game_id);
+            return $game?->uses_event_planning ? null : $game;
         }
 
-        return $event->primaryGame()
+        return $event->primaryGame()->where('uses_event_planning', false)
             ->with(['sides', 'admissions.user', 'admissions.team', 'rosterEntries'])
             ->first();
     }
