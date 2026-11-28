@@ -130,6 +130,7 @@ final class StandaloneGameFormationService
             $actor,
             EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS,
         );
+        $this->assertStandaloneEditable($fresh->event, $fresh);
         $this->assertIndividualFormationOpen($fresh);
         $users = $this->acceptedIndividualUsers($fresh);
         $minimum = (int) $fresh->side_a_size + (int) $fresh->side_b_size;
@@ -191,6 +192,9 @@ final class StandaloneGameFormationService
                 throw new InvalidArgumentException('Одна команда не может занимать обе стороны игры.');
             }
 
+            if ($lockedGame->uses_event_planning && ((int) $lockedGame->planned_team_a_id !== $teamAId || (int) $lockedGame->planned_team_b_id !== $teamBId)) {
+                throw new InvalidArgumentException('Утвердите запланированные команды в указанном порядке.');
+            }
             $accepted = $lockedGame->admissions()
                 ->where('candidate_type', GameAdmissionCandidateTypeEnum::TEAM->value)
                 ->where('status', GameAdmissionStatusEnum::ACCEPTED->value)
@@ -264,7 +268,9 @@ final class StandaloneGameFormationService
                 throw new InvalidArgumentException('Стороны уже находятся в режиме формирования.');
             }
             $formerParticipantIds = $this->clearSides($lockedGame);
-            $this->markFormerRosterParticipantsLeft($event, $formerParticipantIds);
+            if (!$lockedGame->uses_event_planning) {
+                $this->markFormerRosterParticipantsLeft($event, $formerParticipantIds);
+            }
 
             return $lockedGame->fresh(['sides', 'rosterEntries', 'admissions']);
         }, 3);
@@ -312,6 +318,9 @@ final class StandaloneGameFormationService
             $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
             $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertStandaloneEditable($event, $lockedGame);
+            if ($lockedGame->uses_event_planning) {
+                throw new InvalidArgumentException('Используйте редактор запланированной игры.');
+            }
             $this->assertSideSizes($sideASize, $sideBSize);
             $this->assertRecruitmentFormat($lockedGame->recruitment_mode, $sideASize, $sideBSize);
 
@@ -367,8 +376,11 @@ final class StandaloneGameFormationService
 
     private function assertStandaloneEditable(Event $event, Game $game): void
     {
-        if ($event->type !== EventTypeEnum::GAME || (int) $event->primary_game_id !== (int) $game->id) {
+        if (!$game->uses_event_planning && ($event->type !== EventTypeEnum::GAME || (int) $event->primary_game_id !== (int) $game->id)) {
             throw new InvalidArgumentException('Управление формированием доступно только основной самостоятельной игре.');
+        }
+        if ($game->uses_event_planning && (!$game->hasSportConfiguration() || $game->event?->status?->value !== 'published')) {
+            throw new InvalidArgumentException('Сначала настройте игру и опубликуйте мероприятие.');
         }
         if ($game->status !== GameStatusEnum::SCHEDULED || $game->actual_started_at !== null) {
             throw new InvalidArgumentException('После фактического начала игры стороны и основные настройки изменять нельзя.');
