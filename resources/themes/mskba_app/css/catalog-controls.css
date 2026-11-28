@@ -155,7 +155,9 @@
 .app-catalog-tools__sort-row{display:flex;align-items:stretch;border-radius:8px;overflow:hidden}
 .app-catalog-tools__sort-row.is-selected{background:var(--surface-raised);color:var(--accent)}
 .app-catalog-tools__sort-menu .app-catalog-tools__sort-name{flex:1;min-width:0;border-radius:8px 0 0 8px}
-.app-catalog-tools__sort-menu .app-catalog-tools__sort-direction{justify-content:center;flex:0 0 38px;padding:8px;border-radius:0 8px 8px 0;border-left:1px solid var(--control-line)}
+.app-catalog-tools__sort-menu .app-catalog-tools__sort-direction{justify-content:center;flex:0 0 38px;padding:8px;border-radius:0 8px 8px 0;position:relative}
 .app-catalog-tools__sort-row.is-selected>a{color:var(--accent)}
 .app-catalog-tools__sort-direction svg{width:16px;height:16px;fill:currentColor;stroke:none;pointer-events:none}
 .app-catalog-tools__sort-row a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+.app-catalog-tools__sort-menu .app-catalog-tools__sort-direction::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:1px;background:rgba(0,0,0,.25);pointer-events:none}
