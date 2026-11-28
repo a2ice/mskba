@@ -470,7 +470,8 @@ final class EventFirstFunnelTest extends TestCase
             ->where('user_id', $ownerA->id)
             ->where('payload->game_admission_id', $first->id)->sole();
         $this->assertSame($game->id, $notice->payload['game_id']);
-        $this->assertStringContainsString('#planned-game-'.$game->id, $notice->action_url);
+        $this->assertSame(route('account.notifications.threads.game-invitation', $context), $notice->action_url);
+        $this->assertSame($context->id, $notice->payload['game_invitation_thread_id']);
         $this->assertTrue($notice->isNew());
         $this->postJson($invite, ['team_id' => $a->id])->assertUnprocessable();
         $respond = route('events.games.recruitment.respond', [...$params, $first->id]);
@@ -490,6 +491,14 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertDatabaseCount('game_invitation_threads', 1);
         $this->assertSame($threadId, $context->thread()->sole()->id);
         $this->assertSame(1, $context->thread()->sole()->messages()->count());
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $url = route('account.notifications.threads.game-invitation', $context);
+        $this->actingAs($ownerB)->get($url)->assertForbidden();
+        $this->actingAs($ownerA)->get(route('account.notifications'))->assertOk()->assertSee($url, false);
+        $this->get($url)->assertOk()->assertSee('Повторное приглашение')->assertSee('Пришли ещё раз приглашение')
+            ->assertSee('Приглашение отклонено')->assertSee('Отказаться')->assertSee('Принять');
         $this->actingAs($ownerA)->postJson($respond, ['decision' => 'accepted'])->assertUnprocessable();
         $this->postJson(route('account.notifications.threads.game-invitation.respond', [$context, $second->id]), ['decision' => 'accepted'])->assertOk();
         $this->getJson($state)->assertOk()->assertJsonPath('invitations.0.status', 'declined')->assertJsonPath('invitations.1.status', 'accepted');
