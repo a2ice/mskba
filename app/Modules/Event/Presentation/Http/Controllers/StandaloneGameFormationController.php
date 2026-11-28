@@ -179,7 +179,7 @@ final class StandaloneGameFormationController extends Controller
     {
         $eventModel = Event::query()->whereRouteIdentifier($event)->firstOrFail();
         $gameModel = Game::query()->whereKey($game)->whereBelongsTo($eventModel)->firstOrFail();
-        abort_if($eventModel->type !== EventTypeEnum::GAME || (int) $eventModel->primary_game_id !== $gameModel->id, 404);
+        abort_if(!$gameModel->uses_event_planning && ($eventModel->type !== EventTypeEnum::GAME || (int) $eventModel->primary_game_id !== $gameModel->id), 404);
 
         return $gameModel;
     }
