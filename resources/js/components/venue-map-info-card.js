@@ -121,6 +121,12 @@ export function renderVenueMapInfoCard(venue, options = {}) {
     } else {
         media.append(options.mediaPending ? mediaLoadingLayer() : placeholder());
     }
+    const ratingBadge = document.createElement('span');
+    ratingBadge.className = 'venue-catalog-card-rating';
+    const rating = venue.rating == null || venue.rating === '' ? null : Number(venue.rating);
+    ratingBadge.textContent = Number.isFinite(rating) ? rating.toFixed(1) : '—';
+    ratingBadge.title = Number.isFinite(rating) ? 'Рейтинг площадки: ' + ratingBadge.textContent + ' из 5' : 'Пока нет оценок игроков';
+    media.append(ratingBadge);
     if (options.showBadge !== false) {
         const badge = document.createElement('span');
         badge.className = 'mskba-venues-map__card-label';
@@ -194,6 +200,7 @@ export function attachSharedHomeVenueCards(root = document) {
             address: original.querySelector('.mskba-venues-map__card-address')?.textContent || '',
             image_url: media?.src || '',
             url: action?.href || '',
+            rating: original.querySelector('[data-venue-card-rating]')?.dataset.venueCardRating ?? null,
             display_tags: [...original.querySelectorAll('.mskba-venues-map__card-tag')]
                 .map(tag => tag.textContent).filter(Boolean),
         };
@@ -207,6 +214,26 @@ export function attachSharedHomeVenueCards(root = document) {
                 showBadge: true,
                 onClose: () => entry.close?.click(),
             });
+            // The currently published Builder script may not carry rating yet.
+            // Reuse the public preview endpoint rather than republishing its JS.
+            if (normalized.rating === null && normalized.url) {
+                try {
+                    const url = new URL(normalized.url, location.origin);
+                    const route = url.pathname.match(/^\/venues\/([^/]+)(?:\/courts\/[^/]+)?\/?$/);
+                    if (url.origin === location.origin && route) {
+                        fetch('/venues/' + route[1] + '/preview', {credentials:'same-origin', headers:{Accept:'application/json'}})
+                            .then(response => response.ok ? response.json() : null)
+                            .then(data => {
+                                const score = data?.venue?.rating;
+                                const badge = entry.node.querySelector('.venue-catalog-card-rating');
+                                if (badge && score != null && Number.isFinite(Number(score))) {
+                                    badge.textContent = Number(score).toFixed(1);
+                                    badge.title = 'Рейтинг площадки: ' + badge.textContent + ' из 5';
+                                }
+                            }).catch(() => {});
+                    }
+                } catch {}
+            }
             cachedCards.set(cacheKey, entry);
             if (cachedCards.size > 30) cachedCards.delete(cachedCards.keys().next().value);
         }
