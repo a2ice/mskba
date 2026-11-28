@@ -103,7 +103,7 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 12-12-3-3L5 16l-1 4zM14 7l3 3"/></svg>
                     </button>
                 @endif
-                @if($scheduled && $canDeleteGame && !$child->actions_exists && $child->playerStatistics->isEmpty())
+                @if($scheduled && $canDeleteGame && !$child->actions_exists && $child->playerStatistics->isEmpty() && !$child->sides->contains(fn ($side) => $side->score > 0))
                     <button class="icon-button event-game-plan__icon event-game-plan__remove" type="button" aria-label="Удалить игру" title="Удалить игру" data-planned-game-delete>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
                     </button>
