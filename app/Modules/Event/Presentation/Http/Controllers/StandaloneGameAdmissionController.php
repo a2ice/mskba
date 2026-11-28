@@ -98,7 +98,8 @@ final class StandaloneGameAdmissionController extends Controller
             'relevantAdmissions' => $relevantAdmissions,
             'assessmentSources' => TournamentAssessmentSourceEnum::cases(),
             'eventPlayers' => $management && $canManage && $item->uses_event_planning
-                ? $item->event->participants()->occupiesPlayerSpot()->with('user.profile')->get()
+                ? $item->event->participants()->occupiesPlayerSpot()
+                    ->where('confirmation_version', $item->event->participation_confirmation_version)->with('user.profile')->get()
                     ->pluck('user')->filter()->map(fn (User $user) => $user->canonical())
                     ->filter(fn (User $user) => !$user->isBlocked() && !$user->trashed())->unique('id')->values()
                 : collect(),
