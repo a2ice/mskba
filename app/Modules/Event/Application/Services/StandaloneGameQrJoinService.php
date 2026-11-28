@@ -35,8 +35,9 @@ final class StandaloneGameQrJoinService
 
     public function isAvailable(Event $event, Game $game): bool
     {
-        if ($event->type !== EventTypeEnum::GAME
-            || (int) $event->primary_game_id !== (int) $game->id
+        if ((!$game->uses_event_planning && ($event->type !== EventTypeEnum::GAME
+            || (int) $event->primary_game_id !== (int) $game->id))
+            || !$game->hasSportConfiguration()
             || $event->status !== EventStatusEnum::PUBLISHED
             || $event->visibility !== EventVisibilityEnum::PUBLIC
             || $game->recruitment_mode !== GameRecruitmentModeEnum::INDIVIDUAL_DRAFT
@@ -63,6 +64,13 @@ final class StandaloneGameQrJoinService
             $user = $actor->user?->canonical()
                 ?? throw new InvalidArgumentException('Для заявки нужен аккаунт пользователя.');
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($lockedGame->uses_event_planning && ($lockedUser->isBlocked() || $lockedUser->trashed())) {
+                throw new InvalidArgumentException('Этот пользователь не может участвовать в игре.');
+            }
+            if ($lockedGame->uses_event_planning && $lockedGame->rosterEntries()
+                ->whereIn('user_id', $lockedUser->identityIds())->where('status', '!=', GameRosterStatusEnum::EXCLUDED->value)->exists()) {
+                throw new InvalidArgumentException('Вы уже входите в состав этой игры.');
+            }
 
             $duplicate = $lockedGame->admissions()
                 ->where('candidate_type', GameAdmissionCandidateTypeEnum::USER->value)
@@ -76,16 +84,22 @@ final class StandaloneGameQrJoinService
                 throw new InvalidArgumentException('У вас уже есть активная заявка или приглашение на эту игру.');
             }
 
-            return $lockedGame->admissions()->create([
+            $created = $lockedGame->admissions()->create([
                 'candidate_type' => GameAdmissionCandidateTypeEnum::USER,
                 'user_id' => $lockedUser->id,
                 'direction' => GameAdmissionDirectionEnum::APPLICATION,
                 'status' => GameAdmissionStatusEnum::PENDING,
                 'requested_by_actor_id' => $actor->id,
             ]);
+            if ($lockedGame->uses_event_planning) {
+                $this->notifyOrganizer($lockedGame, $created);
+            }
+            return $created;
         }, 3);
 
-        $this->notifyOrganizer($game, $admission);
+        if (!$game->uses_event_planning) {
+            $this->notifyOrganizer($game, $admission);
+        }
         event(new EventChanged($game->event_id));
 
         return $admission;
@@ -147,13 +161,16 @@ final class StandaloneGameQrJoinService
                 ?? throw new InvalidArgumentException('У заявки отсутствует пользователь.');
             $user = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
+            if ($lockedGame->uses_event_planning && ($user->isBlocked() || $user->trashed())) {
+                throw new InvalidArgumentException('Этот пользователь не может участвовать в игре.');
+            }
             if ($lockedGame->rosterEntries()->whereIn('user_id', $user->identityIds())->exists()) {
                 throw new InvalidArgumentException('Игрок уже находится в составе этой игры.');
             }
 
             $participant = $event->participants()->whereIn('user_id', $user->identityIds())->lockForUpdate()->first();
             if ($participant === null) {
-                $this->assertCapacity($event);
+                $this->assertCapacity($event, $lockedGame->uses_event_planning);
                 $participant = $event->participants()->create([
                     'user_id' => $user->id,
                     'role' => EventParticipantRoleEnum::PARTICIPANT,
@@ -162,11 +179,13 @@ final class StandaloneGameQrJoinService
                     'confirmation_version' => $event->participation_confirmation_version,
                 ]);
             } else {
-                if ($participant->status !== EventParticipantStatusEnum::CONFIRMED) {
+                if ($participant->status !== EventParticipantStatusEnum::CONFIRMED
+                    || ($lockedGame->uses_event_planning && (!$participant->hasPlayerRole() || $participant->confirmation_version !== $event->participation_confirmation_version))) {
                     $this->assertCapacity($event);
                 }
                 $participant->forceFill([
                     'user_id' => $user->id,
+                    ...($lockedGame->uses_event_planning ? ['participation_roles' => array_values(array_unique([...($participant->participation_roles ?? []), 'player']))] : []),
                     'status' => EventParticipantStatusEnum::CONFIRMED,
                     'left_at' => null,
                     'confirmation_version' => $event->participation_confirmation_version,
@@ -257,8 +276,11 @@ final class StandaloneGameQrJoinService
 
     private function assertDecisionOpen(Event $event, Game $game): void
     {
-        if ($event->type !== EventTypeEnum::GAME
-            || (int) $event->primary_game_id !== (int) $game->id
+        if ((!$game->uses_event_planning && ($event->type !== EventTypeEnum::GAME
+            || (int) $event->primary_game_id !== (int) $game->id))
+            || !$game->hasSportConfiguration()
+            || ($game->uses_event_planning && ($event->status !== EventStatusEnum::PUBLISHED || $event->visibility !== EventVisibilityEnum::PUBLIC
+                || ($game->status === GameStatusEnum::SCHEDULED && $event->ends_at?->isPast())))
             || $game->recruitment_mode !== GameRecruitmentModeEnum::INDIVIDUAL_DRAFT
             || $game->actual_ended_at !== null
             || ! in_array($game->status, [GameStatusEnum::SCHEDULED, GameStatusEnum::IN_PROGRESS], true)) {
@@ -274,15 +296,14 @@ final class StandaloneGameQrJoinService
         }
     }
 
-    private function assertCapacity(Event $event): void
+    private function assertCapacity(Event $event, bool $planned = false): void
     {
         if ($event->max_participants === null) {
             return;
         }
 
-        $confirmed = $event->participants()
-            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
-            ->count();
+        $confirmed = $planned ? app(EventIdentityParticipationService::class)->confirmedIdentityCount($event)
+            : $event->participants()->where('status', EventParticipantStatusEnum::CONFIRMED->value)->count();
         if ($confirmed >= $event->max_participants) {
             throw new InvalidArgumentException('Достигнут максимальный лимит участников мероприятия.');
         }
@@ -318,7 +339,7 @@ final class StandaloneGameQrJoinService
                 'event_id' => $event->id,
                 'game_admission_id' => $admission->id,
             ],
-        ));
+        ), $game->uses_event_planning);
     }
 
     private function notifyApplicant(Game $game, GameAdmission $admission, bool $accepted, ?string $slot = null): void
