@@ -67,12 +67,12 @@ final class GameAdmissionService
         if ($candidate instanceof User) {
             $this->notify($candidate->canonical()->id, $game, 'Приглашение на игру', 'Вас пригласили принять участие в игре.', $admission->id);
         } else {
-            foreach ($this->teamRepresentativeUserIds($candidate) as $userId) {
+            foreach ($this->teamRepresentativeUserIds($candidate, $game->uses_event_planning) as $userId) {
                 $this->notify(
                     $userId,
                     $game,
                     'Приглашение команды на игру',
-                    'Команду «'.$candidate->name.'» пригласили принять участие в игре.',
+                    'Команду «'.$candidate->name.'» пригласили принять участие в игре'.($game->uses_event_planning ? ' «'.$game->title.'»' : '').'.',
                     $admission->id,
                 );
             }
@@ -391,7 +391,7 @@ final class GameAdmissionService
     }
 
     /** @return Collection<int, int> */
-    private function teamRepresentativeUserIds(Team $team): Collection
+    private function teamRepresentativeUserIds(Team $team, bool $requireCurrentPermission = false): Collection
     {
         $creatorUserId = $team->createdByActor()->value('user_id');
         $delegates = ContractMembership::query()
@@ -412,6 +412,15 @@ final class GameAdmissionService
                 return $user === null ? (int) $id : (int) $user->canonical()->id;
             })
             ->unique()
+            ->when($requireCurrentPermission, fn (Collection $ids) => $ids->filter(function (int $id) use ($team): bool {
+                $user = User::query()->find($id);
+                if ($user === null) {
+                    return false;
+                }
+                $actor = (new Actor(['user_id' => $user->id]))->setRelation('user', $user);
+
+                return $this->teamAccess->allows($team, $actor, TeamPermissionEnum::MANAGE_GAME_PARTICIPATION);
+            }))
             ->values();
     }
 
@@ -426,7 +435,7 @@ final class GameAdmissionService
             type: UserNotificationTypeEnum::SYSTEM,
             title: $title,
             body: $body,
-            actionUrl: route('events.show', $event->routeIdentifier()),
+            actionUrl: route('events.show', $event->routeIdentifier()).($game->uses_event_planning ? '#planned-game-'.$game->id : ''),
             actionText: 'Открыть игру',
             payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment', ...($admissionId === null ? [] : ['game_admission_id' => $admissionId])],
         ));
