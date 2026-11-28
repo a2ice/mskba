@@ -35,6 +35,7 @@ Route::prefix('events/{event}/games/{game}/recruitment')
 
             Route::post('/formation/preview', [StandaloneGameFormationController::class, 'preview'])->name('formation.preview');
             Route::post('/formation/apply', [StandaloneGameFormationController::class, 'apply'])->name('formation.apply');
+            Route::post('/event-participants/confirm', [StandaloneGameFormationController::class, 'confirmEventParticipants'])->name('event-participants.confirm');
             Route::post('/teams/confirm', [StandaloneGameFormationController::class, 'confirmTeams'])->name('teams.confirm');
             Route::delete('/sides/confirmation', [StandaloneGameFormationController::class, 'unconfirm'])->name('unconfirm');
             Route::patch('/applications', [StandaloneGameFormationController::class, 'applications'])->name('applications');
