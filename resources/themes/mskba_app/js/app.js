@@ -55,6 +55,7 @@ import './venue-rental-search.js';
 import './venue-play-funnel.js';
 import './event-share.js';
 import './event-quick-create.js';
+import './event-planned-games.js';
 import '../../../js/event-social-wall.js';
 import './quick-event-venue-selector.js';
 import './venue-favorite-main.js';
