@@ -691,6 +691,61 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertSame(2, (int) $second->sides()->where('slot', 'A')->value('score'));
     }
 
+    public function test_planned_qr_late_join_and_withdrawal_are_scoped_to_one_game(): void
+    {
+        $organizer = $this->verifiedOrganizer();
+        $a = $this->verifiedOrganizer();
+        $b = $this->verifiedOrganizer();
+        $late = $this->verifiedOrganizer();
+        $input = [...$this->payload($this->venue(), [$this->slots()[0]]), 'type' => 'game', 'games' => [
+            ['title' => 'Первый матч', 'format' => 'streetball_1x1'],
+            ['title' => 'Второй матч', 'format' => 'streetball_1x1'],
+        ]];
+        $this->actingAs($organizer)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        [$first, $second] = $event->games()->orderBy('id')->get()->all();
+        foreach ([$a, $b] as $user) {
+            $event->participants()->create([
+                'user_id' => $user->id, 'role' => 'participant', 'status' => 'confirmed',
+                'participation_roles' => ['player'], 'joined_at' => now(),
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+        }
+        $firstParams = [$event->routeIdentifier(), $first->id];
+        $secondParams = [$event->routeIdentifier(), $second->id];
+        $selection = ['side_a_user_ids' => [$a->id], 'side_b_user_ids' => [$b->id]];
+        $this->postJson(route('events.games.recruitment.event-participants.confirm', $firstParams), $selection)->assertOk();
+        $this->postJson(route('events.games.recruitment.event-participants.confirm', $secondParams), $selection)->assertOk();
+        $this->postJson(route('events.games.start', $secondParams))->assertOk();
+        $join = route('events.games.recruitment.join', $secondParams);
+        $apply = route('events.games.recruitment.join.apply', $secondParams);
+        $withdraw = route('events.games.recruitment.participation.withdraw', $secondParams);
+
+        $this->actingAs($late)->get($join)->assertOk()->assertSee('Второй матч');
+        $this->postJson($apply)->assertOk();
+        $admission = $second->admissions()->sole();
+        $this->assertSame(0, $first->admissions()->count());
+        $this->postJson($apply)->assertUnprocessable();
+        $this->actingAs($organizer)->postJson(route('events.games.recruitment.late.accept', [...$firstParams, $admission->id]), ['side' => 'A'])->assertUnprocessable();
+        $this->postJson(route('events.games.recruitment.late.accept', [...$secondParams, $admission->id]), ['side' => 'A'])->assertOk();
+        $this->assertSame(3, $second->rosterEntries()->count());
+        $this->assertSame(2, $first->rosterEntries()->count());
+
+        $this->actingAs($a)->postJson($apply)->assertUnprocessable();
+        $this->get($join)->assertOk()->assertSee('Выйти из этой игры');
+        $this->deleteJson($withdraw)->assertOk();
+        $this->assertSame('excluded', $second->rosterEntries()->where('user_id', $a->id)->sole()->status->value);
+        $this->assertSame('selected', $first->rosterEntries()->where('user_id', $a->id)->sole()->status->value);
+        $this->assertSame('confirmed', $event->participants()->where('user_id', $a->id)->sole()->status->value);
+        $this->postJson($apply)->assertOk();
+        $again = $second->admissions()->where('user_id', $a->id)->sole();
+        $this->actingAs($organizer)->postJson(route('events.games.recruitment.late.accept', [...$secondParams, $again->id]), ['side' => 'B'])->assertUnprocessable();
+        $this->postJson(route('events.games.recruitment.late.accept', [...$secondParams, $again->id]), ['side' => 'A'])->assertOk();
+        $this->assertSame('selected', $second->rosterEntries()->where('user_id', $a->id)->sole()->status->value);
+        $this->assertSame(3, $second->rosterEntries()->count());
+        $this->assertSame(2, $first->rosterEntries()->count());
+    }
+
     public function test_duplicate_time_options_are_rejected(): void
     {
         $user = $this->verifiedOrganizer();
