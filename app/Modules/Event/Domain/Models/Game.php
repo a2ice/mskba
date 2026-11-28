@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'description',
     'status',
     'recruitment_mode',
+    'uses_event_planning',
     'planned_team_a_id',
     'planned_team_b_id',
     'accepts_applications',
@@ -195,6 +196,7 @@ class Game extends Model
     {
         return [
             'status' => GameStatusEnum::class,
+            'uses_event_planning' => 'boolean',
             'recruitment_mode' => GameRecruitmentModeEnum::class,
             'accepts_applications' => 'boolean',
             'sides_confirmed_at' => 'immutable_datetime',
