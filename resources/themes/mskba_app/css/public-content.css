@@ -88,3 +88,24 @@
 .app-news-detail .app-content-page__article > .button{justify-self:start;max-width:100%;width:auto}
 .app-news-detail .app-content-page__cover{max-height:none;height:auto;object-fit:contain}
 @media(max-width:850px){.app-news-detail__main{gap:16px}.app-news-detail .app-category__mobile-filters{margin-bottom:0}}
+
+/* Editorial engagement: only news uses the compact heart and counters. */
+.app-news-card-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:auto;max-width:100%}
+.app-news-engagement{display:flex;align-items:center;flex-wrap:wrap;gap:14px;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.app-news-engagement__item{display:inline-flex;align-items:center;gap:5px;color:inherit;white-space:nowrap;line-height:1.5}
+.app-news-engagement__item svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+button.app-news-engagement__item{border:0;background:transparent;padding:4px 0;font:inherit;cursor:pointer}
+a.app-news-engagement__item:hover,button.app-news-engagement__item:hover{color:var(--accent)}
+.app-news-engagement__item[aria-pressed=true]{color:var(--accent)}
+.app-news-engagement__item[aria-pressed=true] svg{fill:currentColor}
+.app-news-engagement__item:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.app-news-comments{min-width:0;padding:clamp(16px,2.4vw,30px);display:grid;gap:14px;scroll-margin-top:calc(var(--app-sticky-offset,136px) + 15px)}
+.app-news-comments h2{font-size:22px}
+.app-news-comments [hidden],.app-news-comment-dialog [hidden]{display:none!important}
+.app-news-comments .app-venue-reviews__scroll{max-height:360px}
+.app-news-comments .app-venue-reviews__actions{align-items:center}
+.app-news-comment-dialog textarea{width:100%;resize:vertical;min-height:110px}
+.app-news-comment-dialog .field-group{width:100%;text-align:left}
+.app-news-comment-dialog .field-group label{display:block;margin-bottom:8px}
+.app-news-comment-date{font-size:12px;color:var(--muted)}
+@media(max-width:480px){.app-news-card-actions{gap:7px}.app-news-engagement{gap:10px;font-size:12px}.app-news-engagement__item svg{width:16px;height:16px}}

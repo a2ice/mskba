@@ -51,6 +51,7 @@
         <header class="app-content-page__article-heading">
             <h1 id="feed-article-heading">{{ $contentItem->title }}</h1>
             @include('theme::pages.news.partials.metadata')
+            @include('theme::pages.news.partials.engagement', ['stats' => $engagementSummary, 'compact' => false])
             @if($contentItem->short_description)<p class="app-content-page__lead">{{ $contentItem->short_description }}</p>@endif
         </header>
         @if($cover)
@@ -61,6 +62,7 @@
             <a class="button primary" href="{{ $contentItem->destinationUrl() }}">Перейти</a>
         @endif
             </article>
+            @include('theme::pages.news.partials.comments')
         </div>
     </div>
 </section>

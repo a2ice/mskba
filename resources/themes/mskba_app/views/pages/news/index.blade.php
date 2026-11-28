@@ -47,7 +47,10 @@
                 <h2><a href="{{ $url }}">{{ $contentItem->title }}</a></h2>
                 @include('theme::pages.news.partials.metadata')
                 @if($contentItem->short_description)<p class="app-category__description">{{ $contentItem->short_description }}</p>@endif
-                <a class="button secondary app-category__details" href="{{ $url }}">Подробнее</a>
+                <div class="app-news-card-actions">
+                    <a class="button secondary" href="{{ $url }}">Подробнее</a>
+                    @include('theme::pages.news.partials.engagement', ['stats' => $engagementSummaries[$contentItem->id], 'compact' => true])
+                </div>
             </div>
         </article>
     @empty
