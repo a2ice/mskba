@@ -9,6 +9,7 @@
 @endphp
 
 <article class="catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}" data-venue-id="{{ $venue->id }}">
+    @include('venues.partials.catalog-rating', ['rating' => $venue->rating])
     <button type="button" class="mskba-favorite-heart mskba-favorite-heart--card"
         data-favorite-venue="{{ $venue->id }}"
         aria-label="Добавить в избранное" title="Добавить в избранное"

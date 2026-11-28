@@ -46,6 +46,7 @@ final class PublicVenueResource extends JsonResource
 
         return [
             'id' => (int) $venue->id,
+            'rating' => $venue->published_reviews_avg_rating === null ? null : round((float) $venue->published_reviews_avg_rating, 1),
             'name' => $venue->name,
             'alias' => $venue->alias,
             'type' => $venue->type->value,

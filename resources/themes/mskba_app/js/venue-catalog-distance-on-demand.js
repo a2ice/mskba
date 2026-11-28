@@ -2,16 +2,18 @@ import { getCurrentCoordinates } from '../../mskba_dark/js/features/current-loca
 
 document.addEventListener('DOMContentLoaded', () => {
     const settings = document.querySelector('[data-venue-distance-prompt]');
-    const option = document.querySelector('[data-venue-distance-option]');
+    const options = [...document.querySelectorAll('[data-venue-distance-option]')];
     const picker = document.querySelector('[data-nearby-filter]');
     const status = document.querySelector('[data-venue-distance-error]');
-    if (!settings || !option || !picker || !status) return;
+    if (!settings || !options.length || !picker || !status) return;
     let busy = false;
+    let option = null;
 
     function finish() {
         busy = false;
         option.removeAttribute('aria-disabled');
         option.removeAttribute('aria-busy');
+        option = null;
     }
 
     async function apply(point) {
@@ -35,10 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    option.addEventListener('click', async event => {
+    for (const link of options) link.addEventListener('click', async event => {
         event.preventDefault();
         if (busy) return;
         busy = true;
+        option = link;
         option.setAttribute('aria-disabled', 'true');
         option.setAttribute('aria-busy', 'true');
         status.hidden = true;
@@ -59,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             picker.dispatchEvent(new CustomEvent('mskba:venue-distance-select-point', {
                 detail: {
                     select: selected => void apply(selected),
-                    cancel: () => { finish(); option.focus({ preventScroll: true }); },
+                    cancel: () => { finish(); link.focus({ preventScroll: true }); },
                 },
             }));
             return;

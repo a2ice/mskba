@@ -7,6 +7,7 @@
     $courtCount = $court !== null || !empty($cardCourtName) ? 0 : $venue->courtCount();
 @endphp
 <article class="app-venues-catalog__card panel app-venue-card" data-venue-id="{{ $venue->id }}">
+    @include('venues.partials.catalog-rating', ['rating' => $venue->rating])
     <a class="app-venues-catalog__photo" href="{{ $url }}">
         <img src="{{ ($court['image_url'] ?? $venue->imageUrl) ?: asset('images/venue-placeholder.png') }}" alt="Площадка {{ $venue->name }}" loading="lazy">
     </a>

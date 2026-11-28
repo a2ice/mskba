@@ -56,6 +56,7 @@ final class HomepageVenueMapController extends Controller
 
             return [
                 'id' => $public['id'],
+                'rating' => $public['rating'],
                 'name' => $public['name'],
                 'address' => $public['address'],
                 'url' => $public['url'],

@@ -91,8 +91,8 @@ final class ListVenuesHandler
         })
             ->with('courts.media')
             ->when(
-                ($filters['sort'] ?? null) === 'new',
-                fn ($query) => $query->orderByDesc('created_at')->orderByDesc('id'),
+                in_array($filters['sort'] ?? null, ['new', 'old'], true),
+                fn ($query) => $query->orderBy('created_at', ($filters['sort'] ?? null) === 'old' ? 'asc' : 'desc')->orderBy('id', ($filters['sort'] ?? null) === 'old' ? 'asc' : 'desc'),
                 function ($query) use ($filters): void {
                     $direction = ($filters['sort'] ?? null) === 'name_desc' ? 'desc' : 'asc';
                     $query->orderBy('name', $direction)->orderBy('id');
@@ -121,11 +121,32 @@ final class ListVenuesHandler
 
         // Apply distance to the complete eligible catalogue before any pagination.
         // Missing coordinates remain visible, after every geocoded venue.
-        if (($filters['sort'] ?? null) === 'distance' && $distanceOrigin !== null) {
-            $venues = $venues->sortBy(fn (Venue $venue) =>
+        $sort = $filters['sort'] ?? null;
+        if (in_array($sort, ['rating_asc', 'rating_desc'], true)) {
+            $venues = $venues->sort(function (Venue $a, Venue $b) use ($sort): int {
+                $left = $a->published_reviews_avg_rating;
+                $right = $b->published_reviews_avg_rating;
+                if ($left === null || $right === null) {
+                    return ($left === null) <=> ($right === null);
+                }
+
+                return (round((float) $left, 1) <=> round((float) $right, 1)) * ($sort === 'rating_desc' ? -1 : 1);
+            })->values();
+        }
+        if (in_array($sort, ['distance', 'distance_desc'], true) && $distanceOrigin !== null) {
+            $distances = $venues->mapWithKeys(fn (Venue $venue) => [$venue->id =>
                 $this->proximity->distanceToCoordinates(
                     $venue, $distanceOrigin['latitude'], $distanceOrigin['longitude'],
-                ) ?? INF)->values();
+                )]);
+            $venues = $venues->sort(function (Venue $a, Venue $b) use ($distances, $sort): int {
+                $left = $distances->get($a->id);
+                $right = $distances->get($b->id);
+                if ($left === null || $right === null) {
+                    return ($left === null) <=> ($right === null);
+                }
+
+                return ($left <=> $right) * ($sort === 'distance_desc' ? -1 : 1);
+            })->values();
         }
 
         $policies = VenueBookingPolicy::query()
@@ -195,6 +216,7 @@ final class ListVenuesHandler
 
                 return new VenueListItemDTO(
                     id: $venue->id,
+                    rating: $venue->published_reviews_avg_rating === null ? null : round((float) $venue->published_reviews_avg_rating, 1),
                     name: $venue->name,
                     alias: $venue->alias,
                     type: $venue->type->label(),

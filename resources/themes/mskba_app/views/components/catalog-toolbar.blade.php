@@ -21,6 +21,30 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 4-4 4 4M7 6v12m14-4-4 4-4-4m4 4V6"/></svg>
             </summary>
             <div class="app-catalog-tools__sort-menu" role="group" aria-label="Порядок сортировки">
+                @if(!empty($sortGroups))
+                    @foreach($sortGroups as $group)
+                        @php
+                            $activeValue = ($sortValue ?? '') ?: 'name_asc';
+                            $selected = in_array($activeValue, [$group['asc'], $group['desc']], true);
+                            $direction = $selected ? ($activeValue === $group['asc'] ? 'asc' : 'desc') : $group['default'];
+                            $opposite = $direction === 'asc' ? 'desc' : 'asc';
+                            $groupUrl = fn ($value) => $baseUrl.'?'.http_build_query(array_merge($sortQuery, ['sort' => $value]));
+                        @endphp
+                        <div @class(['app-catalog-tools__sort-row', 'is-selected' => $selected])
+                            data-venue-sort-row data-sort-asc="{{ $group['asc'] }}" data-sort-desc="{{ $group['desc'] }}"
+                            data-sort-asc-hint="{{ $group['ascHint'] }}" data-sort-desc-hint="{{ $group['descHint'] }}"
+                            data-sort-direction="{{ $direction }}" data-sort-selected="{{ $selected ? '1' : '0' }}">
+                            <a class="app-catalog-tools__sort-name" data-venue-sort-name href="{{ $groupUrl($group[$direction]) }}"
+                                @if($selected) aria-current="true" @endif
+                                @if(!empty($group['distance'])) data-venue-distance-option @endif>{{ $group['label'] }}</a>
+                            <a class="app-catalog-tools__sort-direction" data-venue-sort-direction href="{{ $groupUrl($group[$opposite]) }}"
+                                title="{{ $group[$opposite.'Hint'] }}" aria-label="{{ $group['label'] }}: {{ $group[$opposite.'Hint'] }}"
+                                @if(!empty($group['distance'])) data-venue-distance-option @endif>
+                                <svg viewBox="0 0 16 16" aria-hidden="true"><path data-sort-triangle d="M4 5h8l-4 6z" @if($direction === 'asc') transform="rotate(180 8 8)" @endif/></svg>
+                            </a>
+                        </div>
+                    @endforeach
+                @else
                 @foreach($sortChoices as $value => $caption)
                     @php
                         $query = $sortQuery;
@@ -36,6 +60,7 @@
                         @if(($sortValue ?? '') === $value)<span aria-hidden="true">✓</span>@endif
                     </a>
                 @endforeach
+                @endif
             </div>
         </details>
     @endif

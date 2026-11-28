@@ -73,6 +73,7 @@
                     'enableSorting' => $categoryEnableSorting ?? false,
                     'sortValue' => $categorySortValue ?? '',
                     'sortChoices' => $categorySortChoices ?? null,
+                    'sortGroups' => $categorySortGroups ?? null,
                 ])
                 @yield('category-toolbar-extra')
             </div>

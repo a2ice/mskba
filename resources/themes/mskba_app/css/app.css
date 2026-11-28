@@ -40,6 +40,7 @@
 @import './venue-catalog.css';
 @import '../../../css/venue-catalog-editorial.css';
 @import '../../../css/venue-catalog-card.css';
+@import '../../../css/venue-card-rating.css';
 @import '../../mskba_dark/css/image-upload.css';
 @import '../../../css/venue-visit-schedule-state.css';
 @import './shop.css';

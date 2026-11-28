@@ -13,6 +13,7 @@
 @import './venue-selector';
 @import './venue-pin.css';
 @import '../../../css/venue-map-info-card.css';
+@import '../../../css/venue-card-rating.css';
 @import './form-controls';
 @import './creation-guide';
 @import './catalog-card';

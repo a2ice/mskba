@@ -3,7 +3,7 @@
     data-auto-prompt="0"
     data-location-available="{{ $venueDistanceAvailable ? '1' : '0' }}"
     data-prompt-answered="{{ $venueDistanceAnswered ? '1' : '0' }}"
-    data-distance-selected="{{ ($filters['sort'] ?? '') === 'distance' ? '1' : '0' }}"
+    data-distance-selected="{{ in_array($filters['sort'] ?? '', ['distance', 'distance_desc'], true) ? '1' : '0' }}"
     aria-labelledby="venue-distance-prompt-title">
     <header class="mskba-modal__header venue-nearby-dialog__header">
         <h2 id="venue-distance-prompt-title">Отсортировать площадки в порядке удаленности от меня?</h2>

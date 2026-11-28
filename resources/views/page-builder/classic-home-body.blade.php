@@ -36,6 +36,7 @@
     };
 
     $homeVenues = \App\Modules\Venue\Domain\Models\Venue::query()
+        ->withAvg(['reviews as published_reviews_avg_rating' => fn ($query) => $query->where('is_published', true)], 'rating')
         ->where('status', \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED->value)
         ->where('operational_status', \App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::ACTIVE->value)
         ->with(['location.address', 'media'])
@@ -188,7 +189,7 @@
                             ? 'есть бесплатные и платные залы'
                             : ($hasFreeCourt ? 'бесплатно' : ($hasPaidCourt ? 'аренда' : 'условия уточняются'));
                     @endphp
-                    <a class="home-venue-card" href="{{ route('venues.show', $venue->routeIdentifier()) }}"><img src="{{ $venue->media->sortByDesc('is_featured')->first()?->publicUrl() ?? asset('images/venue-placeholder.png') }}" alt="{{ $venue->name }}"><span class="home-venue-card__shade"></span><span class="home-venue-card__body"><small>{{ $venue->type->label() }} · {{ $courtAccessLabel }}</small><strong>{{ $venue->name }}</strong>@if($venueAddress)<em><i class="ti ti-map-pin"></i>{{ \Illuminate\Support\Str::limit($venueAddress, 64) }}</em>@endif</span><i class="ti ti-arrow-up-right home-card-arrow"></i></a>
+                    <a class="home-venue-card" href="{{ route('venues.show', $venue->routeIdentifier()) }}"><img src="{{ $venue->media->sortByDesc('is_featured')->first()?->publicUrl() ?? asset('images/venue-placeholder.png') }}" alt="{{ $venue->name }}"><span class="home-venue-card__shade"></span>@include('venues.partials.catalog-rating', ['rating' => $venue->published_reviews_avg_rating])<span class="home-venue-card__body"><small>{{ $venue->type->label() }} · {{ $courtAccessLabel }}</small><strong>{{ $venue->name }}</strong>@if($venueAddress)<em><i class="ti ti-map-pin"></i>{{ \Illuminate\Support\Str::limit($venueAddress, 64) }}</em>@endif</span><i class="ti ti-arrow-up-right home-card-arrow"></i></a>
                 @empty
                     <div class="home-empty-card"><i class="ti ti-map-pin"></i><strong>Каталог площадок растёт</strong><p>Добавляй знакомые залы и корты.</p></div>
                 @endforelse

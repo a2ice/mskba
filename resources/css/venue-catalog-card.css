@@ -37,3 +37,4 @@
 .venue-catalog-card-description{display:block;margin:0;color:var(--muted,#b7bcb5);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
 .venue-catalog-card-icons__item:focus-visible,.venue-catalog-address:focus-visible{outline:2px solid var(--accent,#ff7a1a);outline-offset:2px;border-radius:4px}
 @media(max-width:520px){.venue-catalog-item--list .venue-catalog-address{font-size:11px}.venue-catalog-item--list .venue-catalog-metro,.venue-catalog-item--list .venue-catalog-card-description{font-size:11px}}
+

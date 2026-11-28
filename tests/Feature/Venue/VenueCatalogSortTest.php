@@ -40,7 +40,9 @@ final class VenueCatalogSortTest extends TestCase
         $ascending = $this->get('/venues?sort=name_asc')
             ->assertOk()
             ->assertSee('app-catalog-tools__sort-menu')
-            ->assertSee('По названию (А–Я)')
+            ->assertSee('Название')
+            ->assertSee('Рейтинг')
+            ->assertSee('По убыванию')
             ->assertSee('name="sort"', false)
             ->assertSee('value="name_asc"', false);
         $this->assertStringNotContainsString('SortVenue Zeta', $ascending->getContent());
@@ -59,6 +61,8 @@ final class VenueCatalogSortTest extends TestCase
             ->assertJsonPath('total', 6);
         $this->assertStringContainsString('SortVenue Alpha', $secondPage->json('html'));
         $this->assertStringNotContainsString('SortVenue Zeta', $secondPage->json('html'));
+
+        $this->get('/venues?sort=old')->assertOk()->assertSeeInOrder(['SortVenue Alpha', 'SortVenue Gamma', 'SortVenue Beta', 'SortVenue Zeta']);
 
         $newest = $this->get('/venues?sort=new')
             ->assertOk()->assertSee('SortVenue Epsilon')
@@ -94,6 +98,9 @@ final class VenueCatalogSortTest extends TestCase
             ->assertOk()->assertJsonPath('total', 6)->assertJsonPath('has_more', false)
             ->assertSeeInOrder(['DistanceVenue Far', 'DistanceVenue Unknown']);
 
+        $this->get('/venues?sort=distance_desc')->assertOk()->assertSeeInOrder(['DistanceVenue Far', 'DistanceVenue Mid', 'DistanceVenue Near', 'DistanceVenue Second'])->assertDontSee('DistanceVenue Unknown');
+        $this->getJson('/venues?sort=distance_desc&page=2&fragment=items')->assertOk()->assertSeeInOrder(['DistanceVenue Closest', 'DistanceVenue Unknown']);
+
         $this->postJson(route('venues.distance-location'), ['action' => 'answer'])
             ->assertOk()->assertJson(['answered' => true]);
         $this->postJson(route('venues.distance-location'), ['action' => 'forget'])
@@ -120,7 +127,7 @@ final class VenueCatalogSortTest extends TestCase
     {
         $this->get('/venues?sort=new')->assertOk()
             ->assertSee('data-venue-distance-option', false)
-            ->assertSee('По удаленности')
+            ->assertSee('Удалённость')
             ->assertDontSee('data-venue-distance-template', false)
             ->assertSee('data-auto-prompt="0"', false);
 
@@ -141,6 +148,27 @@ final class VenueCatalogSortTest extends TestCase
             'action' => 'locate', 'latitude' => 55.7, 'longitude' => 38.1,
         ])->assertOk();
         $this->get('/venues?sort=distance')->assertOk()->assertSeeInOrder(['ReplaceOrigin East', 'ReplaceOrigin West']);
+    }
+
+    public function test_published_rating_and_both_directions_precede_pagination(): void
+    {
+        $scores = ['Alpha' => [1], 'Beta' => [2, 3], 'Gamma' => [3], 'Delta' => [4], 'Epsilon' => [5], 'Unknown' => []];
+        foreach ($scores as $name => $ratings) {
+            $venue = Venue::factory()->create(['name' => 'RatedVenue '.$name, 'status' => VenueStatusEnum::CONFIRMED]);
+            foreach ($ratings as $rating) {
+                \App\Modules\Venue\Domain\Models\VenueReview::factory()->for($venue)->create(['rating' => $rating, 'is_published' => true]);
+            }
+            \App\Modules\Venue\Domain\Models\VenueReview::factory()->for($venue)->create(['rating' => 5, 'is_published' => false, 'published_at' => null]);
+        }
+        $this->get('/venues?sort=rating_asc')->assertOk()
+            ->assertSeeInOrder(['RatedVenue Alpha', 'RatedVenue Beta', 'RatedVenue Gamma', 'RatedVenue Delta'])
+            ->assertSee('2.5')->assertSee('data-venue-card-rating', false)->assertDontSee('RatedVenue Unknown');
+        $this->get('/venues?sort=rating_desc')->assertOk()
+            ->assertSeeInOrder(['RatedVenue Epsilon', 'RatedVenue Delta', 'RatedVenue Gamma', 'RatedVenue Beta'])
+            ->assertDontSee('RatedVenue Unknown');
+        $this->getJson('/venues?sort=rating_desc&page=2&fragment=items')->assertOk()
+            ->assertJsonPath('total', 6)->assertJsonPath('has_more', false)
+            ->assertSeeInOrder(['RatedVenue Alpha', 'RatedVenue Unknown']);
     }
 
     public function test_unknown_sort_is_rejected_in_json_requests(): void
