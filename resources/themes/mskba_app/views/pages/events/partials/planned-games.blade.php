@@ -72,6 +72,9 @@
                                     <div class="event-game-plan__details">
                                         <strong>{{ $team->name }}</strong>
                                         <span class="event-game-editor__hint">{{ $label }}</span>
+                                        @if($canInviteGame && ($discussion = $child->invitationThreads->firstWhere('team_id', $team->id)))
+                                            <a class="event-game-plan__add" href="{{ route('account.notifications.threads.game-invitation', $discussion) }}">Обсуждение</a>
+                                        @endif
                                         @if($canSend)
                                             @if($pendingApplication)
                                                 <button type="button" class="event-game-plan__add" data-planned-invite-action data-method="POST" data-url="{{ route('events.games.recruitment.respond', [$event->routeIdentifier(), $child->id, $latest->id]) }}" data-payload='{"decision":"accepted"}'>Принять заявку</button>
