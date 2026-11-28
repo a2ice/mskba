@@ -67,6 +67,7 @@
                     'baseUrl' => $categoryBaseUrl,
                     'viewQuery' => $categoryViewQuery,
                     'currentView' => $categoryView,
+                    'defaultView' => $categoryDefaultView ?? 'cards',
                     'enableMapView' => $categoryHasMap ?? false,
                     'resetUrl' => $categoryResetUrl,
                     'showReset' => !($categoryCompactToolbar ?? false),

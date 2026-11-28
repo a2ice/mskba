@@ -10,10 +10,11 @@
     $categoryDescription = 'Материалы о баскетболе, площадках и жизни сообщества MSKBA.';
     $categoryRootId = 'news-catalog';
     $categorySidebarLabel = 'Навигация и фильтры новостей';
-    $categoryView = request('view') === 'list' ? 'list' : 'cards';
+    $categoryDefaultView = 'list';
+    $categoryView = request('view') === 'cards' ? 'cards' : 'list';
     $categoryBaseUrl = route('news.index');
     $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
-    $categoryResetUrl = route('news.index', array_filter(['type' => ($filters['type'] ?? '') === 'system_update' ? 'system_update' : null, 'view' => $categoryView === 'list' ? 'list' : null]));
+    $categoryResetUrl = route('news.index', array_filter(['type' => ($filters['type'] ?? '') === 'system_update' ? 'system_update' : null, 'view' => $categoryView === 'cards' ? 'cards' : null]));
     $categoryToolbarCount = 'Публикаций: '.$contentItems->total();
     $categoryCompactToolbar = true;
     $categoryToolbarSearch = ['form' => 'news-category-filter-desktop', 'name' => 'q', 'value' => $filters['q'] ?? '', 'placeholder' => 'Название или описание', 'label' => 'Поиск публикаций', 'maxlength' => 100];
@@ -23,35 +24,11 @@
 @extends('theme::layouts.category')
 
 @section('category-sidebar')
-    <h2>Новости</h2>
-    <nav class="app-category__nav" aria-label="Разделы новостей">
-        <a href="{{ route('news.index') }}" @class(['is-active' => !filled($filters['type'] ?? null)])>Все новости</a>
-        @foreach($types as $contentType)
-            <a href="{{ route('news.index', ['type' => $contentType->value]) }}"
-                @class(['is-active' => ($filters['type'] ?? '') === $contentType->value])>{{ $contentType->label() }}</a>
-        @endforeach
-    </nav>
-    <div class="app-category__separator" aria-hidden="true"></div>
-    <h2>Фильтры</h2>
-    @include('theme::pages.news.partials.category-filters', ['scope' => 'desktop'])
+    @include('theme::pages.news.partials.sidebar', ['scope' => 'desktop'])
 @endsection
 
 @section('category-before-items')
-    <details class="app-category__mobile-filters panel">
-        <summary>Категории и фильтры <span aria-hidden="true">⌄</span></summary>
-        <div class="app-category__mobile-filters-body">
-            <h2>Новости</h2>
-            <nav class="app-category__nav" aria-label="Разделы новостей">
-                <a href="{{ route('news.index') }}" @class(['is-active' => !filled($filters['type'] ?? null)])>Все новости</a>
-                @foreach($types as $contentType)
-                    <a href="{{ route('news.index', ['type' => $contentType->value]) }}"
-                        @class(['is-active' => ($filters['type'] ?? '') === $contentType->value])>{{ $contentType->label() }}</a>
-                @endforeach
-            </nav>
-            <h2>Фильтры</h2>
-            @include('theme::pages.news.partials.category-filters', ['scope' => 'mobile'])
-        </div>
-    </details>
+    @include('theme::pages.news.partials.mobile-sidebar')
 @endsection
 
 @section('category-items')
@@ -67,15 +44,10 @@
                 @endif
             </a>
             <div class="app-category__card-body">
-                <div class="app-category__badges">
-                    <span>{{ $contentItem->type->label() }}</span>
-                    @if($contentItem->feed_published_at)
-                        <span><time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}">{{ $contentItem->feed_published_at->locale('ru')->translatedFormat('j F Y') }}</time></span>
-                    @endif
-                </div>
                 <h2><a href="{{ $url }}">{{ $contentItem->title }}</a></h2>
+                @include('theme::pages.news.partials.metadata')
                 @if($contentItem->short_description)<p class="app-category__description">{{ $contentItem->short_description }}</p>@endif
-                <a class="button secondary app-category__details" href="{{ $url }}">Читать материал</a>
+                <a class="button secondary app-category__details" href="{{ $url }}">Подробнее</a>
             </div>
         </article>
     @empty

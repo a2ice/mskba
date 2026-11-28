@@ -1,6 +1,11 @@
 @php
-    $cardsUrl = $baseUrl.(count($viewQuery) ? '?'.http_build_query($viewQuery) : '');
-    $listUrl = $baseUrl.'?'.http_build_query(array_merge($viewQuery, ['view' => 'list']));
+    $defaultView = $defaultView ?? 'cards';
+    $viewUrl = function (string $view) use ($baseUrl, $viewQuery, $defaultView): string {
+        $query = $view === $defaultView ? $viewQuery : array_merge($viewQuery, ['view' => $view]);
+        return $baseUrl.(count($query) ? '?'.http_build_query($query) : '');
+    };
+    $cardsUrl = $viewUrl('cards');
+    $listUrl = $viewUrl('list');
     $mapUrl = $baseUrl.'?'.http_build_query(array_merge($viewQuery, ['view' => 'map']));
     $sortQuery = request()->except(['sort', 'page', 'fragment']);
     $sortChoices = $sortChoices ?? [

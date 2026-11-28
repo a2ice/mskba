@@ -1,6 +1,6 @@
 <form id="news-category-filter-{{ $scope ?? 'desktop' }}" class="app-category__filters" method="GET" action="{{ route('news.index') }}">
-    @if(($categoryView ?? 'cards') === 'list')<input type="hidden" name="view" value="list">@endif
-    @if(($scope ?? 'desktop') === 'mobile')
+    @if(($categoryView ?? 'list') === 'cards')<input type="hidden" name="view" value="cards">@endif
+    @if(($scope ?? 'desktop') === 'mobile' || ($articleSidebar ?? false))
     <label><span>Поиск публикации</span>
         <input type="search" name="q" value="{{ $filters['q'] ?? '' }}" maxlength="100" placeholder="Название или описание">
     </label>

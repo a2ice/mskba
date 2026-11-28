@@ -37,7 +37,7 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
         foreach ([
             ['url' => route('venues'), 'heading' => 'Площадки'],
             ['url' => route('shop.index'), 'heading' => 'Магазин'],
-            ['url' => route('news.index'), 'heading' => 'Новости'],
+            ['url' => route('news.index'), 'heading' => 'Новости', 'view' => 'list'],
             ['url' => route('events.index'), 'heading' => 'Мероприятия'],
             ['url' => route('tournaments.index'), 'heading' => 'Турниры'],
             ['url' => route('sports-sections.index'), 'heading' => 'Секции'],
@@ -46,8 +46,8 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             $this->get($catalog['url'])
                 ->assertOk()
                 ->assertSee('data-default-category', false)
-                ->assertSee('data-default-category-view="cards"', false)
-                ->assertSee('data-default-category-results="cards"', false)
+                ->assertSee('data-default-category-view="'.($catalog['view'] ?? 'cards').'"', false)
+                ->assertSee('data-default-category-results="'.($catalog['view'] ?? 'cards').'"', false)
                 ->assertSee('app-catalog-tools__views', false)
                 ->assertSee($catalog['heading'])
                 ->assertSee('id="mskba-app"', false)
@@ -129,8 +129,25 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
                 ->assertSee('data-default-category-view="list"', false)
                 ->assertSee('data-default-category-results="list"', false)
                 ->assertSee('app-category__items--list', false)
-                ->assertSee('name="view" value="list"', false);
+                ;
+            if (! str_contains($url, '/feed')) {
+                $this->get($url)->assertSee('name="view" value="list"', false);
+            }
         }
+    }
+
+    public function test_news_defaults_to_list_and_cards_are_explicit(): void
+    {
+        $this->get(route('news.index'))->assertOk()
+            ->assertSee('data-default-category-view="list"', false)
+            ->assertSee('href="'.route('news.index', ['view' => 'cards']).'"', false)
+            ->assertDontSee('name="view" value="list"', false);
+        $this->get(route('news.index', ['view' => 'cards']))->assertOk()
+            ->assertSee('data-default-category-view="cards"', false)
+            ->assertSee('name="view" value="cards"', false);
+        $this->get(route('news.index', ['view' => 'list']))->assertOk()
+            ->assertSee('data-default-category-view="list"', false)
+            ->assertDontSee('name="view" value="list"', false);
     }
 
     public function test_news_search_and_type_filter_real_records_only(): void
