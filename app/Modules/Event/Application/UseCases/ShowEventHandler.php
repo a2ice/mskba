@@ -53,6 +53,7 @@ final class ShowEventHandler
                     ->withExists(['admissions', 'actions'])
                     ->with([
                         'admissions',
+                        'invitationThreads',
                         'plannedTeamA.logo',
                         'plannedTeamB.logo',
                         'sides.team.logo',
