@@ -241,7 +241,7 @@ final class EventController extends Controller
         $nativeEvent = app(ThemeResolver::class)->active() === 'mskba_app'
             && ($item->proposed_time_options !== null || $item->starts_at === null)
             && ! ($request->boolean('sport') && $item->starts_at !== null
-                && $item->type === EventTypeEnum::GAME && $item->primaryGame !== null);
+                && $item->type === EventTypeEnum::GAME && $item->primaryGame?->hasSportConfiguration());
         if ($item->starts_at === null && ! $nativeEvent) {
             return ThemeResolver::page('events.unscheduled', ['event' => $item]);
         }
