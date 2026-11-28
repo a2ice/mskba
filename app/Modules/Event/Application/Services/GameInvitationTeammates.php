@@ -97,7 +97,10 @@ final class GameInvitationTeammates
                 if (!$recipient->wasRecentlyCreated) {
                     continue;
                 }
+                $opponent = (int) $lockedGame->planned_team_a_id === (int) $team->id
+                    ? $lockedGame->plannedTeamB : $lockedGame->plannedTeamA;
                 $body = 'Команда «'.$team->name.'» приглашена на игру «'.$lockedGame->title.'».'
+                    .($opponent ? ' Соперник: '.$opponent->name.'.' : '')
                     .($event->starts_at ? ' '.$event->starts_at->timezone('Europe/Moscow')->format('d.m.Y H:i').' (МСК).' : '')
                     .($event->venue ? ' Площадка: '.$event->venue->name.'.' : '')
                     .' Это оповещение, а не подтверждение вашего участия.'
