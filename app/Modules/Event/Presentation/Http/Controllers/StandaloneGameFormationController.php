@@ -100,6 +100,25 @@ final class StandaloneGameFormationController extends Controller
         return response()->json(['message' => 'Стороны утверждены.']);
     }
 
+    public function confirmEventParticipants(Request $request, string $event, int $game,
+        StandaloneGameFormationService $service, CurrentActorResolver $actors): JsonResponse
+    {
+        $data = $request->validate([
+            'side_a_user_ids' => ['required', 'array', 'list', 'min:1', 'max:100'],
+            'side_b_user_ids' => ['required', 'array', 'list', 'min:1', 'max:100'],
+            'side_a_user_ids.*' => ['required', 'integer', 'distinct'],
+            'side_b_user_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+        try {
+            $service->confirmEventParticipants($this->game($event, $game),
+                $actors->resolveForRequest($request) ?? abort(403), $data['side_a_user_ids'], $data['side_b_user_ids']);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Стороны утверждены.']);
+    }
+
     public function unconfirm(
         Request $request,
         string $event,
