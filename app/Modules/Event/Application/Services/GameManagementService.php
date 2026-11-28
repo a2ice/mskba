@@ -389,7 +389,7 @@ final class GameManagementService
             if ($sides->count() !== 2) {
                 throw new InvalidArgumentException('Для игры не настроены две стороны.');
             }
-            if ($lockedParent->type === EventTypeEnum::GAME) {
+            if ($lockedGame->uses_event_planning || $lockedParent->type === EventTypeEnum::GAME) {
                 $this->assertPermanentTeamRosterSizes(
                     $sideAUserIds,
                     $sideBUserIds,
@@ -763,7 +763,8 @@ final class GameManagementService
 
     private function completeStandaloneParent(Event $event, Game $game, Actor $actor): void
     {
-        if ($event->type !== EventTypeEnum::GAME) {
+        // Planned games have independent lifecycles; completing any match must not close its event.
+        if ($game->uses_event_planning || $event->type !== EventTypeEnum::GAME) {
             return;
         }
         if ($event->primary_game_id !== $game->id) {
@@ -1051,6 +1052,14 @@ final class GameManagementService
                         'slot' => $item['slot'],
                     ],
                 ]);
+        }
+
+        if ($game->uses_event_planning) {
+            // Use the confirmed per-game snapshot, never the entire event pool or an opponent's roster.
+            return $game->rosterEntries()->with('gameSide')->get()->mapWithKeys(fn ($entry) => [
+                $entry->user_id => ['membership_id' => $entry->source_contract_membership_id,
+                    'participant_id' => $entry->source_event_participant_id, 'slot' => $entry->gameSide?->slot],
+            ]);
         }
 
         if ($game->event->type !== EventTypeEnum::GAME) {
