@@ -397,6 +397,8 @@ Route::prefix('backoffice/content')
             ->name('admin.content.project-update.verify-production');
         Route::put('/{contentItem:alias}', [AdminContentController::class, 'update'])
             ->name('admin.content.update');
+        Route::patch('/{contentItem:alias}/comments/{comment}', [\App\Modules\Content\Presentation\Http\Controllers\ContentCommentController::class, 'moderate'])
+            ->whereNumber('comment')->name('admin.content.comments.moderate');
         Route::post('/{contentItem:alias}/images', [AdminContentController::class, 'storeInlineImage'])
             ->name('admin.content.images.store');
         Route::delete('/{contentItem:alias}/images/{media}', [AdminContentController::class, 'destroyInlineImage'])

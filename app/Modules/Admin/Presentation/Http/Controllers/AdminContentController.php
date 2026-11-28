@@ -153,6 +153,7 @@ final class AdminContentController extends Controller
         return response()->view('backoffice.content.form', [
             ...$this->formData(),
             'contentItem' => $contentItem,
+            'contentComments' => $contentItem->comments()->with('user')->orderBy('is_published')->orderByDesc('id')->paginate(20, ['*'], 'comments_page'),
             'projectUpdate' => ProjectUpdateDetail::query()->where('content_item_id', $contentItem->id)->first(),
             'vkPublication' => VkContentPublication::query()->where('content_item_id', $contentItem->id)->first(),
             'selectedChatIds' => $contentItem->telegramPublications

@@ -302,6 +302,33 @@
         <x-filament::button type="submit">{{ $editing ? 'Сохранить' : 'Создать материал' }}</x-filament::button>
     </form>
 
+    @if($editing)
+        <section class="content-admin-section mt-4" id="content-comments-moderation">
+            <h2 class="content-admin-section__title">Комментарии</h2>
+            <p class="form-text">Новые и отредактированные комментарии сначала проходят модерацию.</p>
+            @forelse($contentComments as $comment)
+                <div class="content-admin-section mt-3">
+                    <p><strong>{{ $comment->user?->nickname ?: 'Игрок #'.$comment->user_id }}</strong> · {{ $comment->created_at->format('d.m.Y H:i') }} · {{ $comment->is_published ? 'Опубликован' : 'На модерации' }}</p>
+                    <p style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $comment->body }}</p>
+                    <form method="POST" action="{{ route('admin.content.comments.moderate', [$contentItem->alias, $comment->id]) }}">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="revision" value="{{ $comment->revision }}">
+                        @if($comment->is_published)
+                            <x-filament::button type="submit" name="action" value="hide" color="gray">Скрыть</x-filament::button>
+                        @else
+                            <x-filament::button type="submit" name="action" value="publish">Опубликовать</x-filament::button>
+                        @endif
+                        <x-filament::button type="submit" name="action" value="delete" color="danger" onclick="return confirm('Удалить комментарий?')">Удалить</x-filament::button>
+                    </form>
+                </div>
+            @empty
+                <p class="form-text">Комментариев пока нет.</p>
+            @endforelse
+            {{ $contentComments->links() }}
+            @error('revision') <p class="text-danger">{{ $message }}</p> @enderror
+        </section>
+    @endif
 
     @if($editing && $contentItem->type === \App\Modules\Content\Domain\Enums\ContentTypeEnum::SYSTEM_UPDATE && ! $projectUpdate?->production_verified_at)
         <section class="content-admin-section mt-4">
