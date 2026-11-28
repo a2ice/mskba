@@ -38,5 +38,3 @@
 .venue-catalog-card-icons__item:focus-visible,.venue-catalog-address:focus-visible{outline:2px solid var(--accent,#ff7a1a);outline-offset:2px;border-radius:4px}
 @media(max-width:520px){.venue-catalog-item--list .venue-catalog-address{font-size:11px}.venue-catalog-item--list .venue-catalog-metro,.venue-catalog-item--list .venue-catalog-card-description{font-size:11px}}
 
-/* Shared venue card rating, mirrored to the favorite heart. */
-.venue-catalog-card-rating{position:absolute;top:12px;left:12px;z-index:8;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:42px;height:42px;border-radius:12px;background:rgba(0,0,0,.25);color:#fff;font-size:23px;font-weight:650;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none}
