@@ -26,14 +26,14 @@ final readonly class ContentEngagement
             ->whereNull('trashed_at')->whereIn('entity_id', $ids)
             ->selectRaw('entity_id, COUNT(*) AS total')->groupBy('entity_id')->pluck('total', 'entity_id');
         $mine = $this->favorites->owned($request)->where('entity_type', 'content')
-            ->whereNull('trashed_at')->whereIn('entity_id', $ids)->pluck('entity_id')->all();
+            ->whereNull('trashed_at')->whereIn('entity_id', $ids)->pluck('entity_id')->map(fn ($id) => (int) $id)->all();
         $comments = ContentComment::query()->where('is_published', true)->whereIn('content_item_id', $ids)
             ->selectRaw('content_item_id, COUNT(*) AS total')->groupBy('content_item_id')->pluck('total', 'content_item_id');
 
         return $items->mapWithKeys(fn (ContentItem $item) => [$item->id => [
             'views' => (int) $item->views_count,
             'likes' => (int) ($likes[$item->id] ?? 0),
-            'liked' => in_array($item->id, $mine, true),
+            'liked' => in_array((int) $item->id, $mine, true),
             'comments' => (int) ($comments[$item->id] ?? 0),
         ]])->all();
     }
@@ -57,7 +57,7 @@ final readonly class ContentEngagement
         try {
             if (Cache::add($key, true, now()->addMinutes(30))) {
                 try {
-                    ContentItem::query()->whereKey($item->id)->publishedInFeed()->increment('views_count', 1, ['updated_at' => $item->updated_at]);
+                    ContentItem::query()->whereKey($item->id)->publishedInFeed()->toBase()->increment('views_count');
                 } catch (Throwable $e) {
                     Cache::forget($key);
                     throw $e;

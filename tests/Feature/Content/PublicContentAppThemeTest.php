@@ -50,7 +50,7 @@ final class PublicContentAppThemeTest extends TestCase
             ->assertSee('name="description" content="Индивидуальное описание для поисковых систем"', false)
             ->assertSee('name="keywords" content="баскетбол, площадки"', false)
             ->assertSee('<link rel="canonical" href="'.$url.'">', false)
-            ->assertSee('"@type":"NewsArticle"', false)
+            ->assertSee('"@type":"Article"', false)
             ->assertDontSee('MSKBA App theme');
 
         $this->get('https://mskba.ru/feed')

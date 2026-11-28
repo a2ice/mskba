@@ -125,12 +125,12 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             route('sports-sections.index', ['recruiting' => 1, 'view' => 'list']),
             route('leagues.index', ['status' => 'archived', 'view' => 'list']),
         ] as $url) {
-            $this->get($url)->assertOk()
+            $response = $this->get($url)->assertOk()
                 ->assertSee('data-default-category-view="list"', false)
                 ->assertSee('data-default-category-results="list"', false)
                 ->assertSee('app-category__items--list', false);
             if (! str_contains($url, '/feed')) {
-                $this->get($url)->assertSee('name="view" value="list"', false);
+                $response->assertSee('name="view" value="list"', false);
             }
         }
     }
@@ -180,6 +180,9 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             ->assertSee('news-category-filter-desktop', false)
             ->assertSee('news-category-filter-mobile', false)
             ->assertSee('app-news-meta', false)
+            ->assertSee('id="news-comments"', false)
+            ->assertSee('data-news-count="views"', false)
+            ->assertSee('data-favorite-type="content"', false)
             ->assertSee('Расширенные фильтры')
             ->assertDontSee('aria-label="Вернуться к новостям"', false);
 
