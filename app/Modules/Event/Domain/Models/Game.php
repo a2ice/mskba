@@ -170,14 +170,21 @@ class Game extends Model
         return $this->morphMany(Media::class, 'mediable');
     }
 
+    public function hasSportConfiguration(): bool
+    {
+        return $this->side_a_size !== null && $this->side_b_size !== null
+            && $this->scoring_type !== null && $this->timing_mode !== null;
+    }
+
     public function formatLabel(): string
     {
-        return $this->side_a_size.'×'.$this->side_b_size;
+        return $this->hasSportConfiguration() ? $this->side_a_size.'×'.$this->side_b_size : 'Не определен';
     }
 
     public function acceptsAdmissions(): bool
     {
-        return $this->recruitment_mode !== null
+        return $this->hasSportConfiguration()
+            && $this->recruitment_mode !== null
             && $this->status === GameStatusEnum::SCHEDULED
             && $this->actual_started_at === null
             && $this->sides_confirmed_at === null
