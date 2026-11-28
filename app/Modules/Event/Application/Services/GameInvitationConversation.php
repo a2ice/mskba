@@ -2,7 +2,15 @@
 
 namespace App\Modules\Event\Application\Services;
 
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
+use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
+use Illuminate\Support\Collection;
 use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
@@ -64,6 +72,77 @@ final class GameInvitationConversation
         return $this->canOrganize($context, $user) || $this->canRepresentTeam($context, $user);
     }
 
+    /** Candidate scopes narrow discovery; the live ACL remains authoritative. */
+    public function cards(User $user): Collection
+    {
+        $user = $user->canonical();
+        $ids = $user->identityIds();
+        $scopes = ContractMembership::query()->whereIn('user_id', $ids);
+        $contexts = GameInvitationThread::query()->where(function ($query) use ($ids, $scopes): void {
+            $query->whereIn('team_id', (clone $scopes)->where('scope_type', Scope::TEAM->value)->select('scope_id'))
+                ->orWhereHas('team.createdByActor', fn ($q) => $q->whereIn('user_id', $ids))
+                ->orWhereHas('game', fn ($q) => $q->whereIn('event_id', (clone $scopes)
+                    ->where('scope_type', Scope::EVENT->value)->select('scope_id'))
+                    ->orWhereHas('event.organizerActor', fn ($owner) => $owner->whereIn('user_id', $ids)));
+        })->with(['game.event', 'team', 'thread.latestMessage'])->latest('updated_at')->limit(100)->get()
+            ->filter(fn ($context) => $context->thread && $this->canRead($context, $user));
+        $unread = UserNotification::query()->whereIn('user_id', $ids)
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->whereIn('payload->game_invitation_thread_id', $contexts->pluck('id'))
+            ->get(['id', 'payload'])->groupBy(fn ($notice) => (int) $notice->payload['game_invitation_thread_id']);
+
+        return $contexts->map(function ($context) use ($unread): array {
+            $latest = $this->invitations($context)->latest('id')->first();
+            $message = $context->thread->latestMessage;
+
+            return [
+                'id' => 'game-invitation-'.$context->id,
+                'name' => 'Приглашение на игру — '.$context->team->name,
+                'preview' => $message && $message->created_at->gte($latest?->updated_at ?? $context->created_at)
+                    ? $message->body : ($context->game?->title ?? 'Игра'),
+                'unread_count' => $unread->get($context->id, collect())->count(),
+                'date' => $context->updated_at,
+                'status' => $this->statusLabel($latest?->status?->value),
+                'url' => route('account.notifications.threads.game-invitation', $context),
+            ];
+        })->values();
+    }
+
+    public function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            'pending' => 'Ожидается ответ',
+            'accepted' => 'Приглашение принято',
+            'declined' => 'Приглашение отклонено',
+            'revoked' => 'Приглашение отозвано',
+            default => 'Приглашение',
+        };
+    }
+
+    public function touch(Game $game, GameAdmission $admission): void
+    {
+        if ($game->uses_event_planning && $admission->team_id !== null) {
+            GameInvitationThread::query()->where('game_id', $game->id)->where('team_id', $admission->team_id)
+                ->update(['updated_at' => now()]);
+        }
+    }
+
+    public function recipients(GameInvitationThread $context): Collection
+    {
+        $event = $context->game?->event;
+        if ($event === null || $context->team === null) {
+            return collect();
+        }
+        $ids = ContractMembership::query()->where(function ($query) use ($event, $context): void {
+            $query->where(fn ($q) => $q->where('scope_type', Scope::EVENT->value)->where('scope_id', $event->id))
+                ->orWhere(fn ($q) => $q->where('scope_type', Scope::TEAM->value)->where('scope_id', $context->team_id));
+        })->pluck('user_id')->push($event->organizerActor()->value('user_id'))
+            ->push($context->team->createdByActor()->value('user_id'))->filter()->unique();
+
+        return User::query()->whereIn('id', $ids)->get()->map(fn (User $user) => $user->canonical())
+            ->unique('id')->filter(fn (User $user) => $this->canRead($context, $user))->values();
+    }
+
     public function invitations(GameInvitationThread $context)
     {
         return GameAdmission::query()->where('game_id', $context->game_id)
@@ -84,6 +163,20 @@ final class GameInvitationConversation
             $thread->messages()->create(['sender_user_id' => $user->id, 'body' => $body]);
             $locked->touch();
         });
+        foreach ($this->recipients($context) as $recipient) {
+            if ($recipient->id === $user->id) {
+                continue;
+            }
+            app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
+                userId: $recipient->id,
+                type: UserNotificationTypeEnum::SYSTEM,
+                title: 'Новое сообщение по приглашению на игру',
+                body: 'В диалоге о приглашении команды появилось сообщение.',
+                actionUrl: route('account.notifications.threads.game-invitation', $context),
+                actionText: 'Открыть диалог',
+                payload: ['game_invitation_thread_id' => $context->id, 'game_id' => $context->game_id],
+            ), true);
+        }
     }
 
     private function actor(User $user): Actor
