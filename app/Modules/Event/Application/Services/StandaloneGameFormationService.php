@@ -406,7 +406,7 @@ final class StandaloneGameFormationService
         if (!$game->uses_event_planning && ($event->type !== EventTypeEnum::GAME || (int) $event->primary_game_id !== (int) $game->id)) {
             throw new InvalidArgumentException('Управление формированием доступно только основной самостоятельной игре.');
         }
-        if ($game->uses_event_planning && (!$game->hasSportConfiguration() || $game->event?->status?->value !== 'published')) {
+        if ($game->uses_event_planning && (!$game->hasSportConfiguration() || $event->status->value !== 'published')) {
             throw new InvalidArgumentException('Сначала настройте игру и опубликуйте мероприятие.');
         }
         if ($game->status !== GameStatusEnum::SCHEDULED || $game->actual_started_at !== null) {
