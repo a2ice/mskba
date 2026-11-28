@@ -25,7 +25,7 @@ final class EventGamePlanningService
             'games' => ['sometimes', 'array', 'list', 'max:50'],
             'games.*' => ['array:title,format,recruitment_mode,team_a_id,team_b_id,scoring_type,timing_mode,periods_count'],
             'games.*.title' => ['required', 'string', 'max:150'],
-            'games.*.format' => ['required', Rule::in([
+            'games.*.format' => ['present', 'nullable', Rule::in([
                 GameFormatEnum::STREETBALL_1X1->value,
                 GameFormatEnum::STREETBALL_3X3->value,
                 GameFormatEnum::BASKETBALL_5X5->value,
@@ -69,7 +69,35 @@ final class EventGamePlanningService
     private function create(Event $event, Actor $actor, array $row, int $index, \Illuminate\Support\Collection $teams): Game
     {
         $prefix = 'games.'.$index.'.';
-        $format = GameFormatEnum::from($row['format']);
+        $format = isset($row['format']) ? GameFormatEnum::from($row['format']) : null;
+        if ($format === null) {
+            $errors = [];
+            if (trim($row['title']) === '') {
+                $errors[$prefix.'title'] = 'Укажите название игры.';
+            }
+            foreach (['recruitment_mode', 'team_a_id', 'team_b_id', 'scoring_type', 'timing_mode', 'periods_count'] as $field) {
+                if (isset($row[$field])) {
+                    $errors[$prefix.$field] = 'Сначала выберите формат игры.';
+                }
+            }
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
+
+            return $event->games()->create([
+                'created_by_actor_id' => $actor->id,
+                'title' => trim($row['title']),
+                'status' => GameStatusEnum::SCHEDULED,
+                'format' => null,
+                'recruitment_mode' => null,
+                'accepts_applications' => false,
+                'side_a_size' => null,
+                'side_b_size' => null,
+                'scoring_type' => null,
+                'timing_mode' => null,
+                'periods_count' => null,
+            ]);
+        }
         $size = $format->sideSize();
         $mode = GameRecruitmentModeEnum::from($row['recruitment_mode'] ?? GameRecruitmentModeEnum::INDIVIDUAL_DRAFT->value);
         $a = isset($row['team_a_id']) ? (int) $row['team_a_id'] : null;
