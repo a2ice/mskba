@@ -130,7 +130,7 @@ final class NestedGameController extends Controller
             ->whereBelongsTo($event)
             ->firstOrFail();
 
-        abort_if($event->type->value === 'game' && $event->primary_game_id !== $game->id, 404);
+        abort_if(!$game->uses_event_planning && $event->type->value === 'game' && $event->primary_game_id !== $game->id, 404);
 
         return $game;
     }
