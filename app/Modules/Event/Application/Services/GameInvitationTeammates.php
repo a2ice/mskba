@@ -117,7 +117,7 @@ final class GameInvitationTeammates
                 ), true);
                 $sent++;
             }
-            $context->touch();
+            $this->conversations->changed($context);
 
             return $sent;
         }, 3);
