@@ -268,6 +268,63 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertDatabaseCount('venue_bookings', 0);
     }
 
+    public function test_explicit_game_list_overrides_legacy_default_and_can_be_empty(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $input = [...$this->payload($this->venue()), 'type' => 'game', 'games' => []];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        $this->assertNull($event->primary_game_id);
+        $this->assertSame(0, $event->games()->count());
+    }
+
+    public function test_multiple_planned_games_keep_first_primary_and_do_not_invite_teams(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $actor = \App\Modules\Identity\Domain\Models\Actor::factory()->create(['user_id' => $user->id]);
+        $team = fn (string $suffix) => \App\Modules\Team\Domain\Models\Team::query()->create([
+            'created_by_actor_id' => $actor->id,
+            'name' => 'Planned '.$suffix,
+            'alias' => 'planned-'.$suffix,
+            'status' => 'active',
+        ]);
+        $a = $team('alpha');
+        $b = $team('beta');
+        $input = [...$this->payload($this->venue()), 'type' => 'game', 'games' => [
+            ['title' => 'Первый матч', 'format' => 'streetball_3x3'],
+            ['title' => 'Второй матч', 'format' => 'basketball_5x5',
+                'recruitment_mode' => 'preformed_teams', 'team_a_id' => $a->id, 'team_b_id' => $b->id,
+                'timing_mode' => 'periods', 'periods_count' => 2],
+        ]];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $this->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        $games = $event->games()->orderBy('id')->get();
+        $this->assertCount(2, $games);
+        $this->assertSame($games[0]->id, $event->primary_game_id);
+        $this->assertSame('Первый матч', $games[0]->title);
+        $this->assertSame(3, (int) $games[0]->side_a_size);
+        $this->assertSame(0, $games[0]->periods()->count());
+        $this->assertSame($a->id, (int) $games[1]->planned_team_a_id);
+        $this->assertSame($b->id, (int) $games[1]->planned_team_b_id);
+        $this->assertSame(2, $games[1]->periods()->count());
+        $this->assertSame(0, $games[1]->admissions()->count());
+        $this->assertSame(0, $games[1]->sides()->count());
+    }
+
+    public function test_invalid_planned_team_selection_rolls_back_entire_event(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $input = [...$this->payload($this->venue()), 'type' => 'game', 'games' => [
+            ['title' => 'Первый матч', 'format' => 'streetball_3x3'],
+            ['title' => 'Второй матч', 'format' => 'basketball_5x5', 'recruitment_mode' => 'preformed_teams'],
+        ]];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)
+            ->assertUnprocessable()->assertJsonValidationErrors(['games.1.team_a_id', 'games.1.team_b_id']);
+        $this->assertDatabaseCount('events', 0);
+        $this->assertDatabaseCount('games', 0);
+    }
+
     public function test_duplicate_time_options_are_rejected(): void
     {
         $user = $this->verifiedOrganizer();
