@@ -46,6 +46,9 @@ if(root){
     let selected=null,deleting=false;
     const confirm=deleteDialog.querySelector('[data-game-plan-delete-confirm]');
     const error=deleteDialog.querySelector('[data-game-plan-delete-error]');
+    const options=deleteDialog.querySelector('[data-game-cancel-options]');
+    const notify=deleteDialog.querySelector('[data-game-cancel-notify]');
+    const reason=deleteDialog.querySelector('[data-game-cancel-reason]');
     root.addEventListener('click',event=>{
         const trigger=event.target.closest('button');
         if(!trigger||!root.contains(trigger))return;
@@ -56,6 +59,7 @@ if(root){
         if(trigger.matches('[data-planned-game-edit]'))editor.open(config,teams,row);
         if(trigger.matches('[data-planned-game-delete]')){
             selected=row;error.hidden=true;
+            options.hidden=row.dataset.gameHasHistory!=='1';notify.checked=true;reason.value='';
             deleteDialog.querySelector('[data-game-plan-delete-name]').textContent=config.title;
             deleteDialog.querySelector('[data-game-plan-delete-info]').textContent=[teams.a?.name,teams.b?.name].filter(Boolean).join(' — ');
             deleteDialog.showModal();
@@ -66,7 +70,7 @@ if(root){
     confirm.addEventListener('click',async()=>{
         if(deleting||!selected)return;
         deleting=true;confirm.disabled=true;error.hidden=true;
-        try{await mutate(selected.dataset.deleteUrl,'DELETE');deleteDialog.close();location.reload();}
+        try{await mutate(selected.dataset.deleteUrl,'DELETE',options.hidden?undefined:{notify:notify.checked,reason:reason.value.trim()||null});deleteDialog.close();location.reload();}
         catch(e){error.textContent=e.message;error.hidden=false;}
         finally{deleting=false;confirm.disabled=false;}
     });
