@@ -360,6 +360,63 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertDatabaseCount('games', 0);
     }
 
+    public function test_planned_game_management_configures_and_removes_games_without_losing_event(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $input = [...$this->payload($this->venue()), 'type' => 'game', 'games' => []];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        $firstId = $this->postJson(route('events.planned-games.store', $event->routeIdentifier()), [
+            'title' => 'Игра', 'format' => null,
+        ])->assertCreated()->json('game_id');
+        $secondId = $this->postJson(route('events.planned-games.store', $event->routeIdentifier()), [
+            'title' => 'Вторая игра', 'format' => 'streetball_3x3',
+        ])->assertCreated()->json('game_id');
+        $this->assertSame((int) $firstId, (int) $event->fresh()->primary_game_id);
+        $this->putJson(route('events.planned-games.update', [$event->routeIdentifier(), $firstId]), [
+            'title' => 'Матч', 'format' => 'basketball_5x5', 'timing_mode' => 'periods', 'periods_count' => 2,
+        ])->assertOk();
+        $first = $event->games()->findOrFail($firstId);
+        $this->assertTrue($first->hasSportConfiguration());
+        $this->assertSame(2, $first->periods()->count());
+        $this->assertSame('Матч', $first->title);
+
+        $this->actingAs($this->verifiedOrganizer())
+            ->deleteJson(route('events.planned-games.destroy', [$event->routeIdentifier(), $firstId]))->assertForbidden();
+        $this->actingAs($user)
+            ->deleteJson(route('events.planned-games.destroy', [$event->routeIdentifier(), $firstId]))->assertOk();
+        $this->assertSoftDeleted('games', ['id' => $firstId]);
+        $this->assertSame((int) $secondId, (int) $event->fresh()->primary_game_id);
+        $this->deleteJson(route('events.planned-games.destroy', [$event->routeIdentifier(), $secondId]))->assertOk();
+        $this->assertNull($event->fresh()->primary_game_id);
+        $this->assertSame(0, $event->games()->count());
+        $this->assertDatabaseCount('events', 1);
+    }
+
+    public function test_planned_game_management_does_not_modify_started_or_foreign_games(): void
+    {
+        $user = $this->verifiedOrganizer();
+        $venue = $this->venue();
+        $input = [...$this->payload($venue), 'type' => 'game', 'games' => [
+            ['title' => 'Матч', 'format' => 'basketball_5x5'],
+        ]];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $event = Event::query()->sole();
+        $game = $event->games()->sole();
+        $other = [...$this->payload($venue), 'type' => 'game', 'games' => []];
+        $this->postJson(route('events.funnel.store'), $other)->assertCreated();
+        $otherEvent = Event::query()->whereKeyNot($event->id)->sole();
+        $this->deleteJson(route('events.planned-games.destroy', [$otherEvent->routeIdentifier(), $game->id]))->assertNotFound();
+
+        $game->forceFill(['actual_started_at' => now(), 'status' => 'in_progress'])->save();
+        $this->putJson(route('events.planned-games.update', [$event->routeIdentifier(), $game->id]), [
+            'title' => 'Изменено', 'format' => null,
+        ])->assertUnprocessable();
+        $this->deleteJson(route('events.planned-games.destroy', [$event->routeIdentifier(), $game->id]))->assertUnprocessable();
+        $this->assertSame('Матч', $game->fresh()->title);
+        $this->assertNotNull($game->fresh()->actual_started_at);
+    }
+
     public function test_duplicate_time_options_are_rejected(): void
     {
         $user = $this->verifiedOrganizer();
