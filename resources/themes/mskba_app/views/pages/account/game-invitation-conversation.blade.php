@@ -16,7 +16,7 @@
             <span class="app-messages__avatar" aria-hidden="true"><svg><use href="#message"/></svg></span>
             <div class="app-messages__thread-contact">
                 <h2>Приглашение на игру</h2>
-                <p>{{ $context->team->name }} · {{ $game?->title ?: 'Игра' }}</p>
+                <p>{{ ($context->team?->name ?? 'Команда') }} · {{ $game?->title ?: 'Игра' }}</p>
             </div>
         </header>
         <div class="panel app-messages__chat-log" role="region" aria-label="История переписки" tabindex="0">
@@ -32,8 +32,8 @@
                         ]])
                     @else
                         <article class="app-messages__bubble app-messages__bubble--system">
-                            <div class="app-messages__bubble-head"><strong>{{ $loop->first && $item->id === $invitations->first()?->id ? 'Приглашение на игру' : ($item->id === $invitations->first()?->id ? 'Приглашение на игру' : 'Повторное приглашение') }}</strong></div>
-                            <p>{{ $game?->title ?: 'Игра' }} · {{ $context->team->name }}</p>
+                            <div class="app-messages__bubble-head"><strong>{{ $item->id === $invitations->first()?->id ? 'Приглашение на игру' : 'Повторное приглашение' }}</strong></div>
+                            <p>{{ $game?->title ?: 'Игра' }} · {{ ($context->team?->name ?? 'Команда') }}</p>
                             @if($game?->format)<p>{{ $game->formatLabel() }}</p>@endif
                             @if($event?->starts_at)<p>{{ $event->starts_at->timezone('Europe/Moscow')->format('d.m.Y H:i') }} (МСК)</p>@endif
                             @if($event?->venue)<p>{{ $event->venue->name }}</p>@endif
