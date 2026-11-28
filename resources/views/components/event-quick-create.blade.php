@@ -51,8 +51,6 @@
         <input type="hidden" name="timing_mode" value="whole_game" data-quick-timing>
         <input type="hidden" name="periods_count" value="4">
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="base">
-            <h3>1. О мероприятии</h3>
-            <p class="quick-event-dialog__hint">Сначала общие сведения, затем — пожелания по времени. Бронь не создаётся.</p>
             <label class="quick-event-dialog__field"><span>Тип мероприятия</span>
                 <span class="select-control"><select name="type" required data-quick-type>
                     <option value="" disabled selected>Выбери тип мероприятия</option>
@@ -276,7 +274,8 @@
 }
 .quick-event-dialog__game-toggle[hidden],.quick-event-dialog__field[hidden],.quick-event-dialog__hint[hidden]{display:none}
 .quick-event-dialog__game-toggle{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;font-weight:600}
-.quick-event-dialog__game-toggle input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
+.quick-event-dialog__game-toggle input,.quick-event-dialog [data-event-pricing-fields] input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:20px;padding:0;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
+.quick-event-dialog [data-event-pricing-fields] .event-paid-toggle{justify-content:flex-start;min-height:44px;font-weight:600;gap:12px}
 .quick-event-dialog__schedule-fields{display:grid;gap:16px;min-width:0;margin:0;padding:0;border:0}
 .quick-event-dialog__schedule-fields[hidden]{display:none}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
