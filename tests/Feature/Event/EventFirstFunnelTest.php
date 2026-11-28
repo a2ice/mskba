@@ -726,6 +726,7 @@ final class EventFirstFunnelTest extends TestCase
         $admission = $second->admissions()->sole();
         $this->assertSame(0, $first->admissions()->count());
         $this->postJson($apply)->assertUnprocessable();
+        $this->actingAs($organizer)->get(route('events.games.recruitment.late.panel', $secondParams))->assertOk()->assertSee('Новые заявки');
         $this->actingAs($organizer)->postJson(route('events.games.recruitment.late.accept', [...$firstParams, $admission->id]), ['side' => 'A'])->assertUnprocessable();
         $this->postJson(route('events.games.recruitment.late.accept', [...$secondParams, $admission->id]), ['side' => 'A'])->assertOk();
         $this->assertSame(3, $second->rosterEntries()->count());
