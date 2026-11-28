@@ -41,6 +41,7 @@ final class GameAdmissionService
         private readonly TeamManagementAccess $teamAccess,
         private readonly CreateUserNotificationHandler $notifications,
         private readonly UserPrivacyAccessService $privacy,
+        private readonly GameInvitationConversation $conversations,
     ) {}
 
     public function apply(Game $game, Actor $actor, Team|User $candidate): GameAdmission
@@ -254,7 +255,7 @@ final class GameAdmissionService
             }
             $this->assertNoActiveDuplicate($lockedGame, $candidate);
 
-            return $lockedGame->admissions()->create([
+            $admission = $lockedGame->admissions()->create([
                 'candidate_type' => $candidate instanceof Team
                     ? GameAdmissionCandidateTypeEnum::TEAM
                     : GameAdmissionCandidateTypeEnum::USER,
@@ -264,6 +265,11 @@ final class GameAdmissionService
                 'status' => GameAdmissionStatusEnum::PENDING,
                 'requested_by_actor_id' => $actor->id,
             ]);
+            if ($lockedGame->uses_event_planning && $candidate instanceof Team && $direction === GameAdmissionDirectionEnum::INVITATION) {
+                $this->conversations->recordInvitation($lockedGame, $admission);
+            }
+
+            return $admission;
         }, 3);
     }
 
