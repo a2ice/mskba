@@ -133,7 +133,8 @@ final class HandleEventParticipationCallback
             return null;
         }
 
-        return $event->primaryGame()->first();
+        // event:* callbacks address the whole event, not an arbitrary planned child.
+        return $event->primaryGame()->where('uses_event_planning', false)->first();
     }
 
     private function handleIndividualGame(Game $game, User $user, string $action): string
