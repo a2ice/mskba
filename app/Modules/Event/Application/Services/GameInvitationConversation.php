@@ -49,7 +49,7 @@ final class GameInvitationConversation
     {
         $user = $user->canonical();
         $team = $context->team;
-        if ($team === null || $user->isBlocked() || $user->trashed()) {
+        if ($team === null || $team->trashed() || $user->isBlocked() || $user->trashed()) {
             return false;
         }
 
@@ -97,7 +97,7 @@ final class GameInvitationConversation
 
             return [
                 'id' => 'game-invitation-'.$context->id,
-                'name' => 'Приглашение на игру — '.$context->team->name,
+                'name' => 'Приглашение на игру — '.($context->team?->name ?? 'Команда'),
                 'preview' => $message && $message->created_at->gte($latest?->updated_at ?? $context->created_at)
                     ? $message->body : ($context->game?->title ?? 'Игра'),
                 'unread_count' => $unread->get($context->id, collect())->count(),
