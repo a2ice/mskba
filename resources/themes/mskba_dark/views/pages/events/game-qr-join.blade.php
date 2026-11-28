@@ -12,6 +12,7 @@
     ]))) ?: $organizer?->username ?: 'организатор';
     $pendingAdmission = $latestAdmission?->status === GameAdmissionStatusEnum::PENDING;
     $sidesConfirmed = $game->sides_confirmed_at !== null;
+    $gameUrl = $game->uses_event_planning ? route('events.games.show', $routeParameters) : route('events.show', $event->routeIdentifier());
     $inProgress = $game->status === GameStatusEnum::IN_PROGRESS;
 @endphp
 
@@ -25,17 +26,17 @@
     @if($pendingAdmission) data-pending-admission-id="{{ $latestAdmission->id }}" @endif
 >
     <div class="inner game-qr-join__inner">
-        <a class="game-qr-join__back" href="{{ route('events.show', $event->routeIdentifier()) }}">
+        <a class="game-qr-join__back" href="{{ $gameUrl }}">
             <i class="ti ti-arrow-left" aria-hidden="true"></i>Открыть страницу игры
         </a>
 
         <header class="game-qr-join__hero">
             <span class="eyebrow">Присоединиться к игре</span>
-            <h1>{{ $event->title }}</h1>
+            <h1>{{ $game->uses_event_planning ? ($game->title ?: $event->title) : $event->title }}</h1>
             <div class="game-qr-join__meta">
                 <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $event->venue->name }}</span>
-                <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $event->starts_at->format('d.m.Y') }}</span>
-                <span><i class="ti ti-clock" aria-hidden="true"></i>{{ $event->starts_at->format('H:i') }}</span>
+                <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $event->starts_at?->format('d.m.Y') }}</span>
+                <span><i class="ti ti-clock" aria-hidden="true"></i>{{ $event->starts_at?->format('H:i') }}</span>
                 <span><i class="ti ti-users-group" aria-hidden="true"></i>{{ $game->format?->label() ?? $game->formatLabel() }} · balanced</span>
                 @if($inProgress)<span class="is-live"><i class="ti ti-point-filled" aria-hidden="true"></i>Игра уже идёт</span>@endif
             </div>
@@ -79,7 +80,7 @@
                     <span>Вы вошли как <strong>{{ auth()->user()->canonical()->username }}</strong></span>
                 </div>
 
-                @if($latestAdmission?->status === GameAdmissionStatusEnum::ACCEPTED)
+                @if($latestAdmission?->status === GameAdmissionStatusEnum::ACCEPTED || ($game->uses_event_planning && $assignedSide))
                     <div class="game-qr-join__status is-accepted">
                         <i class="ti ti-circle-check" aria-hidden="true"></i>
                         <div>
@@ -91,7 +92,14 @@
                             @endif
                         </div>
                     </div>
-                    <a class="btn btn--primary" href="{{ route('events.show', $event->routeIdentifier()) }}">Открыть игру</a>
+                    <a class="btn btn--primary" href="{{ $gameUrl }}">Открыть игру</a>
+                    @if($canWithdraw ?? false)
+                        <form method="POST" action="{{ route('events.games.recruitment.participation.withdraw', $routeParameters) }}">
+                            @csrf @method('DELETE')
+                            <button class="btn btn--secondary" type="submit">Выйти из этой игры</button>
+                            <p class="form-hint">Участие в мероприятии и других играх сохранится.</p>
+                        </form>
+                    @endif
                 @elseif($latestAdmission?->status === GameAdmissionStatusEnum::PENDING)
                     @if($latestAdmission->direction === GameAdmissionDirectionEnum::INVITATION)
                         <div class="game-qr-join__status is-pending">
