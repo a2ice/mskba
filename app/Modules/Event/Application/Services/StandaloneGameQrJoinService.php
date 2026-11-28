@@ -164,8 +164,12 @@ final class StandaloneGameQrJoinService
             if ($lockedGame->uses_event_planning && ($user->isBlocked() || $user->trashed())) {
                 throw new InvalidArgumentException('Этот пользователь не может участвовать в игре.');
             }
-            if ($lockedGame->rosterEntries()->whereIn('user_id', $user->identityIds())->exists()) {
+            $existingRoster = $lockedGame->rosterEntries()->whereIn('user_id', $user->identityIds())->lockForUpdate()->first();
+            if ($existingRoster !== null && (!$lockedGame->uses_event_planning || $existingRoster->status !== GameRosterStatusEnum::EXCLUDED)) {
                 throw new InvalidArgumentException('Игрок уже находится в составе этой игры.');
+            }
+            if ($existingRoster !== null && (int) $existingRoster->game_side_id !== (int) $side->id) {
+                throw new InvalidArgumentException('Вернуть игрока можно только в его прежнюю сторону.');
             }
 
             $participant = $event->participants()->whereIn('user_id', $user->identityIds())->lockForUpdate()->first();
@@ -181,7 +185,7 @@ final class StandaloneGameQrJoinService
             } else {
                 if ($participant->status !== EventParticipantStatusEnum::CONFIRMED
                     || ($lockedGame->uses_event_planning && (!$participant->hasPlayerRole() || $participant->confirmation_version !== $event->participation_confirmation_version))) {
-                    $this->assertCapacity($event);
+                    $this->assertCapacity($event, $lockedGame->uses_event_planning);
                 }
                 $participant->forceFill([
                     'user_id' => $user->id,
@@ -192,12 +196,16 @@ final class StandaloneGameQrJoinService
                 ])->save();
             }
 
-            $lockedGame->rosterEntries()->create([
-                'game_side_id' => $side->id,
-                'user_id' => $user->id,
-                'source_event_participant_id' => $participant->id,
-                'status' => GameRosterStatusEnum::SELECTED,
-            ]);
+            if ($existingRoster !== null) {
+                $existingRoster->forceFill(['status' => GameRosterStatusEnum::SELECTED])->save();
+            } else {
+                $lockedGame->rosterEntries()->create([
+                    'game_side_id' => $side->id,
+                    'user_id' => $user->id,
+                    'source_event_participant_id' => $participant->id,
+                    'status' => GameRosterStatusEnum::SELECTED,
+                ]);
+            }
 
             $lockedAdmission->forceFill([
                 'status' => GameAdmissionStatusEnum::ACCEPTED,
