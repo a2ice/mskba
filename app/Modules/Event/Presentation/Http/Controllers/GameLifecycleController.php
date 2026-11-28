@@ -90,7 +90,7 @@ final class GameLifecycleController extends Controller
             'sides_confirmed' => $game->sides_confirmed_at !== null,
             'actual_started_at' => $game->actual_started_at?->toIso8601String(),
             'actual_ended_at' => $game->actual_ended_at?->toIso8601String(),
-            'can_start' => $game->hasSportConfiguration() && $canComplete && $sidesReady && ! $started && ! $cancelled && ! $completed,
+            'can_start' => (!$game->uses_event_planning || $game->event->status->value === 'published') && $game->hasSportConfiguration() && $canComplete && $sidesReady && ! $started && ! $cancelled && ! $completed,
             'can_end' => $canComplete && $started && ! $ended && ! $cancelled && ! $completed
                 && (! $usesPeriods || $activePeriod?->number === (int) $game->periods_count),
             'can_end_period' => $canComplete && $usesPeriods && $activePeriod !== null
