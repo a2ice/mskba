@@ -548,6 +548,49 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertSame('declined', $first->fresh()->status->value);
         $this->assertSame(0, $event->primaryGame()->firstOrFail()->admissions()->count());
         $this->assertSame(0, $game->sides()->count());
+        $this->postJson(route('account.notifications.threads.game-invitation.notify-teammates', [$context, $second->id]), ['recipients' => [$player->id]])->assertOk()->assertJsonPath('sent', 1);
+        $delete = route('events.planned-games.destroy', $params);
+        $this->actingAs($ownerA)->deleteJson($delete, ['notify' => true])->assertForbidden();
+        $this->actingAs($organizer)->deleteJson($delete)->assertUnprocessable()->assertJsonValidationErrors('notify');
+        $this->assertFalse($game->fresh()->trashed());
+        $this->deleteJson($delete, ['notify' => true, 'reason' => 'Изменились планы'])->assertOk();
+        $archived = \App\Modules\Event\Domain\Models\Game::withTrashed()->findOrFail($game->id);
+        $this->assertTrue($archived->trashed());
+        $this->assertSame('cancelled', $archived->status->value);
+        $this->assertSame('Изменились планы', $archived->cancellation_reason);
+        $this->assertSame('declined', $first->fresh()->status->value);
+        $this->assertSame('accepted', $second->fresh()->status->value);
+        $this->assertDatabaseCount('game_invitation_recipients', 3);
+        $this->assertSame(1, $context->thread()->sole()->messages()->count());
+        $this->assertSame(1, $event->games()->count());
+        $this->assertNotNull($event->fresh()->primary_game_id);
+        $cancellationNotices = \App\Modules\Notification\Domain\Models\UserNotification::query()
+            ->where('payload->source', 'game.planning.cancelled')->where('payload->game_id', $game->id);
+        $this->assertEqualsCanonicalizing([$ownerA->id, $player->id, $otherPlayer->id], $cancellationNotices->pluck('user_id')->all());
+        $this->assertStringContainsString('Изменились планы', (clone $cancellationNotices)->where('user_id', $player->id)->sole()->body);
+        $this->assertSame($url, (clone $cancellationNotices)->where('user_id', $ownerA->id)->sole()->action_url);
+        $this->assertSame(route('events.show', $event->routeIdentifier()), (clone $cancellationNotices)->where('user_id', $player->id)->sole()->action_url);
+        $this->deleteJson($delete, ['notify' => true])->assertNotFound();
+        $this->assertSame(3, $cancellationNotices->count());
+        $this->actingAs($ownerA)->get($url)->assertOk()->assertSee('Игра отменена')->assertSee('Изменились планы')
+            ->assertSee('Пришли ещё раз приглашение')->assertDontSee('Оповестить тиммейтов');
+        $this->getJson($state)->assertOk()->assertJsonPath('cancellation_reason', 'Изменились планы');
+        $this->postJson($notify, ['recipients' => [$player->id]])->assertUnprocessable();
+        $this->postJson($messages, ['body' => 'Понял, спасибо'])->assertCreated();
+
+        // The organizer may explicitly opt out of the cancellation notice.
+        $this->actingAs($organizer);
+        $silentId = $this->postJson(route('events.planned-games.store', $event->routeIdentifier()), [
+            'title' => 'Другая игра', 'format' => 'basketball_5x5',
+            'recruitment_mode' => 'preformed_teams', 'team_a_id' => $a->id, 'team_b_id' => $b->id,
+        ])->assertCreated()->json('game_id');
+        $silentParams = [$event->routeIdentifier(), $silentId];
+        $this->postJson(route('events.games.recruitment.invite', $silentParams), ['team_id' => $b->id])->assertOk();
+        $this->deleteJson(route('events.planned-games.destroy', $silentParams), ['notify' => false])->assertOk();
+        $this->assertSoftDeleted('games', ['id' => $silentId]);
+        $this->assertDatabaseCount('game_invitation_threads', 2);
+        $this->assertSame(0, \App\Modules\Notification\Domain\Models\UserNotification::query()
+            ->where('payload->source', 'game.planning.cancelled')->where('payload->game_id', $silentId)->count());
     }
 
     public function test_duplicate_time_options_are_rejected(): void
