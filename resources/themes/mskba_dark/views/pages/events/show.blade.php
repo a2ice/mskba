@@ -537,7 +537,7 @@
                         <i class="ti ti-chevron-down"></i>
                     </summary>
                     <div class="event-management__body">
-                        @if($event->type === EventTypeEnum::GAME && $event->games->isNotEmpty()
+                        @if($event->type === EventTypeEnum::GAME && $event->primaryGame?->hasSportConfiguration()
                             && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
                             <section class="event-game-management-link">
                                 <div>
