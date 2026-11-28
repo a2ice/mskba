@@ -4,6 +4,8 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Modules\Identity\Application\Services\PublicUserProfileService;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\Services\DirectMessageBlockService;
+use App\Modules\Notification\Application\Services\DirectMessageRecipientAccess;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -43,6 +45,8 @@ final class PublicUserProfileController
         return ThemeResolver::page('users.show', [
             'publicProfile' => $data,
             'isOwnProfile' => $isOwnProfile,
+            'publicProfileMessageRecipientId' => app(DirectMessageRecipientAccess::class)
+                ->canSend($canonical, $viewer, app(DirectMessageBlockService::class)) ? $canonical->id : null,
             'publicProfileEditUrl' => $isOwnProfile
                 ? ($data['role'] !== null
                     ? route('account.participation-role', ['role' => $data['role']])
