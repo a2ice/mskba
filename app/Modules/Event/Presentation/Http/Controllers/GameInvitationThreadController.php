@@ -24,14 +24,16 @@ use InvalidArgumentException;
 final class GameInvitationThreadController extends Controller
 {
     public function show(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations,
-        AccountConversationRail $rail, MarkConversationNotificationsReadHandler $read, GameInvitationTeammates $teammates): Response
+        AccountConversationRail $rail, MarkConversationNotificationsReadHandler $read, GameInvitationTeammates $teammates): Response|JsonResponse
     {
         $viewer = $request->user()->canonical();
         abort_unless($conversations->canRead($context, $viewer), 403);
         $thread = $context->thread()->firstOrFail();
         $messages = $thread->messages()->with('sender')->latest('id')->paginate(10);
         $invitations = $conversations->invitations($context)->orderBy('id')->get();
-        $read->handle($viewer, gameInvitationThreadId: $context->id);
+        if (!$request->boolean('fragment')) {
+            $read->handle($viewer, gameInvitationThreadId: $context->id);
+        }
         $context->loadMissing(['game.event.venue', 'team']);
         $game = $context->game;
         $canRespond = $conversations->canRepresentTeam($context, $viewer)
@@ -45,7 +47,7 @@ final class GameInvitationThreadController extends Controller
         $players = $canNotify ? $teammates->eligible($context, $viewer) : collect();
         $notified = $latest ? $teammates->alreadyNotified($latest) : [];
 
-        return ThemeResolver::page('account.game-invitation-conversation', [
+        $viewData = [
             'context' => $context,
             'thread' => $thread,
             'messages' => $messages,
@@ -58,7 +60,24 @@ final class GameInvitationThreadController extends Controller
             'viewer' => $viewer,
             'conversationCards' => $rail->items($viewer, $request),
             'activeConversationId' => 'game-invitation-'.$context->id,
-        ]);
+        ];
+        if ($request->boolean('fragment')) {
+            return response()->json([
+                'html' => view('theme::pages.account.partials.game-invitation-content', $viewData)->render(),
+                'rail_html' => view('theme::pages.account.partials.conversation-rail-items', $viewData)->render(),
+            ])->header('Cache-Control', 'private, no-store');
+        }
+
+        return ThemeResolver::page('account.game-invitation-conversation', $viewData);
+    }
+
+    public function read(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations,
+        MarkConversationNotificationsReadHandler $read): JsonResponse
+    {
+        $viewer = $request->user()->canonical();
+        abort_unless($conversations->canRead($context, $viewer), 403);
+
+        return response()->json(['unread_count' => $read->handle($viewer, gameInvitationThreadId: $context->id)]);
     }
 
     public function state(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations): JsonResponse
