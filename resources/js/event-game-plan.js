@@ -1,5 +1,29 @@
 import {gamePresets, mountEventGameEditor} from './event-game-editor.js';
 
+// Restore draft metadata separately from the server payload. Legacy drafts only
+// restore an actual opted-in game; opening the new wizard never creates a game.
+export function restoreEventGamePlanDraft(saved) {
+    if(Array.isArray(saved?.gamePlan))return saved.gamePlan;
+    const draft=saved?.draft||{};
+    if(Array.isArray(draft.games))return draft.games.map(value=>({value,teams:{}}));
+    if(draft.type!=='game'||String(draft.create_game)!=='1')return [];
+    const preset=gamePresets[draft.game_format];
+    if(!preset)return [];
+    return [{value:{title:preset.title,format:draft.game_format,recruitment_mode:'individual_draft',
+        scoring_type:preset.scoring_type,timing_mode:preset.periods==='whole_game'?'whole_game':'periods',
+        periods_count:preset.periods==='whole_game'?null:Number(preset.periods)},teams:{}}];
+}
+
+export function gamePlanValidation(errors) {
+    for(const key of Object.keys(errors||{})){
+        const match=/^games\.(\d+)\./.exec(key);
+        if(!match)continue;
+        const index=Number(match[1]), prefix='games.'+index+'.';
+        return {index,errors:Object.fromEntries(Object.entries(errors).filter(([field])=>field.startsWith(prefix)).map(([field,messages])=>[field.slice(prefix.length),Array.isArray(messages)?messages[0]:messages]))};
+    }
+    return null;
+}
+
 // Adapter for the event wizard / isolated studio. No network writes.
 export function mountEventGamePlan(root, editorDialog, deleteDialog, {searchTeams, onChange=()=>{}}) {
     const list=root.querySelector('[data-game-plan-list]');
@@ -50,6 +74,10 @@ export function mountEventGamePlan(root, editorDialog, deleteDialog, {searchTeam
     });
     render();
     return {
+        showValidation({index,errors}){
+            const row=games[index];if(!row)return false;
+            editor.open(row.value,row.teams,row.key,errors);return true;
+        },
         values:()=>games.map(row=>({...row.value})),
         draft:()=>games.map(row=>({value:{...row.value},teams:{...row.teams}})),
         restore(rows){games=Array.isArray(rows)?rows.slice(0,50).filter(row=>row?.value?.title).map(row=>({key:nextKey++,value:row.value,teams:row.teams||{}})):[];render();},
