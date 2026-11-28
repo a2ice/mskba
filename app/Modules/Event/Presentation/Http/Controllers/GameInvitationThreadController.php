@@ -10,13 +10,47 @@ use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\GameInvitationThread;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Notification\Application\Services\AccountConversationRail;
+use App\Modules\Notification\Application\UseCases\MarkConversationNotificationsReadHandler;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
 final class GameInvitationThreadController extends Controller
 {
+    public function show(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations,
+        AccountConversationRail $rail, MarkConversationNotificationsReadHandler $read): Response
+    {
+        $viewer = $request->user()->canonical();
+        abort_unless($conversations->canRead($context, $viewer), 403);
+        $thread = $context->thread()->firstOrFail();
+        $messages = $thread->messages()->with('sender')->latest('id')->paginate(10);
+        $invitations = $conversations->invitations($context)->orderBy('id')->get();
+        $read->handle($viewer, gameInvitationThreadId: $context->id);
+        $context->loadMissing(['game.event.venue', 'team']);
+        $game = $context->game;
+        $canRespond = $conversations->canRepresentTeam($context, $viewer)
+            && $game && !$game->trashed() && $game->hasSportConfiguration()
+            && $game->status->value === 'scheduled' && $game->actual_started_at === null
+            && $game->sides_confirmed_at === null && $game->event?->status?->value === 'published'
+            && !$game->event?->ends_at?->isPast();
+
+        return ThemeResolver::page('account.game-invitation-conversation', [
+            'context' => $context,
+            'thread' => $thread,
+            'messages' => $messages,
+            'invitations' => $invitations,
+            'canRespond' => $canRespond,
+            'viewer' => $viewer,
+            'conversationCards' => $rail->items($viewer, $request),
+            'activeConversationId' => 'game-invitation-'.$context->id,
+        ]);
+    }
+
     public function state(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations): JsonResponse
     {
         $viewer = $request->user()->canonical();
@@ -51,19 +85,20 @@ final class GameInvitationThreadController extends Controller
         ]);
     }
 
-    public function message(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations): JsonResponse
+    public function message(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations): JsonResponse|RedirectResponse
     {
         $viewer = $request->user()->canonical();
         abort_unless($conversations->canRead($context, $viewer), 403);
         $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
         $conversations->send($context, $viewer, $data['body']);
 
-        return response()->json(['message' => 'Сообщение отправлено.'], 201);
+        return $request->expectsJson() ? response()->json(['message' => 'Сообщение отправлено.'], 201)
+            : redirect()->route('account.notifications.threads.game-invitation', $context);
     }
 
     public function respond(Request $request, GameInvitationThread $context, int $admission,
         GameInvitationConversation $conversations, CurrentActorResolver $actors,
-        GameAdmissionService $admissions, GameAdmissionNotificationStateService $notificationState): JsonResponse
+        GameAdmissionService $admissions, GameAdmissionNotificationStateService $notificationState): JsonResponse|RedirectResponse
     {
         $viewer = $request->user()->canonical();
         abort_unless($conversations->canRepresentTeam($context, $viewer), 403);
@@ -81,9 +116,11 @@ final class GameInvitationThreadController extends Controller
             $notificationState->resolve($updated);
             event(new EventChanged($game->event_id));
         } catch (InvalidArgumentException $exception) {
-            return response()->json(['message' => $exception->getMessage()], 422);
+            return $request->expectsJson() ? response()->json(['message' => $exception->getMessage()], 422)
+                : back()->withErrors(['invitation' => $exception->getMessage()]);
         }
 
-        return response()->json(['message' => 'Ответ сохранён.']);
+        return $request->expectsJson() ? response()->json(['message' => 'Ответ сохранён.'])
+            : redirect()->route('account.notifications.threads.game-invitation', $context);
     }
 }
