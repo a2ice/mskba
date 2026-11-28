@@ -40,7 +40,7 @@ final class GameInvitationConversation
             'type' => 'game_invitation',
             'subject_id' => $context->id,
         ]);
-        $context->touch();
+        $this->changed($context);
 
         return $context;
     }
@@ -122,9 +122,24 @@ final class GameInvitationConversation
     public function touch(Game $game, GameAdmission $admission): void
     {
         if ($game->uses_event_planning && $admission->team_id !== null) {
-            GameInvitationThread::query()->where('game_id', $game->id)->where('team_id', $admission->team_id)
-                ->update(['updated_at' => now()]);
+            $context = GameInvitationThread::query()->where('game_id', $game->id)->where('team_id', $admission->team_id)->first();
+            if ($context !== null) {
+                $this->changed($context);
+            }
         }
+    }
+
+    public function changed(GameInvitationThread $context): void
+    {
+        $context->touch();
+        // Broadcast only invalidation, never private content, after commit.
+        DB::afterCommit(static function () use ($context): void {
+            try {
+                \App\Modules\Notification\Infrastructure\Broadcasting\ConversationChangedBroadcast::dispatch('game_invitation', $context->id);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        });
     }
 
     public function recipients(GameInvitationThread $context): Collection
@@ -161,7 +176,7 @@ final class GameInvitationConversation
             abort_unless($this->canRead($locked, $user), 403);
             $thread = $locked->thread()->firstOrFail();
             $thread->messages()->create(['sender_user_id' => $user->id, 'body' => $body]);
-            $locked->touch();
+            $this->changed($locked);
         });
         foreach ($this->recipients($context) as $recipient) {
             if ($recipient->id === $user->id) {
