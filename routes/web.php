@@ -898,6 +898,9 @@ Route::prefix('events')->group(function () {
             ->middleware('throttle:30,1')->whereNumber('photo')->name('events.result.photos.update');
         Route::delete('/{event}/result/photos/{photo}', [EventController::class, 'destroyResultPhoto'])
             ->middleware('throttle:20,1')->whereNumber('photo')->name('events.result.photos.destroy');
+        Route::post('/{event}/planned-games', [\App\Modules\Event\Presentation\Http\Controllers\EventGamePlanningController::class, 'store'])->name('events.planned-games.store');
+        Route::put('/{event}/planned-games/{game}', [\App\Modules\Event\Presentation\Http\Controllers\EventGamePlanningController::class, 'update'])->whereNumber('game')->name('events.planned-games.update');
+        Route::delete('/{event}/planned-games/{game}', [\App\Modules\Event\Presentation\Http\Controllers\EventGamePlanningController::class, 'destroy'])->whereNumber('game')->name('events.planned-games.destroy');
         Route::post('/{event}/games', [GameController::class, 'createMiniGame'])->name('events.games.store');
         Route::get('/{event}/games/{game}/manage', [NestedGameController::class, 'manage'])->whereNumber('game')->name('events.games.manage');
         Route::put('/{event}/games/{game}', [NestedGameController::class, 'update'])->whereNumber('game')->name('events.games.update');
