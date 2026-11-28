@@ -14,8 +14,8 @@
         <div class="mskba-modal__body mskba-scroll event-game-editor__body">
             <label class="event-game-editor__field">
                 <span>Название игры</span>
-                <input type="text" name="title" maxlength="150" required>
-                <small class="event-game-editor__error" data-game-error="title" role="alert" hidden></small>
+                <input type="text" name="title" maxlength="150" required aria-describedby="{{ $editorId }}-error-title">
+                <small class="event-game-editor__error" id="{{ $editorId }}-error-title" data-game-error="title" role="alert" hidden></small>
             </label>
             <label class="event-game-editor__field">
                 <span>Формат игры</span>
