@@ -39,6 +39,7 @@ final class StandaloneGameQrJoinController extends Controller
     ): Response {
         [$eventModel, $gameModel] = $this->models($event, $game);
         abort_unless($eventModel->visibility === EventVisibilityEnum::PUBLIC, 404);
+        abort_if($gameModel->uses_event_planning && $eventModel->status === EventStatusEnum::DRAFT, 404);
 
         $identityIds = $request->user()?->canonical()->identityIds() ?? [];
         $latestAdmission = $identityIds === []
