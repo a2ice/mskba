@@ -108,6 +108,11 @@ class Game extends Model
         return $this->hasMany(GameSide::class);
     }
 
+    public function invitationThreads(): HasMany
+    {
+        return $this->hasMany(GameInvitationThread::class);
+    }
+
     public function admissions(): HasMany
     {
         return $this->hasMany(GameAdmission::class);
