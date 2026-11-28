@@ -448,6 +448,25 @@ final class GameAdmissionService
 
     private function notify(int $userId, Game $game, string $title, string $body, ?int $admissionId = null, ?int $contextId = null): void
     {
+        if ($game->uses_event_planning) {
+            DB::transaction(function () use ($userId, $game, $title, $body, $admissionId, $contextId): void {
+                // A cancellation can occur after an admission commits but before
+                // its notification is written. Never deliver a stale invitation.
+                $event = Event::query()->lockForUpdate()->find($game->event_id);
+                $locked = Game::query()->lockForUpdate()->find($game->id);
+                if ($event === null || $locked === null || $locked->status === GameStatusEnum::CANCELLED) {
+                    return;
+                }
+                $this->deliverNotice($userId, $locked, $title, $body, $admissionId, $contextId);
+            }, 3);
+            return;
+        }
+
+        $this->deliverNotice($userId, $game, $title, $body, $admissionId, $contextId);
+    }
+
+    private function deliverNotice(int $userId, Game $game, string $title, string $body, ?int $admissionId, ?int $contextId): void
+    {
         $event = $game->event()->first();
         if ($event === null) {
             return;
@@ -468,7 +487,7 @@ final class GameAdmissionService
             actionText: $contextId !== null ? 'Открыть диалог' : 'Открыть игру',
             payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment', ...($admissionId === null ? [] : ['game_admission_id' => $admissionId]),
                 ...($contextId === null ? [] : ['game_invitation_thread_id' => $contextId])],
-        ));
+        ), $game->uses_event_planning);
     }
 
     private function normalizeComment(?string $comment): ?string
