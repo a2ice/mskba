@@ -30,16 +30,19 @@ final class NestedGameController extends Controller
 
     public function update(Request $request, string $event, int $game): Response
     {
+        abort_if($this->resolve($event, $game)->uses_event_planning, 422, 'Используйте редактор запланированной игры.');
         return $this->forward($request, $event, $game, GameController::class, 'updateMiniGame');
     }
 
     public function destroy(Request $request, string $event, int $game): Response
     {
+        abort_if($this->resolve($event, $game)->uses_event_planning, 422, 'Используйте отмену запланированной игры.');
         return $this->forward($request, $event, $game, GameController::class, 'destroyMiniGame');
     }
 
     public function cancel(Request $request, string $event, int $game): Response
     {
+        abort_if($this->resolve($event, $game)->uses_event_planning, 422, 'Используйте отмену запланированной игры.');
         return $this->forward($request, $event, $game, GameController::class, 'cancelMiniGame');
     }
 
