@@ -20,6 +20,7 @@
 {!! file_get_contents(resource_path('js/event-game-editor.js')) !!}
 {!! str_replace("import {gamePresets, mountEventGameEditor} from './event-game-editor.js';", '', file_get_contents(resource_path('js/event-game-plan.js'))) !!}
 const parent=document.querySelector('[data-studio-event]');
+parent.after(document.querySelector('[data-game-plan-delete-dialog]'));
 const fixtureTeams=[{id:1,name:'MSKBA',logo_url:null},{id:2,name:'Basket Team',logo_url:null},{id:3,name:'Basket Moscow',logo_url:null}];
 const plan=mountEventGamePlan(document.querySelector('[data-game-plan]'),document.querySelector('[data-game-editor]'),document.querySelector('[data-game-plan-delete-dialog]'),{
     searchTeams:async(query,exclude)=>fixtureTeams.filter(team=>team.id!==exclude&&team.name.toLowerCase().includes(query.toLowerCase())),
