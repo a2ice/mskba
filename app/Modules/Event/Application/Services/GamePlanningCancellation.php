@@ -35,7 +35,7 @@ final class GamePlanningCancellation
         foreach ($contexts as $context) {
             $ids = $ids->merge($this->conversations->recipients($context)
                 ->filter(fn (User $user) => $this->conversations->canRepresentTeam($context, $user))->pluck('id'));
-            $context->touch();
+            $this->conversations->changed($context);
         }
 
         // Cancellation is a separate historical event: keep the original answers
