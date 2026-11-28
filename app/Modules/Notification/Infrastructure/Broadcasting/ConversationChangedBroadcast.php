@@ -22,6 +22,7 @@ final class ConversationChangedBroadcast implements ShouldBroadcastNow
             'profile' => 'request-threads.',
             'support' => 'support-tickets.',
             'operator' => 'operator-conversations.',
+            'game_invitation' => 'game-invitation-threads.',
             default => 'direct-conversations.',
         }.$this->id);
     }
