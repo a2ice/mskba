@@ -54,6 +54,9 @@ final class EventGameController extends Controller
         }
         $canManage = $actor !== null && $access->canManage($parent, $actor);
         abort_if($managementMode && ! $canManage, 403);
+        if (! $gameModel->hasSportConfiguration()) {
+            return redirect()->route('events.show', $parent->routeIdentifier());
+        }
         $canViewAudience = $managementMode
             && $actor !== null
             && $access->allows($parent, $actor, EventResponsibilityPermissionEnum::VIEW_MINI_GAME_AUDIENCE);
