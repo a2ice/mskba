@@ -112,7 +112,7 @@
                             <label class="form-label">Сторона B</label>
                             <select class="form-select" name="team_b_id" required>
                                 <option value="">Выберите команду</option>
-                                @foreach($acceptedTeams as $admission)<option value="{{ $admission->team_id }}">{{ $admission->team->name }}</option>@endforeach
+                                @foreach($acceptedTeams as $admission)<option value="{{ $admission->team_id }}" @selected($game->uses_event_planning && (int) $game->planned_team_b_id === (int) $admission->team_id)>{{ $admission->team->name }}</option>@endforeach
                             </select>
                         </div>
                         <div class="col-12"><button class="btn btn--primary" type="submit">Утвердить стороны</button></div>
