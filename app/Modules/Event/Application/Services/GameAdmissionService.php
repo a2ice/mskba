@@ -163,7 +163,7 @@ final class GameAdmissionService
             foreach ($recipientIds as $userId) {
                 $this->notify((int) $userId, $game,
                     $decision === GameAdmissionStatusEnum::ACCEPTED ? 'Приглашение на игру принято' : 'Приглашение на игру отклонено',
-                    ($updated->team?->name ?? 'Игрок').' — '.$game->title, $updated->id);
+                    ($updated->team?->name ?? 'Игрок').' — '.$game->title);
             }
         }
 
