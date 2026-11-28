@@ -2,11 +2,15 @@
 
 namespace App\Modules\Event\Application\Services;
 
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -18,6 +22,8 @@ use Illuminate\Validation\ValidationException;
 
 final class EventGamePlanningService
 {
+    public function __construct(private readonly EventManagementAccess $access) {}
+
     /** The new event-first contract is independent of the legacy single-game payload. */
     public static function rules(): array
     {
@@ -66,7 +72,138 @@ final class EventGamePlanningService
         });
     }
 
+    /** Create a single planned game on an existing event. */
+    public function add(Event $event, Actor $actor, array $row): Game
+    {
+        $row = $this->validatedRow($row);
+        $game = DB::transaction(function () use ($event, $actor, $row): Game {
+            $parent = $this->lockManageable($event, $actor, EventResponsibilityPermissionEnum::CREATE_MINI_GAME);
+            if ($parent->games()->where('uses_event_planning', true)->count() >= 50) {
+                throw ValidationException::withMessages(['games' => 'Можно добавить не более 50 игр.']);
+            }
+            $game = $this->create($parent, $actor, $row, 0, $this->lockTeamsForRow($row));
+            if ($parent->primary_game_id === null) {
+                $parent->forceFill(['primary_game_id' => $game->id])->save();
+            }
+
+            return $game;
+        }, 3);
+        event(new EventChanged($event->id));
+
+        return $game;
+    }
+
+    /** Edit a planned game while its sporting configuration is still unused. */
+    public function edit(Event $event, Game $game, Actor $actor, array $row): Game
+    {
+        $row = $this->validatedRow($row);
+        $updated = DB::transaction(function () use ($event, $game, $actor, $row): Game {
+            $parent = $this->lockManageable($event, $actor, EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
+            $locked = $this->lockPlanned($parent, $game);
+            $attributes = $this->attributes($row, 0, $this->lockTeamsForRow($row));
+            $locked->fill($attributes);
+            // Once admissions or sides exist, only the display name can change
+            // until the dedicated invitation / formation lifecycle handles transitions.
+            if ($locked->isDirty(array_values(array_diff(array_keys($attributes), ['title'])))) {
+                $this->assertUnused($locked);
+                $locked->periods()->delete();
+                $this->createPeriods($locked, $attributes['periods_count']);
+            }
+            $locked->save();
+
+            return $locked->fresh();
+        }, 3);
+        event(new EventChanged($event->id));
+
+        return $updated;
+    }
+
+    /** Unused scheduled games can be removed without touching event participants. */
+    public function remove(Event $event, Game $game, Actor $actor): void
+    {
+        DB::transaction(function () use ($event, $game, $actor): void {
+            $parent = $this->lockManageable($event, $actor, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
+            $locked = $this->lockPlanned($parent, $game);
+            $this->assertUnused($locked);
+            // Preserve the row and its identifiers; the default scope hides deleted games.
+            $locked->delete();
+            if ((int) $parent->primary_game_id === (int) $locked->id) {
+                $parent->forceFill(['primary_game_id' => $parent->games()
+                    ->where('status', '!=', GameStatusEnum::CANCELLED->value)->orderBy('id')->value('id')])->save();
+            }
+        }, 3);
+        event(new EventChanged($event->id));
+    }
+
+    private function validatedRow(array $row): array
+    {
+        return Validator::make(['games' => [$row]], self::rules())->validate()['games'][0];
+    }
+
+    private function lockManageable(Event $event, Actor $actor, EventResponsibilityPermissionEnum $permission): Event
+    {
+        $parent = Event::query()->lockForUpdate()->findOrFail($event->id);
+        abort_unless($this->access->allows($parent, $actor, $permission), 403);
+        if (! in_array($parent->status, [EventStatusEnum::DRAFT, EventStatusEnum::PUBLISHED], true)) {
+            throw ValidationException::withMessages(['game' => 'Мероприятие уже закрыто.']);
+        }
+        // Tournament scheduling belongs to its own aggregate and must not be changed here.
+        abort_if($parent->games()->whereHas('tournamentMatch')->exists(), 422, 'Матч турнира управляется отдельно.');
+
+        return $parent;
+    }
+
+    private function lockPlanned(Event $event, Game $game): Game
+    {
+        $locked = $event->games()->whereKey($game->id)->where('uses_event_planning', true)->lockForUpdate()->firstOrFail();
+        if ($locked->status !== GameStatusEnum::SCHEDULED || $locked->actual_started_at !== null
+            || $locked->statistics_status !== GameStatisticsStatusEnum::NOT_STARTED) {
+            throw ValidationException::withMessages(['game' => 'Начатую, завершённую или отменённую игру изменять нельзя.']);
+        }
+
+        return $locked;
+    }
+
+    private function assertUnused(Game $game): void
+    {
+        if ($game->admissions()->exists() || $game->sides()->exists() || $game->rosterEntries()->exists()
+            || $game->actions()->exists() || $game->playerStatistics()->exists() || $game->sides_confirmed_at !== null
+            || $game->periods()->whereNotNull('actual_started_at')->exists()) {
+            throw ValidationException::withMessages(['game' => 'У игры уже есть история участия или спортивных действий.']);
+        }
+    }
+
+    private function lockTeamsForRow(array $row): \Illuminate\Support\Collection
+    {
+        return Team::query()->competitionEligible()
+            ->whereIn('id', array_filter([$row['team_a_id'] ?? null, $row['team_b_id'] ?? null]))
+            ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+    }
+
     private function create(Event $event, Actor $actor, array $row, int $index, \Illuminate\Support\Collection $teams): Game
+    {
+        $attributes = $this->attributes($row, $index, $teams);
+        $game = $event->games()->create([
+            ...$attributes,
+            'created_by_actor_id' => $actor->id,
+            'status' => GameStatusEnum::SCHEDULED,
+            'uses_event_planning' => true,
+        ]);
+        $this->createPeriods($game, $attributes['periods_count']);
+
+        return $game;
+    }
+
+    private function createPeriods(Game $game, ?int $periods): void
+    {
+        if ($periods !== null) {
+            foreach (range(1, $periods) as $number) {
+                $game->periods()->create(['number' => $number]);
+            }
+        }
+    }
+
+    private function attributes(array $row, int $index, \Illuminate\Support\Collection $teams): array
     {
         $prefix = 'games.'.$index.'.';
         $format = isset($row['format']) ? GameFormatEnum::from($row['format']) : null;
@@ -84,10 +221,8 @@ final class EventGamePlanningService
                 throw ValidationException::withMessages($errors);
             }
 
-            return $event->games()->create([
-                'created_by_actor_id' => $actor->id,
+            return [
                 'title' => trim($row['title']),
-                'status' => GameStatusEnum::SCHEDULED,
                 'format' => null,
                 'recruitment_mode' => null,
                 'accepts_applications' => false,
@@ -96,7 +231,9 @@ final class EventGamePlanningService
                 'scoring_type' => null,
                 'timing_mode' => null,
                 'periods_count' => null,
-            ]);
+                'planned_team_a_id' => null,
+                'planned_team_b_id' => null,
+            ];
         }
         $size = $format->sideSize();
         $mode = GameRecruitmentModeEnum::from($row['recruitment_mode'] ?? GameRecruitmentModeEnum::INDIVIDUAL_DRAFT->value);
@@ -131,10 +268,8 @@ final class EventGamePlanningService
             throw ValidationException::withMessages($errors);
         }
 
-        $game = $event->games()->create([
-            'created_by_actor_id' => $actor->id,
+        return [
             'title' => trim($row['title']),
-            'status' => GameStatusEnum::SCHEDULED,
             'format' => $format,
             'recruitment_mode' => $mode,
             'accepts_applications' => true,
@@ -145,13 +280,6 @@ final class EventGamePlanningService
             'periods_count' => $periods,
             'planned_team_a_id' => $a,
             'planned_team_b_id' => $b,
-        ]);
-        if ($periods !== null) {
-            foreach (range(1, $periods) as $number) {
-                $game->periods()->create(['number' => $number]);
-            }
-        }
-
-        return $game;
+        ];
     }
 }
