@@ -96,7 +96,15 @@
                         </div>
                         @if($canInviteGame)<p class="event-game-editor__error" data-planned-invite-error role="alert" hidden></p>@endif
                     @elseif($teamLabel)<p class="event-game-editor__hint">{{ $teamLabel }}</p>@endif
-                    {{-- The new sport runtime is connected in the next integration slice. --}}
+                    @if($child->hasSportConfiguration())
+                        <a class="event-game-plan__add" href="{{ route('events.games.show', [$event->routeIdentifier(), $child->id]) }}">Состав и счёт игры</a>
+                        @if($effectivePermissions->contains(PlanPermission::MANAGE_PARTICIPANTS->value) || collect(PlanPermission::miniGamePermissions())->contains(fn ($permission) => $effectivePermissions->contains($permission->value)))
+                            <a class="event-game-plan__add" href="{{ route('events.games.manage', [$event->routeIdentifier(), $child->id]) }}">Управлять игрой</a>
+                        @endif
+                        @if($child->actual_started_at && !$child->actual_ended_at)
+                            <a class="event-game-plan__add" href="{{ route('events.games.live', [$event->routeIdentifier(), $child->id]) }}">Live — смотреть игру</a>
+                        @endif
+                    @endif
                 </div>
                 @if($scheduled && $canEditGame && !$history)
                     <button class="icon-button event-game-plan__icon" type="button" aria-label="Редактировать игру" title="Редактировать игру" data-planned-game-edit>
