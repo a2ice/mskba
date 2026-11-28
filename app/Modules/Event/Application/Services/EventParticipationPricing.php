@@ -98,7 +98,18 @@ final class EventParticipationPricing
     /** Price is an organizer's estimate; it is never derived from a rental quote. */
     public function attributes(Actor $actor, array $data, ?Event $event = null): array
     {
-        $inclusions = $this->inclusionAttributes($data, $event);
+        // A free event has no payable inclusions, including stale submitted fields.
+        if (array_key_exists('is_paid', $data) && ! filter_var($data['is_paid'], FILTER_VALIDATE_BOOLEAN)) {
+            return [
+                'cost_inclusions' => [],
+                'is_paid' => false, 'total_cost_minor' => null, 'participant_cost_minor' => null,
+                'participant_cost_auto' => true, 'cost_comment' => null,
+            ];
+        }
+
+        $inclusions = filter_var($data['is_paid'] ?? $event?->is_paid ?? false, FILTER_VALIDATE_BOOLEAN)
+            ? $this->inclusionAttributes($data, $event)
+            : ($event === null || array_key_exists('cost_inclusions_present', $data) ? ['cost_inclusions' => []] : []);
         if (! array_key_exists('is_paid', $data)) {
             if ($event?->is_paid && $event->participant_cost_auto && array_key_exists('max_participants', $data)) {
                 return [...$inclusions, 'participant_cost_minor' => $this->share($event->total_cost_minor, $data['max_participants'])];
@@ -111,14 +122,6 @@ final class EventParticipationPricing
         if ($validated->fails()) {
             throw new ValidationException($validated);
         }
-        if (! filter_var($data['is_paid'], FILTER_VALIDATE_BOOLEAN)) {
-            return [
-                ...$inclusions,
-                'is_paid' => false, 'total_cost_minor' => null, 'participant_cost_minor' => null,
-                'participant_cost_auto' => true, 'cost_comment' => null,
-            ];
-        }
-
         $total = $this->minor($data['total_cost'] ?? null, 'total_cost');
         $auto = filter_var($data['participant_cost_auto'] ?? true, FILTER_VALIDATE_BOOLEAN);
         $participant = $auto
