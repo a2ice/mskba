@@ -90,7 +90,7 @@ if (modalRoot) {
         const button = event.target.closest?.('[data-direct-message-open]');
         if (!button?.dataset.recipientId) return;
         isTestEntry = false;
-        void openRecipient(button.dataset.recipientId, button.dataset.recipientName, button);
+        void openRecipient(button.dataset.recipientId, button.dataset.recipientName, document.getElementById(button.dataset.directReturnFocus || '') || button);
     });
 
     if (testTrigger && testSearch && modalRoot.dataset.testSearchUrl) {
@@ -182,6 +182,32 @@ if (modalRoot) {
         } finally {
             send.disabled = false;
         }
+    });
+}
+
+// Contact choice uses the same composer; the chooser must be closed before
+// the message dialog opens, and focus returns to its visible trigger.
+const communityContactDialog = document.querySelector('[data-community-contact-dialog]');
+const communityContactTrigger = document.querySelector('[data-community-contact-open]');
+if (communityContactDialog && communityContactTrigger) {
+    let choseRecipient = false;
+    communityContactTrigger.addEventListener('click', () => {
+        choseRecipient = false;
+        communityContactDialog.showModal();
+        communityContactDialog.querySelector('[data-community-contact-close]')?.focus();
+    });
+    communityContactDialog.querySelector('[data-community-contact-close]')?.addEventListener('click', () => communityContactDialog.close());
+    communityContactDialog.addEventListener('click', event => {
+        if (event.target.closest?.('[data-direct-message-open]')) {
+            choseRecipient = true;
+            communityContactDialog.close();
+        } else if (event.target === communityContactDialog) {
+            const rect = communityContactDialog.getBoundingClientRect();
+            if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) communityContactDialog.close();
+        }
+    });
+    communityContactDialog.addEventListener('close', () => {
+        if (!choseRecipient) communityContactTrigger.focus({preventScroll:true});
     });
 }
 
