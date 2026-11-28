@@ -89,6 +89,7 @@ final class TeamController extends Controller
                 ->with([
                     'logo',
                     'sportProfiles.lineupMembers',
+                    'hiringPositions' => fn ($positions) => $positions->available(),
                     'memberships' => fn ($memberships) => $memberships
                         ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
                         ->whereHas('contract', fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE))
@@ -292,6 +293,26 @@ final class TeamController extends Controller
             ]];
         });
 
+        $publicCompetitionBlocks = [
+            ['title' => 'Игры', 'items' => $item->gameSides()
+                ->whereHas('game', fn ($query) => $query->where('status', 'completed'))
+                ->whereHas('game.event', fn ($query) => $query->where('visibility', 'public')->whereIn('status', ['published', 'completed']))
+                ->with('game.event')->latest('id')->limit(20)->get()->unique('game_id')->map(fn ($side) => [
+                    'name' => $side->game->title ?: $side->game->event->title,
+                    'url' => route('events.games.show', ['event' => $side->game->event->routeIdentifier(), 'game' => $side->game->id]),
+                ])->values()->all()],
+            ['title' => 'Турниры', 'items' => $item->tournamentEntries()->where('status', 'active')
+                ->whereHas('tournament', fn ($query) => $query->where('status', 'confirmed'))
+                ->with('tournament')->latest('id')->limit(20)->get()->unique('tournament_id')->map(fn ($entry) => [
+                    'name' => $entry->tournament->title,
+                    'url' => route('tournaments.show', $entry->tournament->routeIdentifier()),
+                ])->values()->all()],
+            ['title' => 'Лиги', 'items' => $item->leagues()->whereIn('leagues.status', ['active', 'archived'])
+                ->orderBy('leagues.name')->limit(20)->get()->map(fn ($league) => [
+                    'name' => $league->name, 'url' => route('leagues.show', $league->alias),
+                ])->all()],
+        ];
+
         $sportLabels = $item->sportProfiles
             ->map(fn ($profile): string => $profile->sport_type->label())
             ->unique()
@@ -304,6 +325,7 @@ final class TeamController extends Controller
         return ThemeResolver::page('teams.show', [
             'team' => $item,
             'publicMembers' => $publicMembers,
+            'publicCompetitionBlocks' => $publicCompetitionBlocks,
             'coaches' => $coaches,
             'managers' => $managers,
             'activeMemberships' => $activeMemberships,
