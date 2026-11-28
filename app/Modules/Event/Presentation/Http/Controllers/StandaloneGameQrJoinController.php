@@ -154,7 +154,11 @@ final class StandaloneGameQrJoinController extends Controller
             'game' => $gameModel->loadMissing('sides'),
             'pendingAdmissions' => $pending,
             'available' => $service->isAvailable($eventModel, $gameModel),
-        ]);
+        ];
+
+        return view()->exists('theme::pages.events.partials.game-qr-late-join')
+            ? response()->view('theme::pages.events.partials.game-qr-late-join', $data)
+            : response(view()->file(resource_path('themes/mskba_dark/views/pages/events/partials/game-qr-late-join.blade.php'), $data)->render());
     }
 
     public function accept(
