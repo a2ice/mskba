@@ -74,6 +74,7 @@
                         @endforeach
                         <label for="game-teammates-comment">Сообщение от себя (необязательно)</label>
                         <textarea id="game-teammates-comment" name="comment" rows="3" maxlength="1000" placeholder="Ребята, кто сможет сыграть?"></textarea>
+                        <p data-game-teammates-error role="alert" hidden></p>
                         @error('recipients')<p role="alert">{{ $message }}</p>@enderror
                         @error('recipients.*')<p role="alert">{{ $message }}</p>@enderror
                     </div>
