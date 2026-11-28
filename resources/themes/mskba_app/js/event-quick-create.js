@@ -1,3 +1,5 @@
+import {mountEventGamePlan} from '../../../js/event-game-plan.js';
+import {gamePresets} from '../../../js/event-game-editor.js';
 // Unified event-first creation dialog (venue page and events catalog).
 // Schedules are nonbinding preferences. No passwords or private credentials
 // are stored; the draft is kept only for this browser tab during auth.
@@ -15,10 +17,23 @@
     const venue=form.querySelector('[data-quick-venue]');
     const venueSearch=form.querySelector('[data-quick-venue-search]');
     const court=form.querySelector('[data-quick-court]');
-    const format=form.querySelector('[data-quick-format]');
-    const createGame=form.querySelector('[data-quick-create-game]');
-    const createGameRow=form.querySelector('[data-quick-create-game-row]');
-    const createGameHint=form.querySelector('[data-quick-create-game-hint]');
+    const gamePlanRoot=form.querySelector('[data-quick-game-plan]');
+    const gamePlanList=gamePlanRoot.querySelector('[data-game-plan]');
+    const gameEditor=document.getElementById('quick-event-game-editor');
+    const gameDeleteDialog=gamePlanRoot.querySelector('[data-game-plan-delete-dialog]');
+    // Keep nested dialogs as top-layer siblings; never put the editor form inside the wizard form.
+    dialog.after(gameDeleteDialog);
+    const gamePlan=mountEventGamePlan(gamePlanList,gameEditor,gameDeleteDialog,{
+        async searchTeams(query,exclude){
+            const url=new URL(dialog.dataset.gameTeamSearchUrl,location.origin);
+            url.searchParams.set('q',query);
+            if(exclude!==null)url.searchParams.set('exclude_id',String(exclude));
+            const response=await fetch(url,{headers:{Accept:'application/json'},credentials:'same-origin'});
+            if(!response.ok)throw Error('Не удалось загрузить команды.');
+            const data=await response.json();
+            return Array.isArray(data.teams)?data.teams:[];
+        },
+    });
     const scheduleEnabled=form.querySelector('[data-quick-schedule-enabled]');
     const scheduleFields=form.querySelector('[data-quick-schedule-fields]');
     const scheduleOff=form.querySelector('[data-quick-schedule-off]');
@@ -101,23 +116,8 @@
         if(firstField)firstField.focus();
         else if(step===sections.length-1)submit.focus();
     }
-    const syncFormat=()=>{
-        const presets={
-            streetball_3x3:['3','streetball','whole_game'],
-            basketball_5x5:['5','basketball','periods'],
-            streetball_1x1:['1','streetball','whole_game'],
-        };
-        const fields=presets[format.value]||presets.streetball_3x3;
-        form.querySelector('[data-quick-side-a]').value=fields[0];
-        form.querySelector('[data-quick-side-b]').value=fields[0];
-        form.querySelector('[data-quick-scoring]').value=fields[1];
-        form.querySelector('[data-quick-timing]').value=fields[2];
-    };
     const syncType=()=>{
-        const isGame=type.value==='game';
-        createGameRow.hidden=!isGame;
-        createGameHint.hidden=!isGame;
-        form.querySelector('[data-quick-game-fields]').hidden=!isGame||!createGame.checked;
+        gamePlanRoot.hidden=!type.value;
         updateAutoTitle();
     };
     const locationPhrase=()=>{
@@ -144,8 +144,6 @@
         availability.hidden=true;
     };
     type.addEventListener('change',syncType);
-    createGame.addEventListener('change',syncType);
-    format.addEventListener('change',syncFormat);
     title.addEventListener('input',()=>{editingTitle=true;});
     venue.addEventListener('change',event=>{
         if(event.detail?.venue)venueMeta[venue.value]=event.detail.venue;
@@ -155,7 +153,7 @@
         if(!scheduleEdited)initializeSchedule();
     });
     court.addEventListener('change',()=>{availability.hidden=true;if(!scheduleEdited)initializeSchedule();});
-    syncType();syncFormat();syncCourts();
+    syncType();syncCourts();
     // Preserve the selected hall when entering the wizard from its own page.
     if(dialog.dataset.initialCourtId && [...court.options].some(option=>option.value===dialog.dataset.initialCourtId)){
         court.value=dialog.dataset.initialCourtId;
@@ -246,12 +244,14 @@
             ? 'Стоимость участия: '+pricing.participant_cost+' руб.'
             : 'Бесплатное мероприятие';
         node.append(priceInfo);
-        if(type.value==='game'){
-            const gameInfo=document.createElement('p');
-            gameInfo.textContent=createGame.checked
-                ? 'Внутри мероприятия также будет создана одна игра с начальными настройками.'
-                : 'Мероприятие будет создано без игры. Её можно добавить позднее.';
-            node.append(gameInfo);
+        const planned=gamePlan.values();
+        const gameInfo=document.createElement('p');
+        gameInfo.textContent=planned.length?'Запланировано игр: '+planned.length:'Мероприятие будет создано без игр. Их можно добавить позднее.';
+        node.append(gameInfo);
+        if(planned.length){
+            const list=document.createElement('ul');
+            for(const game of planned){const item=document.createElement('li');item.textContent=game.title+(game.format?' · '+(gamePresets[game.format]?.label||game.format):' · Не определен');list.append(item);}
+            node.append(list);
         }
         const details=document.createElement('p');
         if(!slots.length)details.textContent='Без даты: создаётся черновик. Позже можно выбрать время и опубликовать мероприятие.';
@@ -310,11 +310,12 @@
         if(court.value)data.venue_court_id=Number(court.value);
         if(!data.max_participants)delete data.max_participants;
         if(!data.title)data.title=type.selectedOptions[0]?.textContent||'Игра';
+        data.games=gamePlan.values();
         data.slots=scheduleEnabled.checked?slots:[];
         data.schedule_mode=form.querySelector('[name="schedule_mode"]:checked')?.value||'alternatives';
         return data;
     }
-    const save=(awaitingContact=false,contactSatisfied=false)=>{try{sessionStorage.setItem(storageKey,JSON.stringify({draft:values(),step,at:Date.now(),awaitingContact,contactSatisfied,pendingContact:awaitingContact?pendingContact:null}));}catch{}};
+    const save=(awaitingContact=false,contactSatisfied=false)=>{try{sessionStorage.setItem(storageKey,JSON.stringify({draft:values(),gamePlan:gamePlan.draft(),step,at:Date.now(),awaitingContact,contactSatisfied,pendingContact:awaitingContact?pendingContact:null}));}catch{}};
     const clear=()=>{
         try{
             sessionStorage.removeItem(storageKey);
@@ -325,7 +326,7 @@
     function restore(saved){
         if(!saved?.draft)return false;
         for(const [name,value] of Object.entries(saved.draft)){
-            if(name==='telegram_chat_ids'||name==='publish_to_telegram'||name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role'||name==='organizer_participates')continue;
+            if(name==='games'||name==='telegram_chat_ids'||name==='publish_to_telegram'||name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role'||name==='organizer_participates')continue;
             if(['discussion_enabled','report_comments_enabled','save_time_comment_default'].includes(name)){
                 form.querySelector('input[type="checkbox"][name="'+name+'"]').checked=String(value)==='1';continue;
             }
@@ -341,12 +342,19 @@
         form.dispatchEvent(new Event('mskba:event-pricing-restore'));
         editingTitle=true;
         if(venue.value)venue.dispatchEvent(new Event('change',{bubbles:true}));
-        createGame.checked=saved.draft.create_game!=='0';
+        // Preserve the actual old draft choice; new drafts always carry an explicit list.
+        if(Array.isArray(saved.gamePlan))gamePlan.restore(saved.gamePlan);
+        else if(Array.isArray(saved.draft.games))gamePlan.restore(saved.draft.games.map(value=>({value,teams:{}})));
+        else if(saved.draft.type==='game'&&String(saved.draft.create_game)==='1'){
+            const key=saved.draft.game_format;
+            const preset=gamePresets[key];
+            gamePlan.restore(preset?[{value:{title:preset.title,format:key,recruitment_mode:'individual_draft',scoring_type:preset.scoring_type,timing_mode:preset.periods==='whole_game'?'whole_game':'periods',periods_count:preset.periods==='whole_game'?null:Number(preset.periods)},teams:{}}]:[]);
+        }else gamePlan.restore([]);
         const attendance=form.querySelector('[data-event-organizer-attendance]');
         if(attendance) attendance.checked=String(saved.draft.organizer_participates??'1')==='1';
         const organizerRole=form.querySelector('[data-event-organizer-role]');
         if(organizerRole && Object.hasOwn(saved.draft,'add_organizer_role')) organizerRole.checked=saved.draft.add_organizer_role==='1';
-        syncType();syncFormat();syncCourts();
+        syncType();syncCourts();
         const data=saved.draft;
         if(data.venue_court_id)court.value=String(data.venue_court_id);
         slots=Array.isArray(data.slots)?data.slots.slice(0,8):[];
