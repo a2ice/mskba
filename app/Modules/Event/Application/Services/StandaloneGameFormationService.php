@@ -260,6 +260,33 @@ final class StandaloneGameFormationService
         return $updated;
     }
 
+    /** Select a subset of confirmed event players, without changing their event participation. */
+    public function confirmEventParticipants(Game $game, Actor $actor, array $a, array $b): Game
+    {
+        $updated = DB::transaction(function () use ($game, $actor, $a, $b): Game {
+            [$event, $locked] = $this->lockEditable($game, $actor);
+            if (!$locked->uses_event_planning) {
+                throw new InvalidArgumentException('Эта операция доступна только запланированным играм.');
+            }
+            $this->assertIndividualFormationOpen($locked);
+            $ids = collect([...$a, ...$b])->map(fn ($id) => (int) $id);
+            $participants = $event->participants()->occupiesPlayerSpot()->with('user')
+                ->lockForUpdate()->get()->filter(fn ($participant) => $participant->user !== null
+                    && !$participant->user->canonical()->isBlocked() && !$participant->user->canonical()->trashed())
+                ->keyBy(fn ($participant) => (int) $participant->user->canonical()->id);
+            if ($ids->diff($participants->keys())->isNotEmpty()) {
+                throw new InvalidArgumentException('Выберите подтверждённых игроков этого мероприятия.');
+            }
+            $this->materializeIndividuals($event, $locked, $actor, $a, $b, 'Команда 1', 'Команда 2',
+                'crest-00', 'crest-01', $ids->unique()->sort()->values());
+
+            return $locked->fresh(['sides', 'rosterEntries']);
+        }, 3);
+        event(new EventChanged($updated->event_id));
+
+        return $updated;
+    }
+
     public function unconfirm(Game $game, Actor $actor): Game
     {
         $updated = DB::transaction(function () use ($game, $actor): Game {
@@ -479,6 +506,7 @@ final class StandaloneGameFormationService
         string $sideBName,
         string $sideALogoPreset,
         string $sideBLogoPreset,
+        ?Collection $selectedEventIds = null,
     ): void {
         $sideAUserIds = array_values(array_map('intval', $sideAUserIds));
         $sideBUserIds = array_values(array_map('intval', $sideBUserIds));
@@ -490,7 +518,7 @@ final class StandaloneGameFormationService
             || count($sideBUserIds) < (int) $game->side_b_size) {
             throw new InvalidArgumentException('В каждой стороне должно хватать игроков для стартового состава.');
         }
-        $acceptedIds = $this->acceptedIndividualIds($game);
+        $acceptedIds = $selectedEventIds ?? $this->acceptedIndividualIds($game);
         if ($all->unique()->sort()->values()->all() !== $acceptedIds->all()) {
             throw new InvalidArgumentException('Каждый принятый игрок должен входить ровно в одну утверждаемую команду.');
         }
