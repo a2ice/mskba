@@ -88,7 +88,7 @@ export function mountEventGameEditor(dialog, {searchTeams, onSave}) {
         input.addEventListener('keydown',e=>{
             if(e.key==='Escape'&&!list.hidden){e.preventDefault();e.stopPropagation();close();}
             if(!options.length)return;
-            if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();mark((active+(e.key==='ArrowDown'?1:-1)+options.length)%options.length);}
+            if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();mark(active<0?(e.key==='ArrowDown'?0:options.length-1):(active+(e.key==='ArrowDown'?1:-1)+options.length)%options.length);}
             if(e.key==='Enter'&&active>=0){e.preventDefault();choose(side,options[active]);}
         });
         input.addEventListener('blur',close);
