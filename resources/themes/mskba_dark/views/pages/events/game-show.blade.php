@@ -285,7 +285,11 @@
 
             @if(!$isCompleted && !$isCancelled && ($canComplete || $canEnterLiveStatistics))
                 <div class="game-lifecycle-actions">
-                    @if($canComplete)<button class="btn btn--danger" type="button" data-game-cancel data-cancel-url="{{ route('events.games.cancel', $gameRouteParameters) }}"><i class="ti ti-circle-x"></i>Отменить игру</button>@endif
+                    @if($game->uses_event_planning)
+                        @if($allows(EventResponsibilityPermissionEnum::DELETE_MINI_GAME) && !$game->actual_started_at)
+                            <a class="btn btn--secondary" href="{{ route('events.show', $event->routeIdentifier()) }}#planned-game-{{ $game->id }}">Отмена игры на странице мероприятия</a>
+                        @endif
+                    @elseif($canComplete)<button class="btn btn--danger" type="button" data-game-cancel data-cancel-url="{{ route('events.games.cancel', $gameRouteParameters) }}"><i class="ti ti-circle-x"></i>Отменить игру</button>@endif
                     @if($canComplete && $canEnterLiveStatistics)<button class="game-complete-button" type="button" data-game-review-open><i class="ti ti-circle-check"></i>Завершить игру</button>@endif
                 </div>
             @endif
