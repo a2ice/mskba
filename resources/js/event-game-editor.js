@@ -124,10 +124,15 @@ export function mountEventGameEditor(dialog, {searchTeams, onSave}) {
         }
         saving=true;submit.disabled=true;submitError.hidden=true;
         try{await onSave(value,{...selected},context);dialog.close();}
-        catch(e){submitError.textContent=e?.message||'Не удалось сохранить игру.';submitError.hidden=false;}
+        catch(e){
+            for(const [field,messages] of Object.entries(e?.errors||{})){
+                if(['title','team_a_id','team_b_id'].includes(field))error(field,Array.isArray(messages)?messages[0]:messages);
+            }
+            submitError.textContent=e?.message||'Не удалось сохранить игру.';submitError.hidden=false;
+        }
         finally{saving=false;submit.disabled=false;}
     });
-    return {open(value=null,teams={},key=null){
+    return {open(value=null,teams={},key=null,errors={}){
         if(dialog.open)return;
         generation++;context=key;format.value=value?.format||'';
         const preset=gamePresets[format.value];title.value=value?.title||preset?.title||'Игра';
@@ -139,6 +144,11 @@ export function mountEventGameEditor(dialog, {searchTeams, onSave}) {
         for(const side of ['a','b']){pickers[side].input.value=selected[side]?.name||'';pickers[side].close();error('team_'+side+'_id');}
         error('title');submitError.hidden=true;advanced.open=false;
         dialog.querySelector('[data-game-editor-title]').textContent=value?'Редактировать игру':'Создать игру';
-        sync();dialog.showModal();title.focus();
+        sync();dialog.showModal();
+        for(const [field,message] of Object.entries(errors)){
+            if(['title','team_a_id','team_b_id'].includes(field))error(field,message);
+            else {submitError.textContent=message;submitError.hidden=false;}
+        }
+        (form.querySelector('[aria-invalid=true]')||title).focus();
     }};
 }
