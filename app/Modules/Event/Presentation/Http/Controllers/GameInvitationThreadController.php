@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\GameAdmissionNotificationStateService;
 use App\Modules\Event\Application\Services\GameAdmissionService;
 use App\Modules\Event\Application\Services\GameInvitationConversation;
+use App\Modules\Event\Application\Services\GameInvitationTeammates;
 use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\GameInvitationThread;
@@ -23,7 +24,7 @@ use InvalidArgumentException;
 final class GameInvitationThreadController extends Controller
 {
     public function show(Request $request, GameInvitationThread $context, GameInvitationConversation $conversations,
-        AccountConversationRail $rail, MarkConversationNotificationsReadHandler $read): Response
+        AccountConversationRail $rail, MarkConversationNotificationsReadHandler $read, GameInvitationTeammates $teammates): Response
     {
         $viewer = $request->user()->canonical();
         abort_unless($conversations->canRead($context, $viewer), 403);
@@ -39,12 +40,21 @@ final class GameInvitationThreadController extends Controller
             && $game->sides_confirmed_at === null && $game->event?->status?->value === 'published'
             && !$game->event?->ends_at?->isPast();
 
+        $latest = $invitations->last();
+        $canNotify = $latest !== null && $conversations->canRepresentTeam($context, $viewer) && $teammates->available($context, $latest);
+        $players = $canNotify ? $teammates->eligible($context, $viewer) : collect();
+        $notified = $latest ? $teammates->alreadyNotified($latest) : [];
+
         return ThemeResolver::page('account.game-invitation-conversation', [
             'context' => $context,
             'thread' => $thread,
             'messages' => $messages,
             'invitations' => $invitations,
             'canRespond' => $canRespond,
+            'canNotify' => $canNotify,
+            'players' => $players,
+            'notified' => $notified,
+            'latestInvitation' => $latest,
             'viewer' => $viewer,
             'conversationCards' => $rail->items($viewer, $request),
             'activeConversationId' => 'game-invitation-'.$context->id,
@@ -94,6 +104,21 @@ final class GameInvitationThreadController extends Controller
 
         return $request->expectsJson() ? response()->json(['message' => 'Сообщение отправлено.'], 201)
             : redirect()->route('account.notifications.threads.game-invitation', $context);
+    }
+
+    public function notifyTeammates(Request $request, GameInvitationThread $context, int $admission,
+        GameInvitationTeammates $teammates): JsonResponse|RedirectResponse
+    {
+        $data = $request->validate([
+            'recipients' => ['required', 'array', 'list', 'min:1', 'max:500'],
+            'recipients.*' => ['required', 'integer', 'distinct', 'min:1'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $count = $teammates->send($context, $admission, $request->user(), $data['recipients'], $data['comment'] ?? null);
+        $message = $count ? 'Игроки оповещены: '.$count : 'Выбранные игроки уже оповещены.';
+
+        return $request->expectsJson() ? response()->json(['sent' => $count, 'message' => $message])
+            : redirect()->route('account.notifications.threads.game-invitation', $context)->with('status', $message);
     }
 
     public function respond(Request $request, GameInvitationThread $context, int $admission,
