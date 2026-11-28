@@ -24,14 +24,14 @@
                     <option value="streetball_1x1">1×1</option>
                     <option value="streetball_3x3">3×3</option>
                     <option value="basketball_5x5">5×5</option>
-                </select></span>
+                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
             </label>
             <label class="event-game-editor__field" data-game-type-row hidden>
                 <span>Тип игры</span>
                 <span class="select-control"><select name="recruitment_mode">
                     <option value="individual_draft">Из участников</option>
                     <option value="preformed_teams">Между командами</option>
-                </select></span>
+                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
             </label>
             <div class="event-game-editor__teams" data-game-teams hidden>
                 @foreach(['a' => 1, 'b' => 2] as $side => $number)
@@ -55,14 +55,14 @@
                         <span class="select-control"><select name="scoring_type">
                             <option value="streetball">Стритбол — 1 и 2 очка</option>
                             <option value="basketball">Баскетбол — 1, 2 и 3 очка</option>
-                        </select></span>
+                        </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
                     </label>
                     <label class="event-game-editor__field"><span>Деление игры на периоды</span>
                         <span class="select-control"><select name="periods">
                             <option value="whole_game">Игра целиком</option>
                             <option value="2">Две половины</option>
                             <option value="4">Четыре четверти</option>
-                        </select></span>
+                        </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
                     </label>
                     <p class="event-game-editor__hint">Настройки используются при ведении счёта, фиксации игровых действий и формировании статистики.</p>
                 </div>
@@ -87,6 +87,12 @@
 .event-game-editor__body{padding:20px 22px}
 .event-game-editor__field{display:grid;gap:8px;min-width:0;font-size:14px;font-weight:600}
 .event-game-editor__field :is(input,select){box-sizing:border-box;width:100%;min-width:0;min-height:48px;border:1px solid var(--control-line,#707a86);border-radius:12px;padding:11px 12px;background:var(--field,#292e35);color:var(--text,#f5f6f8);font-size:16px;line-height:24px;font-weight:400}
+.event-game-editor__field .select-control{position:relative;display:block;width:100%;min-width:0}
+.event-game-editor--app .select-control>select{appearance:none;-webkit-appearance:none;padding-inline-end:48px;cursor:pointer}
+.event-game-editor--app .select-control>svg{display:block;position:absolute;inset-inline-end:16px;top:50%;transform:translateY(-50%);width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;pointer-events:none;color:var(--muted,#adb3bb)}
+.event-game-editor--legacy .select-control>select{appearance:auto;-webkit-appearance:auto}
+.event-game-editor--legacy .select-control>svg{display:none}
+@media(forced-colors:active){.event-game-editor--app .select-control>select{appearance:auto;-webkit-appearance:auto}.event-game-editor--app .select-control>svg{display:none}}
 .event-game-editor__field [aria-invalid=true]{border-color:var(--danger,#d23e45)}
 .event-game-editor__error{margin:0;color:var(--danger,#d23e45);font-size:14px;font-weight:400}
 .event-game-editor__hint{margin:0;color:var(--muted,#929aa4);font-size:14px;line-height:20px;font-weight:400}
