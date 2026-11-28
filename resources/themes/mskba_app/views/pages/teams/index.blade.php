@@ -64,8 +64,15 @@
                         <p class="app-team-card__detail">{{ \Illuminate\Support\Str::limit($team->description, 120) }}</p>
                     @endif
                     <p class="app-team-card__detail">Участников: {{ $team->active_memberships_count }}</p>
+                    @php
+                        $catalogPlayers = $team->memberships->filter(fn ($membership) => $membership->hasSportRole(\App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::PLAYER));
+                        $catalogLineups = app(\App\Modules\Team\Application\Services\TeamLineupResolver::class)->resolve($team->sportProfiles, $catalogPlayers);
+                    @endphp
+                    @if($catalogLineups->isNotEmpty())
+                        <p class="app-team-card__detail">{{ $catalogLineups->map(fn ($lineup) => $lineup['label'].': '.$lineup['starters']->count().'/'.$lineup['size'])->implode(' · ') }} — основной состав</p>
+                    @endif
                     @if($team->active_hiring_positions_count > 0)
-                        <p class="app-team-card__detail">Открытых вакансий: {{ $team->active_hiring_positions_count }}</p>
+                        <p class="app-team-card__detail">Открытых вакансий: {{ $team->active_hiring_positions_count }} · Мест: {{ $team->hiringPositions->sum(fn ($vacancy) => $vacancy->remainingSpots()) }}</p>
                     @endif
                     <a class="button secondary" href="{{ route('teams.show', $team->routeIdentifier()) }}">Посмотреть команду</a>
                 </article>
