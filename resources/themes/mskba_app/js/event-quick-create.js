@@ -1,4 +1,4 @@
-import {mountEventGamePlan} from '../../../js/event-game-plan.js';
+import {mountEventGamePlan,restoreEventGamePlanDraft,gamePlanValidation} from '../../../js/event-game-plan.js';
 import {gamePresets} from '../../../js/event-game-editor.js';
 // Unified event-first creation dialog (venue page and events catalog).
 // Schedules are nonbinding preferences. No passwords or private credentials
@@ -290,7 +290,7 @@ import {gamePresets} from '../../../js/event-game-editor.js';
     form.addEventListener('keydown',event=>{
         if(event.key!=='Enter'||event.target.tagName==='TEXTAREA'||event.isComposing)return;
         const field=event.target;
-        if(!field.matches('input:not([type=hidden]),select'))return;
+        if(!field.matches('input:not([type=hidden]),select')||field.matches('[data-game-plan-first]'))return;
         event.preventDefault();
         if(!validate(field))return;
         const eligible=[...sections[step].querySelectorAll('input:not([type=hidden]),select,textarea')]
@@ -342,14 +342,7 @@ import {gamePresets} from '../../../js/event-game-editor.js';
         form.dispatchEvent(new Event('mskba:event-pricing-restore'));
         editingTitle=true;
         if(venue.value)venue.dispatchEvent(new Event('change',{bubbles:true}));
-        // Preserve the actual old draft choice; new drafts always carry an explicit list.
-        if(Array.isArray(saved.gamePlan))gamePlan.restore(saved.gamePlan);
-        else if(Array.isArray(saved.draft.games))gamePlan.restore(saved.draft.games.map(value=>({value,teams:{}})));
-        else if(saved.draft.type==='game'&&String(saved.draft.create_game)==='1'){
-            const key=saved.draft.game_format;
-            const preset=gamePresets[key];
-            gamePlan.restore(preset?[{value:{title:preset.title,format:key,recruitment_mode:'individual_draft',scoring_type:preset.scoring_type,timing_mode:preset.periods==='whole_game'?'whole_game':'periods',periods_count:preset.periods==='whole_game'?null:Number(preset.periods)},teams:{}}]:[]);
-        }else gamePlan.restore([]);
+        gamePlan.restore(restoreEventGamePlanDraft(saved));
         const attendance=form.querySelector('[data-event-organizer-attendance]');
         if(attendance) attendance.checked=String(saved.draft.organizer_participates??'1')==='1';
         const organizerRole=form.querySelector('[data-event-organizer-role]');
@@ -417,7 +410,11 @@ import {gamePresets} from '../../../js/event-game-editor.js';
             const result=await response.json().catch(()=>({}));
             if(result.code==='CONTACT_REQUIRED'){requireContact(result);return;}
             contactButton.hidden=true;
-            if(!response.ok)throw Error(Object.values(result.errors||{}).flat()[0]||result.message||'Не удалось создать мероприятие.');
+            if(!response.ok){
+                const invalid=gamePlanValidation(result.errors);
+                if(invalid){setStep(0);report('');if(gamePlan.showValidation(invalid))return;setStep(2);}
+                throw Error(Object.values(result.errors||{}).flat()[0]||result.message||'Не удалось создать мероприятие.');
+            }
             if(!result.event_url)throw Error('Сервер не вернул ссылку на мероприятие.');
             clear();
             window.location.assign(result.event_url);
