@@ -287,7 +287,7 @@ final class TeamController extends Controller
                 'url' => $person['url'],
                 'avatar_url' => $person['avatar_url'],
                 'avatar_restricted' => $person['avatar_restricted'],
-                'avatar_placeholder_url' => $person['avatar_placeholder_url'] ?? null,
+                'avatar_placeholder_url' => $profiles->placeholderUrl($subject, $viewer),
                 'recipient_id' => $messages->canSend($subject, $viewer, $blocks) ? $subject->id : null,
             ]];
         });
