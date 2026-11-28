@@ -12,11 +12,13 @@ return [
         'event-game-planning' => [
             'title' => 'Мероприятие — планирование игр',
             'issue' => 1175,
-            'revision' => 3,
+            'revision' => 4,
             'sources' => [
                 'resources/views/ui-studio/cases/event-game-planning.blade.php',
                 'resources/views/components/event-game-editor.blade.php',
                 'resources/views/components/event-game-plan-list.blade.php',
+                'resources/views/components/event-game-delete-dialog.blade.php',
+                'resources/views/components/event-game-plan-styles.blade.php',
                 'resources/js/event-game-editor.js',
                 'resources/js/event-game-plan.js',
             ],
