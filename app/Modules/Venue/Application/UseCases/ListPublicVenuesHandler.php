@@ -76,7 +76,7 @@ final class ListPublicVenuesHandler
 
     private function publicQuery(): Builder
     {
-        return Venue::query()
+        return Venue::query()->withAvg(['reviews as published_reviews_avg_rating' => fn ($query) => $query->where('is_published', true)], 'rating')
             ->where('status', VenueStatusEnum::CONFIRMED->value)
             ->where('is_published', true)
             ->with([
