@@ -124,8 +124,11 @@ export function renderVenueMapInfoCard(venue, options = {}) {
     const ratingBadge = document.createElement('span');
     ratingBadge.className = 'venue-catalog-card-rating';
     const rating = venue.rating == null || venue.rating === '' ? null : Number(venue.rating);
-    ratingBadge.textContent = Number.isFinite(rating) ? rating.toFixed(1) : '—';
-    ratingBadge.title = Number.isFinite(rating) ? 'Рейтинг площадки: ' + ratingBadge.textContent + ' из 5' : 'Пока нет оценок игроков';
+    ratingBadge.classList.toggle('is-unrated', !Number.isFinite(rating));
+    ratingBadge.textContent = Number.isFinite(rating) ? rating.toFixed(1) : '';
+    ratingBadge.title = Number.isFinite(rating) ? 'Рейтинг площадки: ' + ratingBadge.textContent + ' из 5' : 'Еще не оценили';
+    ratingBadge.setAttribute('role', 'img');
+    ratingBadge.setAttribute('aria-label', ratingBadge.title);
     media.append(ratingBadge);
     if (options.showBadge !== false) {
         const badge = document.createElement('span');
@@ -227,8 +230,10 @@ export function attachSharedHomeVenueCards(root = document) {
                                 const score = data?.venue?.rating;
                                 const badge = entry.node.querySelector('.venue-catalog-card-rating');
                                 if (badge && score != null && Number.isFinite(Number(score))) {
+                                    badge.classList.remove('is-unrated');
                                     badge.textContent = Number(score).toFixed(1);
                                     badge.title = 'Рейтинг площадки: ' + badge.textContent + ' из 5';
+                                    badge.setAttribute('aria-label', badge.title);
                                 }
                             }).catch(() => {});
                     }

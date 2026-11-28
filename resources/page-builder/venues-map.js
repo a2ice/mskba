@@ -165,7 +165,11 @@
     const rating = document.createElement('span');
     rating.className = 'venue-catalog-card-rating';
     rating.dataset.venueCardRating = Number.isFinite(score) ? String(score) : '';
-    rating.textContent = Number.isFinite(score) ? score.toFixed(1) : '—';
+    rating.classList.toggle('is-unrated', !Number.isFinite(score));
+    rating.textContent = Number.isFinite(score) ? score.toFixed(1) : '';
+    rating.title = Number.isFinite(score) ? 'Рейтинг площадки: ' + rating.textContent + ' из 5' : 'Еще не оценили';
+    rating.setAttribute('role', 'img');
+    rating.setAttribute('aria-label', rating.title);
     media.append(rating);
     const badge = document.createElement('span');
     badge.className = 'mskba-venues-map__card-label';
