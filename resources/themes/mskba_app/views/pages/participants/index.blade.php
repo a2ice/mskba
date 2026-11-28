@@ -37,7 +37,7 @@
     @forelse($participants as $item)
         <article class="panel app-category__card app-participant-card">
             <div class="app-category__card-body">
-                @include('theme::pages.participants.partials.public-avatar', ['avatarUrl' => $item['avatar_url'], 'avatarRestricted' => $item['avatar_restricted']])
+                @include('theme::pages.participants.partials.public-avatar', ['avatarUrl' => $item['avatar_url'], 'avatarRestricted' => $item['avatar_restricted'], 'avatarPlaceholderUrl' => $item['avatar_placeholder_url'] ?? null])
                 <div class="app-community-card-content">
                 <h2>
                     @if($item['url'])
